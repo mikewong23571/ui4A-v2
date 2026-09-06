@@ -8,7 +8,14 @@ import { REPO_ROOT, trackedFiles } from './lib.mjs';
 const COGNITIVE_KEYS = new Set(['version', 'traits', 'groupRole', 'priority', 'emptyMeaning']);
 
 const GENERIC_RUNTIME_PATHS = [
+  // git pathspec '*' includes descendants; keep planner and renderer submodules in the gate.
+  'packages/engine/src/presentation/*.ts',
   'apps/web/src/engine/presentation/*.ts',
+  'apps/web/src/render/words/*.ts',
+  'apps/web/src/render/words/*.tsx',
+  'apps/web/src/components/actions/*.ts',
+  'apps/web/src/components/actions/*.tsx',
+  'apps/web/src/components/action-runner.tsx',
   'apps/web/src/components/meta/**/*.ts',
   'apps/web/src/components/meta/**/*.tsx',
   'packages/agent/src/contract/disclosure.ts',

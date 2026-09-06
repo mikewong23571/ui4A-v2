@@ -122,9 +122,8 @@ async function publishSecondPost(): Promise<string> {
 async function buildFixtureA(): Promise<FixtureA> {
   const threadId = `t56s1-a-${RUN}`;
   await execAccepted('threads', 'create', {
-    id: threadId,
+    commandId: threadId,
     goal: GOAL,
-    goalSource: `chat:t56s1-${RUN}`,
   });
   const pendingApprovalRel = await suspendArchive('post:post-welcome');
   const decidedTargetRel = await publishSecondPost();
@@ -205,7 +204,7 @@ describe('T56 S1 探针:Work Thread 合同与呈现链路现状', () => {
       rel: threadRel,
       identity: GOAL,
       owner: OWNER,
-      goal: { text: GOAL, source: `chat:t56s1-${RUN}` },
+      goal: { text: GOAL, source: threadRel.replace('thread:', 'thread-input:') },
       status: 'open',
       statusText: '进行中',
       context: ['post:first-post', 'comment:c2'],
@@ -265,7 +264,7 @@ describe('T56 S1 探针:Work Thread 合同与呈现链路现状', () => {
       'properties.statusText',
       'properties.resume',
     ]);
-    // goalSource 指向 chat: 不可解析 → goalSourceText 干净省略(裸标识只在 raw 层)。
+    // 创建原文由 source link 独立回读，不在主内容重复目标。
     expect(entity!.properties).not.toHaveProperty('goalSourceText');
   });
 
@@ -326,9 +325,8 @@ describe('T56 S1 探针:Work Thread 合同与呈现链路现状', () => {
     const engine = await getEngine(pool);
     const scratch = `t56s1-gate-${RUN}`;
     await execAccepted('threads', 'create', {
-      id: scratch,
+      commandId: scratch,
       goal: '确认门旁路刻画',
-      goalSource: `chat:t56s1-${RUN}`,
     });
     const outcome = await engine.exec({
       rel: `thread:${scratch}`,

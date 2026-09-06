@@ -202,9 +202,8 @@ async function buildExtensionFixture(): Promise<ExtensionFixture> {
   const pendingApprovalRel = await execSuspend(`${flow}:main`, 'request-archive');
   const threadId = `t56p13-h-${RUN}`;
   await execAccepted('threads', 'create', {
-    id: threadId,
+    commandId: threadId,
     goal: GOAL,
-    goalSource: `chat:t56p13-${RUN}`,
   });
   const attach = (category: string, rel: string): Promise<void> =>
     execAccepted(`thread:${threadId}`, 'attach', { category, rel });
@@ -305,9 +304,8 @@ describe('第二应用零改动可读(P1.3 A7/US11 Fixture H)', () => {
 describe('无 version:1 声明的主体走既有 generic 路径(P1.3 A8/US11)', () => {
   it('threads 集合:成员区维持 relation 角色,计划不被 trait 通路改写', async () => {
     await execAccepted('threads', 'create', {
-      id: `t56p13-u-${RUN}`,
+      commandId: `t56p13-u-${RUN}`,
       goal: '未知语义对照线',
-      goalSource: `chat:t56p13-${RUN}`,
     });
     const receipt = await present('threads', `t56p13-u-present-${RUN}`, ['local-demo']);
     expect(receipt.status).toBe('ready');
@@ -328,9 +326,8 @@ describe('大工作集与部分不可读(P1.3 A9/US11 Fixture I)', () => {
     const flow = await installExtensionApp(app);
     const threadId = `t56p13-i-${RUN}`;
     await execAccepted('threads', 'create', {
-      id: threadId,
+      commandId: threadId,
       goal: GOAL,
-      goalSource: `chat:t56p13-${RUN}`,
     });
     const longTitle = (index: number): string =>
       `t56p13 长标题材料 ${String(index).padStart(2, '0')} ${'很长的标题'.repeat(24)} ${RUN}`;

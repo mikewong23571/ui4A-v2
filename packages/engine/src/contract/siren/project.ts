@@ -1,3 +1,5 @@
+import { projectWorkThreadView } from '../../projection/work-thread-views';
+import { projectThreadInput, THREAD_INPUT_REL_PREFIX } from '../../projection/work-thread-input';
 /**
  * Siren 业务平面投影:实例/集合/确认/inbox/委托/渲染 spec(arch-brief §2 四件组装)。
  * 纯函数;rel → Siren 实体,未知 rel 返回 undefined(HTTP 层映射 404)。
@@ -28,6 +30,8 @@ import {
 import { mergeFieldDefinitions } from '../schema';
 import {
   THREADS_REL,
+  THREAD_CURRENT_REL,
+  THREAD_HISTORY_REL,
   THREAD_REL_PREFIX,
   projectWorkThread,
   projectWorkThreads,
@@ -342,6 +346,12 @@ function projectConfirmation(
     properties: {
       id: confirmation.id,
       rel: confirmationRel(confirmation.id),
+      presentation: projectCognitiveSemantics({
+        declaration: {
+          version: 1,
+          traits: pending ? ['human-responsibility'] : ['human-responsibility', 'task-history'],
+        },
+      }),
       'target-rel': confirmation.targetRel,
       'target-action': confirmation.targetAction,
       params: fieldValues(confirmation.params ?? {}),
@@ -440,8 +450,15 @@ function projectDelegation(delegation: DelegationSnapshot, deps: ProjectDeps): S
 }
 
 /** delegations 集合投影(舰队页数据源):全部委托的集合实体,子实体直达。 */
-function projectDelegations(snapshot: EngineSnapshot, deps: ProjectDeps): SirenEntity {
-  const entries = Object.values(snapshot.delegations ?? {});
+function projectDelegations(
+  snapshot: EngineSnapshot,
+  deps: ProjectDeps,
+  currentOnly = false,
+): SirenEntity {
+  const rel = currentOnly ? 'delegations-current' : DELEGATIONS_REL;
+  const entries = Object.values(snapshot.delegations ?? {}).filter(
+    (entry) => !currentOnly || entry.status === 'running',
+  );
   const entities = entries.map((delegation) => ({
     ...projectDelegation(delegation, deps),
     rel: ['item'],
@@ -450,12 +467,19 @@ function projectDelegations(snapshot: EngineSnapshot, deps: ProjectDeps): SirenE
   return {
     class: ['collection', DELEGATIONS_REL],
     properties: {
-      rel: DELEGATIONS_REL,
-      ...collectionIdentity('在动', 'nothing-in-motion'),
+      rel,
+      ...collectionIdentity(currentOnly ? '执行中委托' : '在动', 'nothing-in-motion'),
       count: entries.length,
     },
     actions: [],
-    links: [{ rel: ['self'], href: entityHref(deps.baseHref, DELEGATIONS_REL), title: '在动' }],
+    links: [
+      {
+        rel: ['self'],
+        href: entityHref(deps.baseHref, rel),
+        title: currentOnly ? '执行中委托' : '在动',
+      },
+      { rel: ['collection'], href: entityHref(deps.baseHref, DELEGATIONS_REL), title: '全部委托' },
+    ],
     'guard-results': [],
     entities,
   };
@@ -522,6 +546,9 @@ export function project(
   }
   if (rel === 'applications') return projectApplications(snapshot, deps);
   if (rel.startsWith('application:')) return projectApplication(snapshot, rel, deps);
+  if (rel.startsWith(THREAD_INPUT_REL_PREFIX)) return projectThreadInput(snapshot, rel, deps);
+  if (rel === THREAD_CURRENT_REL || rel === THREAD_HISTORY_REL)
+    return projectWorkThreadView(snapshot, deps, rel);
   if (rel === THREADS_REL) return projectWorkThreads(snapshot, deps);
   if (rel.startsWith(THREAD_REL_PREFIX)) {
     const thread = snapshot.threads?.[rel.slice(THREAD_REL_PREFIX.length)];
@@ -550,6 +577,7 @@ export function project(
   if (rel === 'inbox') {
     return projectInbox(snapshot, deps);
   }
+  if (rel === 'delegations-current') return projectDelegations(snapshot, deps, true);
   if (rel === DELEGATIONS_REL) {
     return projectDelegations(snapshot, deps);
   }

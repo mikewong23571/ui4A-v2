@@ -196,7 +196,7 @@ describe('mode=delegated(委托派发)', () => {
         action: 'create',
         actor: 'human',
         principal: 'local-user',
-        params: { id, goal: id, goalSource: 'message:source' },
+        params: { commandId: id, goal: id },
       });
       expect(created.kind).toBe('accepted');
     }

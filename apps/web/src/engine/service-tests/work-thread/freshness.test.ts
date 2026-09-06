@@ -83,9 +83,8 @@ interface Fixture {
 async function buildFixture(): Promise<Fixture> {
   const threadId = `t56p13-f-${RUN}`;
   await execAccepted('threads', 'create', {
-    id: threadId,
+    commandId: threadId,
     goal: GOAL,
-    goalSource: `chat:t56p13-${RUN}`,
   });
   const pendingApprovalRel = await suspendArchive('post:post-welcome');
   const attach = (category: string, rel: string): Promise<void> =>

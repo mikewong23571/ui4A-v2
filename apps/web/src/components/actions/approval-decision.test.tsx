@@ -80,6 +80,7 @@ function approvalMember(
       identity: `${actionText} · 由 agent 提议`,
       status,
       category: 'approval',
+      presentation: { version: 1, traits: ['human-responsibility'] },
     },
     actions: status === 'pending' ? [approveAction(), rejectAction()] : [],
     links: [{ rel: ['self'], href: `/api/entity?rel=${encodeURIComponent(rel)}` }],

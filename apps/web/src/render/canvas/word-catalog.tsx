@@ -30,6 +30,8 @@ import { EntityLinkWord } from '../words/entity-link';
 import { FlowWord } from '../words/flow';
 import { FormWord } from '../words/form';
 import { KanbanWord } from '../words/kanban';
+import { usePresentationHeadingLevel } from './heading-level';
+import { MemberRowWord } from '../words/member-row';
 import { MemberCardWord } from '../words/member-card';
 import { MemberTableWord } from '../words/member-table';
 import { EmptyStateWord } from '../words/empty-state';
@@ -100,9 +102,14 @@ function wordImplementation(
 
 /** Plain semantic text avoids Basic Text's implicit Markdown renderer contract. */
 function SemanticTextWord(props: WordProps) {
+  const headingLevel = usePresentationHeadingLevel();
   const value = String(props.value ?? '');
   if (props.variant === 'heading') {
-    return <h1 className="text-2xl font-semibold tracking-tight">{value}</h1>;
+    return headingLevel === 1 ? (
+      <h1 className="text-2xl font-semibold tracking-tight">{value}</h1>
+    ) : (
+      <h2 className="text-lg font-medium tracking-tight">{value}</h2>
+    );
   }
   if (props.variant === 'status') {
     return <em className="text-sm not-italic text-muted-foreground">{value}</em>;
@@ -159,6 +166,22 @@ const wordImplementations: ReactComponentImplementation[] = [
       detail: dynamic(z.string()).optional(),
     },
     EntityLinkWord,
+  ),
+  wordImplementation(
+    'member-row',
+    {
+      label: dynamic(z.string()),
+      rel: dynamic(z.string()),
+      status: dynamic(z.string()).optional(),
+      detail: dynamic(z.string()).optional(),
+      actions: dynamic(z.array(z.any())).optional(),
+      guardResults: dynamic(z.array(z.any())).optional(),
+      fields: dynamic(z.record(z.string(), z.any())).optional(),
+      presentations: dynamic(z.array(z.any())).optional(),
+      cognitive: dynamic(z.any()).optional(),
+      members: dynamic(z.array(z.any())).optional(),
+    },
+    MemberRowWord,
   ),
   wordImplementation(
     'member-card',

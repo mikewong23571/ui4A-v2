@@ -266,20 +266,29 @@ export function planGenericSurface(
     const findPattern = (pattern: NonNullable<SurfaceCatalogWord['pattern']>) =>
       Object.entries(catalog.words).find(([, definition]) => definition.pattern === pattern);
     const density = genericMemberDensity(options.density, memberTraits);
-    const memberTable =
-      density === 'table' && membersDeclareActions
-        ? (findPattern('member-table') ?? findPattern('member-card'))
-        : undefined;
-    const memberCard =
-      density !== 'table' && membersDeclareActions ? findPattern('member-card') : undefined;
-    const memberDecision = memberTable ?? memberCard;
+    const memberDecision =
+      density === 'table' || options.intent === 'compare'
+        ? (findPattern('member-table') ?? findPattern('member-row') ?? findPattern('member-card'))
+        : (findPattern('member-row') ??
+          (membersDeclareActions ? findPattern('member-card') : undefined));
     const memberLink = findPattern('member-link');
     // T35 F-21:成员状态优先取节点标题(任务语),成员缺 title 时回退 node 名。
+    const declaredStatuses = entity.entities!.map((member) => {
+      const fields = readPath(member, 'properties.presentation.fields');
+      if (!Array.isArray(fields)) return undefined;
+      const declaration = fields.find(
+        (field) => isRecord(field) && field.role === 'status' && typeof field.path === 'string',
+      );
+      return isRecord(declaration) ? (declaration.path as string) : undefined;
+    });
+    const declaredStatus = declaredStatuses[0];
     const itemStatusPath =
-      entity.entities!.length > 0 &&
-      entity.entities!.every((member) => readPath(member, 'properties.title') !== undefined)
-        ? 'properties.title'
-        : 'properties.status';
+      declaredStatus !== undefined && declaredStatuses.every((path) => path === declaredStatus)
+        ? declaredStatus
+        : entity.entities!.length > 0 &&
+            entity.entities!.every((member) => readPath(member, 'properties.title') !== undefined)
+          ? 'properties.title'
+          : 'properties.status';
     const item: SurfaceNode =
       memberDecision !== undefined
         ? {
@@ -295,6 +304,16 @@ export function planGenericSurface(
               actions: { kind: 'item', path: 'actions' },
               guardResults: { kind: 'item', path: 'guard-results' },
               fields: { kind: 'item', path: 'properties.fields' },
+              ...(memberDecision[1].bindings.cognitive === undefined
+                ? {}
+                : {
+                    cognitive: { kind: 'item' as const, path: 'properties.presentation' },
+                  }),
+              ...(memberDecision[1].bindings.members === undefined
+                ? {}
+                : {
+                    members: { kind: 'item' as const, path: 'entities' },
+                  }),
               // T38 FR4:概览显示 hint 携带——词条目录声明 presentations 绑定时,
               // 规划器供给成员呈现元数据(properties.presentation.fields,声明序 +
               // title + overview)。未声明的成员词(如 member-card)零新绑定。

@@ -71,6 +71,21 @@ const words: Readonly<Record<string, A2uiWordAdapter>> = {
       detail: { prop: 'detail', transform: 'value' },
     },
   },
+  'member-row': {
+    component: 'member-row',
+    bindings: {
+      label: { prop: 'label', transform: 'value' },
+      rel: { prop: 'rel', transform: 'value' },
+      status: { prop: 'status', transform: 'value' },
+      detail: { prop: 'detail', transform: 'value' },
+      actions: { prop: 'actions', transform: 'value' },
+      guardResults: { prop: 'guardResults', transform: 'value' },
+      fields: { prop: 'fields', transform: 'value' },
+      presentations: { prop: 'presentations', transform: 'value' },
+      cognitive: { prop: 'cognitive', transform: 'value' },
+      members: { prop: 'members', transform: 'value' },
+    },
+  },
   'member-card': {
     component: 'member-card',
     bindings: {

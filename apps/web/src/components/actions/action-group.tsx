@@ -1,6 +1,7 @@
 'use client';
 
-import { createContext, useContext } from 'react';
+import { createContext, useContext, useId, useRef, useState, type ReactNode } from 'react';
+import { Button } from '../ui/button';
 
 import { THREAD_ATTACH_ACTION, THREAD_REL_PREFIX } from '@ui4a/engine';
 import type { GuardResultEntry, SirenAction, SirenEntity } from '@ui4a/engine';
@@ -46,6 +47,10 @@ export interface ActionGroupProps {
   onExecuted?: (rel: string) => void;
   /** 缺省 'default',既有行为零变化;compact 供表格行内动作列等窄空间复用。 */
   density?: ActionGroupDensity;
+  /** Overview hosts expose actions on demand; responsibility hosts keep them expanded. */
+  posture?: 'expanded' | 'disclosure';
+  /** Independent short tasks may use a modal; local reference tasks stay inline. */
+  formHost?: 'inline' | 'dialog';
 }
 
 /** One contract-driven action group shared by Entity, Canvas and composition region hosts. */
@@ -55,6 +60,8 @@ export function ActionGroup({
   submit: explicitSubmit,
   onExecuted,
   density = 'default',
+  posture = 'expanded',
+  formHost = 'inline',
 }: ActionGroupProps) {
   const legendShown = useContext(ActionLegendContext);
   const submit = useActionSubmit(explicitSubmit);
@@ -71,15 +78,13 @@ export function ActionGroup({
       : undefined;
   const compact = density === 'compact';
 
-  // T35 F-07/§十:动作语义分层——危险组按合同声明 requires-confirmation 派生
-  // (通用机制,零实体特判),与常规组分隔呈现,不可逆操作不再与普通操作同级。
-  const dangerActions = entity.actions.filter(
+  const confirmationActions = entity.actions.filter(
     (action) => action['requires-confirmation'] === 'high',
   );
   const normalActions = entity.actions.filter(
     (action) => action['requires-confirmation'] !== 'high',
   );
-  const renderItem = (action: (typeof entity.actions)[number], tone: 'normal' | 'danger') => {
+  const renderItem = (action: SirenAction) => {
     const guard = guards.get(action.name);
     const runner = isThreadMaterialAttach(rel, action) ? (
       <ThreadMaterialAdd
@@ -94,7 +99,7 @@ export function ActionGroup({
       <ActionRunner
         rel={rel}
         action={action}
-        tone={tone === 'danger' ? 'danger' : undefined}
+        formHost={formHost}
         blocked={blockedForRenderer(guard)}
         blockReason={guard?.reason}
         onExecuted={onExecuted}
@@ -102,11 +107,6 @@ export function ActionGroup({
         submit={submit}
       />
     );
-    // 两种密度统一行内条目(零边框盒子)——卡片 chrome 所有权唯一化(视觉
-    // 去嵌套规约):detail 卡/surface 卡是唯一边框持有者,动作条目不再叠框。
-    // 危险动作以 destructive tone + default 密度的虚线分隔呈现,两步确认语义
-    // 在 ActionRunner 内不变。
-    void compact;
     return (
       <div
         key={`${rel}:${action.name}:${JSON.stringify([action.fields, prefill])}`}
@@ -118,34 +118,72 @@ export function ActionGroup({
   };
 
   return (
-    <div data-testid="action-contract-group" className="space-y-3">
-      {legendShown || compact ? null : (
-        <p data-testid="action-contract-legend" className="text-xs text-muted-foreground">
-          {ACTION_CONTRACT_LEGEND}
-        </p>
-      )}
-      {/* 图例已展示标记只在真的渲染过图例时向内传播;compact 自身不披露图例,
+    <ActionDisclosure enabled={posture === 'disclosure'}>
+      <div data-testid="action-contract-group" className="space-y-3">
+        {legendShown || compact || posture === 'disclosure' ? null : (
+          <p data-testid="action-contract-legend" className="text-xs text-muted-foreground">
+            {ACTION_CONTRACT_LEGEND}
+          </p>
+        )}
+        {/* 图例已展示标记只在真的渲染过图例时向内传播;compact 自身不披露图例,
           内层 default 组仍要补披露(披露保留在详情面)。 */}
-      <ActionLegendContext.Provider value={compact ? legendShown : true}>
-        <div className={compact ? 'flex flex-wrap items-center gap-2' : 'space-y-3'}>
-          {normalActions.map((action) => renderItem(action, 'normal'))}
-          {dangerActions.length > 0 && (
-            <div
-              data-testid="action-danger-group"
-              aria-label="危险操作"
-              className={
-                compact
-                  ? // compact:危险动作与常规动作同行,仅以 destructive tone 区分
-                    // (两步确认语义在 ActionRunner 内不变);分隔线属 default 密度。
-                    'flex flex-wrap items-center gap-2'
-                  : 'space-y-3 border-t border-dashed pt-3'
-              }
-            >
-              {dangerActions.map((action) => renderItem(action, 'danger'))}
-            </div>
-          )}
-        </div>
-      </ActionLegendContext.Provider>
+        <ActionLegendContext.Provider
+          value={compact || posture === 'disclosure' ? legendShown : true}
+        >
+          <div className={compact ? 'flex flex-wrap items-center gap-2' : 'space-y-3'}>
+            {normalActions.map(renderItem)}
+            {confirmationActions.length > 0 && (
+              <div
+                data-testid="action-confirmation-group"
+                aria-label="需要确认的操作"
+                className={
+                  compact
+                    ? 'flex flex-wrap items-center gap-2'
+                    : 'space-y-3 border-t border-dashed pt-3'
+                }
+              >
+                <p className="text-xs text-muted-foreground">需要确认</p>
+                {confirmationActions.map(renderItem)}
+              </div>
+            )}
+          </div>
+        </ActionLegendContext.Provider>
+      </div>
+    </ActionDisclosure>
+  );
+}
+
+function ActionDisclosure({ enabled, children }: { enabled: boolean; children: ReactNode }) {
+  const [open, setOpen] = useState(false);
+  const id = useId();
+  const trigger = useRef<HTMLButtonElement>(null);
+  if (!enabled) return <>{children}</>;
+  return (
+    <div
+      onKeyDown={(event) => {
+        if (event.target instanceof Element && event.target.closest('[role="dialog"]')) return;
+        if (event.key === 'Escape' && open && !event.defaultPrevented) {
+          event.preventDefault();
+          setOpen(false);
+          trigger.current?.focus();
+        }
+      }}
+    >
+      <Button
+        ref={trigger}
+        type="button"
+        variant="ghost"
+        size="sm"
+        aria-expanded={open}
+        aria-controls={id}
+        data-nav="presentation:expand-actions"
+        onClick={() => setOpen(!open)}
+      >
+        更多操作
+      </Button>
+      <div id={id} hidden={!open} className="pt-2">
+        {children}
+      </div>
     </div>
   );
 }

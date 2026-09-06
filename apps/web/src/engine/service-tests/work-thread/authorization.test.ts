@@ -129,9 +129,8 @@ interface FixtureA {
 async function buildFixtureA(): Promise<FixtureA> {
   const threadId = `t56p11-a-${RUN}`;
   await execAccepted('threads', 'create', {
-    id: threadId,
+    commandId: threadId,
     goal: GOAL,
-    goalSource: `chat:t56p11-${RUN}`,
   });
   const pendingApprovalRel = await suspendArchive('post:post-welcome');
   const decidedTargetRel = await publishSecondPost();
@@ -377,9 +376,8 @@ describe('Work Thread 授权读合同(D78 路线 A 目标语义;Red)', () => {
     // 真空对照线:同目标语 ensured 不同 id、同 context、同 approval 引用,但从未挂 active。
     const vacuumId = `t56p11-b-${RUN}`;
     await execAccepted('threads', 'create', {
-      id: vacuumId,
+      commandId: vacuumId,
       goal: `${GOAL}(真空对照)`,
-      goalSource: `chat:t56p11-b-${RUN}`,
     });
     for (const [category, rel] of [
       ['context', 'post:first-post'],

@@ -27,9 +27,11 @@ export async function execThreadAction(
   if (outcome.kind === 'rejected') {
     return persistRejection(db, state, deps.toAppend, request, outcome);
   }
-  await appendWithSeq(db, state, deps.toAppend(outcome.event));
-  state.snapshot = outcome.snapshot;
-  applyForeignGaps(state);
+  if (outcome.kind === 'accepted') {
+    await appendWithSeq(db, state, deps.toAppend(outcome.event));
+    state.snapshot = outcome.snapshot;
+    applyForeignGaps(state);
+  }
   const entity = project(state.snapshot, outcome.entityRel, deps.projectDeps());
   if (entity === undefined) {
     throw new Error(`thread exec 后目标实体 "${outcome.entityRel}" 不可投影(内部不变式破坏)`);

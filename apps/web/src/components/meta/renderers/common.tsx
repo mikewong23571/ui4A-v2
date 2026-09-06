@@ -9,6 +9,7 @@ import { blockedForRenderer } from '@/components/actions/action-group';
 import {
   createDirectActionSubmit,
   observedActionClientParams,
+  useActionCommandIds,
 } from '@/components/actions/action-submit';
 import { Badge } from '@/components/ui/badge';
 import { Card } from '@/components/ui/card';
@@ -88,6 +89,7 @@ function ScopedMetaActions({
   excludeActions = [],
   onChanged,
 }: MetaActionsProps) {
+  const commandIds = useActionCommandIds();
   const [lastOutcome, setLastOutcome] = useState<SirenEntity | null>(null);
   const [lastDisclosure, setLastDisclosure] = useState<ActivationDisclosureView | undefined>();
   // G02b:同一回执记入页面级稳定宿主(无 Provider 时为 no-op,行为不变)。
@@ -114,6 +116,7 @@ function ScopedMetaActions({
                   blockReason={guard?.reason}
                   prefill={prefill}
                   submit={createDirectActionSubmit((input) => execMetaAction({ ...input, scope }), {
+                    commandIds,
                     clientParams: ({ action: current }) =>
                       observedActionClientParams(current, entity.properties),
                   })}

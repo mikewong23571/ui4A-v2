@@ -21,7 +21,7 @@ describe('T21 client view capture', () => {
     ).toMatchObject({ presence: { focus: { selection: ['post:a', 'post:b'] } } });
   });
 
-  it.each(['/', '/canvas', '/canvas?concern=unknown'])(
+  it.each(['/canvas', '/canvas?concern=unknown'])(
     'keeps subject unknown when route %s does not prove one',
     (route) => {
       expect(clientViewReportForLocation('client:a', route)).toEqual({
@@ -36,6 +36,23 @@ describe('T21 client view capture', () => {
       });
     },
   );
+
+  it('home observes the same declared roots as its work composition', () => {
+    expect(clientViewReportForLocation('client:a', '/').presence.focus).toEqual({
+      selection: ['inbox', 'threads-current', 'delegations-current'],
+    });
+    expect(clientViewReportForLocation('client:a', '/?focus=object:a').presence.focus).toEqual({
+      selection: ['inbox', 'threads-current', 'delegations-current'],
+    });
+    expect(
+      clientViewReportForLocation('client:a', '/?roots=object:a&scope=publishing&thread=one')
+        .presence,
+    ).toMatchObject({
+      focus: { selection: ['inbox', 'threads-current', 'delegations-current'] },
+      scope: 'publishing',
+      thread: 'one',
+    });
+  });
 
   it('associates a Presentation request only while the visible route matches its surface URL', () => {
     const receipt = {

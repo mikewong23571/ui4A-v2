@@ -4,33 +4,14 @@ import { getBuiltinComposition, resolveBuiltinCompositionSubject } from './compo
 
 describe('built-in composition registry', () => {
   it('looks up the versioned my-work declaration with stable ordered regions', () => {
-    expect(getBuiltinComposition('my-work')).toEqual({
-      id: 'my-work',
-      version: '2',
-      regions: [
-        {
-          region: 'waiting-for-me',
-          source: 'inbox',
-          intent: 'Review work waiting for me',
-          mode: 'invalidate',
-          shape: 'collection',
-        },
-        {
-          region: 'in-motion',
-          source: 'delegations',
-          intent: 'Track work currently in motion',
-          mode: 'rehydrate',
-          shape: 'collection',
-        },
-        {
-          region: 'work-lines',
-          source: 'threads',
-          intent: 'Follow active work lines',
-          mode: 'invalidate',
-          shape: 'collection',
-        },
-      ],
-    });
+    const declaration = getBuiltinComposition('my-work');
+    expect(declaration?.version).toBe('3');
+    expect(declaration?.regions.map((region) => region.source)).toEqual([
+      'inbox',
+      'threads-current',
+      'delegations-current',
+    ]);
+    expect(declaration?.regions[0]?.mode).toBe('invalidate');
   });
 
   it('distinguishes ordinary rels from registered and rejected workspace subjects', () => {

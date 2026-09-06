@@ -28,7 +28,7 @@ describe('Work Thread service exec', () => {
         policyScope: 'publishing',
         humanApprovalEligible: false,
       },
-      params: { id: 'release-1', goal: 'Ship safely', goalSource: 'message:goal-1' },
+      params: { commandId: 'release-1', goal: 'Ship safely' },
     });
     expect(created).toMatchObject({
       kind: 'accepted',
@@ -69,6 +69,39 @@ describe('Work Thread service exec', () => {
     });
   });
 
+  it('leaves neither a thread nor its source on append failure and permits safe retry', async () => {
+    const engine = await getEngine(pool);
+    const input = {
+      rel: 'threads',
+      action: 'create',
+      principal: 'user:mike',
+      params: { commandId: 'write-failure', goal: 'Keep this exact input' },
+    };
+    await pool.query(`CREATE OR REPLACE FUNCTION reject_thread_creation() RETURNS trigger
+      LANGUAGE plpgsql AS $$ BEGIN RAISE EXCEPTION 'append unavailable'; END $$`);
+    await pool.query(`CREATE TRIGGER reject_thread_creation BEFORE INSERT ON events
+      FOR EACH ROW WHEN (NEW.rel = 'thread:write-failure') EXECUTE FUNCTION reject_thread_creation()`);
+    try {
+      await expect(engine.exec(input)).rejects.toThrow('append unavailable');
+    } finally {
+      await pool.query('DROP TRIGGER reject_thread_creation ON events');
+      await pool.query('DROP FUNCTION reject_thread_creation()');
+    }
+    expect(engine.getSnapshot().threads?.['write-failure']).toBeUndefined();
+    expect(await engine.getEntity('thread-input:write-failure')).toBeUndefined();
+    expect(
+      (await readLog(pool)).filter((event) => event.rel === 'thread:write-failure'),
+    ).toHaveLength(0);
+    expect(await engine.exec(input)).toMatchObject({ kind: 'accepted' });
+    expect(await engine.getEntity('thread-input:write-failure')).toMatchObject({
+      properties: { text: input.params.goal },
+      actions: [],
+    });
+    expect(
+      (await readLog(pool)).filter((event) => event.rel === 'thread:write-failure'),
+    ).toHaveLength(1);
+  });
+
   it('persists undeclared, owner-guard, and strict-schema rejections through one audit path', async () => {
     const engine = await getEngine(pool);
     const undeclared = await engine.exec({
@@ -84,9 +117,9 @@ describe('Work Thread service exec', () => {
       action: 'create',
       principal: 'user:mike',
       params: {
-        id: 'release-1',
+        commandId: 'release-1',
         goal: 'Ship safely',
-        goalSource: 'message:goal-1',
+
         extra: true,
       },
     });
@@ -96,7 +129,7 @@ describe('Work Thread service exec', () => {
       rel: 'threads',
       action: 'create',
       principal: 'user:mike',
-      params: { id: 'release-1', goal: 'Ship safely', goalSource: 'message:goal-1' },
+      params: { commandId: 'release-1', goal: 'Ship safely' },
     });
     const guard = await engine.exec({
       rel: 'thread:release-1',

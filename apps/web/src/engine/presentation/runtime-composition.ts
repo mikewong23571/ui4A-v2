@@ -16,6 +16,7 @@ import { selectAndInstantiateRecipe } from './recipe-selection';
 import { currentRecipeCoordinator } from './recipes-runtime';
 import { semanticHintsOf } from './situation';
 import { genericIntentPolicyDependency } from './generic-intent-policy';
+import { hasResponsibilityCoverage } from './responsibility/coverage';
 import {
   applicationHeaderPlanningEntity,
   applicationHeaderSemanticHints,
@@ -171,8 +172,16 @@ function planRegion(region: AuthorizedRegion): CompositionRegionSurfaceInput {
   const planningEntity = isApplicationHeaderRegion(region.declaration.region)
     ? applicationHeaderPlanningEntity(region.entity as Parameters<typeof planGenericSurface>[1])
     : (region.entity as Parameters<typeof planGenericSurface>[1]);
+  const reusable =
+    selected !== undefined &&
+    hasResponsibilityCoverage(selected.surface, {
+      rels: [region.declaration.source],
+      entities: [region.entity],
+    })
+      ? selected.surface
+      : undefined;
   const plannedSurface =
-    selected?.surface ??
+    reusable ??
     planGenericSurface(boundSubject, planningEntity, PRESENTATION_SURFACE_CATALOG, {
       entityVersion: fingerprint,
       intent: region.declaration.intent,

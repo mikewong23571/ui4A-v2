@@ -42,9 +42,8 @@ async function execAction(
  * 与显式 event 的完整 fixture 随 P4 全景验收补齐)。 */
 async function createThreadFixture(page: Page, threadId: string): Promise<void> {
   await execAction(page, 'threads', 'create', {
-    id: threadId,
+    commandId: threadId,
     goal: '完成一项跨应用评审并记录决定',
-    goalSource: 'e2e:t56',
   });
   await execAction(page, `thread:${threadId}`, 'attach', { category: 'context', rel: 'articles' });
   await execAction(page, `thread:${threadId}`, 'attach', {

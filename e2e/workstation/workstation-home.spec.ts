@@ -284,9 +284,8 @@ test('waiting-for-me 成员决策卡:批准两段确认零导航零参数,同一
         principal: 'local-user',
         channel: 'renderer',
         params: {
-          id: 'release-t33',
+          commandId: 'release-t33',
           goal: 'T33 验收工作线',
-          goalSource: 'chat:e2e-t33',
         },
       }),
     });

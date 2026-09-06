@@ -113,6 +113,10 @@ vi.mock('../../../engine/presentation/sidecar-authorization', () => ({
   hasUnavailableRegion: vi.fn(() => false),
 }));
 
+vi.mock('../../../engine/presentation/responsibility/coverage', () => ({
+  storedResponsibilityCoverage: vi.fn(async () => true),
+}));
+
 import { POST as present } from './route';
 import { GET as getSidecar, POST as sidecarLifecycle } from './sidecar/route';
 

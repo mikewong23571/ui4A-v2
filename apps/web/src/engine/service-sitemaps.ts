@@ -104,6 +104,9 @@ export function createSitemapReaders(
     if (sitemapCache?.key === key) return sitemapCache.sitemap;
     const sitemap = deriveSitemap(flows, {
       extraSurfaces: [
+        { rel: 'delegations-current', title: '执行中委托', collection: true, scope: 'principal' },
+        { rel: 'threads-current', title: '继续工作', collection: true, scope: 'principal' },
+        { rel: 'threads-history', title: '已结束的工作', collection: true, scope: 'principal' },
         { rel: 'comments', title: '评论', collection: true, ...pageableFlag('comments') },
         {
           rel: 'inbox',

@@ -208,7 +208,7 @@ describe('T15 U22:product chat runtime is AI-first', () => {
       action: 'create',
       actor: 'human',
       principal: 'user:u22-thread-unavailable',
-      params: { id: 'failure-thread', goal: 'Keep context', goalSource: 'message:setup' },
+      params: { commandId: 'failure-thread', goal: 'Keep context' },
     });
     expect(created.kind).toBe('accepted');
 

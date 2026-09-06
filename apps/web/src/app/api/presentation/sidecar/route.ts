@@ -24,6 +24,7 @@ import { singleSubjectRecipeContext } from '../../../../engine/presentation/reci
 import { createDynamicCompositionSubjectResolver } from '../../../../engine/presentation/app-workspace-composition';
 import { getAuthorizedPresentationEntity } from '../../../../engine/presentation/authorized-entity';
 import { compositionRecipeContext } from '../../../../engine/presentation/runtime-composition';
+import { storedResponsibilityCoverage } from '../../../../engine/presentation/responsibility/coverage';
 import {
   authorizeStoredSidecar,
   hasUnavailableRegion,
@@ -123,6 +124,17 @@ export async function GET(request: Request): Promise<Response> {
     }
   }
   const active = sidecar.versions[sidecar.activeVersion]!;
+  if (!(await storedResponsibilityCoverage(sidecar, identity, resolveCompositionSubject))) {
+    return Response.json(
+      {
+        error: {
+          code: 'presentation-responsibility-stale',
+          detail: 'Replan from the current authorized contract',
+        },
+      },
+      { status: 409, headers: { 'cache-control': 'no-store' } },
+    );
+  }
   // T35 F-31:同 sidecarId 会话内可变(重规划 bump activeVersion)——禁缓存,
   // 否则浏览器以旧树应答 in-place reload(批准退场卡残留实测根因)。
   return Response.json(

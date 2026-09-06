@@ -40,6 +40,7 @@ import {
 } from './runtime-composition';
 import { createDynamicCompositionSubjectResolver } from './app-workspace-composition';
 import { genericIntentPolicyDependency } from './generic-intent-policy';
+import { hasResponsibilityCoverage } from './responsibility/coverage';
 
 const runtimeKey = Symbol.for('ui4a.presentation-broker');
 
@@ -274,7 +275,9 @@ export function getPresentationBroker(): WebPresentationBroker {
         if (selected === undefined) return { kind: 'miss' };
         const { recipe, surface } = selected;
         const validation = validateSurfaceTree(surface, PRESENTATION_SURFACE_CATALOG);
-        if (!validation.valid) return { kind: 'miss' };
+        if (!validation.valid || !hasResponsibilityCoverage(validation.surface, situation)) {
+          return { kind: 'miss' };
+        }
         const persisted = await persistSurface(
           request,
           key,
@@ -291,7 +294,7 @@ export function getPresentationBroker(): WebPresentationBroker {
       }
       const active = sidecar.versions[sidecar.activeVersion]!;
       const validation = validateSurfaceTree(active.surface, PRESENTATION_SURFACE_CATALOG);
-      if (!validation.valid) {
+      if (!validation.valid || !hasResponsibilityCoverage(validation.surface, situation)) {
         await appendSidecarCommand(getDb(), {
           kind: 'stale',
           eventId: `${request.requestId}:surface-invalid:event`,
@@ -340,6 +343,9 @@ export function getPresentationBroker(): WebPresentationBroker {
           semanticHints: semanticHintsOf(entity),
           provenanceRef: `request:${request.requestId}`,
         });
+      if (!hasResponsibilityCoverage(surface, situation)) {
+        throw new Error('Presentation responsibility coverage is incomplete');
+      }
       const persisted = await persistSurface(request, key, surface, dependencies, {
         kind: 'generic-fallback',
         ref: `request:${request.requestId}`,

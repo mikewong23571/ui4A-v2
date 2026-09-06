@@ -100,6 +100,7 @@ export interface SurfaceCatalogWord {
   /** Optional semantic composition pattern; never a React/component name. */
   pattern?:
     | 'member-link'
+    | 'member-row'
     | 'member-card'
     | 'member-table'
     | 'collection-filters'

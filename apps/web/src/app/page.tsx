@@ -1,20 +1,28 @@
-/** Workstation home: the shared Presentation host renders the declared `my-work` workspace. */
+/** Home supplies stable navigation; all work content comes from the shared Presentation pipeline. */
 import { Suspense } from 'react';
-
 import { ApplicationEntryStrip } from '@/components/application-entry-strip';
 import { PresentationSurfaceHost } from '@/components/canvas/presentation-surface-host';
 import { EntityCacheProvider } from '@/components/entity-cache-provider';
+import { HomeEntry } from '@/components/stage/home-entry';
+import { PresentationHeadingLevel } from '@/render/canvas/heading-level';
 
 export default function Home() {
   return (
-    // Suspense:书架与 surface 宿主经 useLocationObservation 读 URL 注意力
-    // (App Router 静态预渲染要求)。
     <Suspense>
       <EntityCacheProvider>
-        {/* T35 F-23/F-26:书架层——应用目录条(书桌=工作线,书架=应用目录)。 */}
-        <ApplicationEntryStrip />
-        {/* T56 D78:宿主不再携带机制标题;唯一业务 H1 由 surface 内容自携。 */}
-        <PresentationSurfaceHost parameters={{ focus: 'workspace:my-work' }} />
+        <header className="mb-6 space-y-4">
+          <h1 className="text-2xl font-semibold">我的事</h1>
+          <HomeEntry />
+        </header>
+        <PresentationHeadingLevel level={2}>
+          <PresentationSurfaceHost parameters={{ focus: 'workspace:my-work' }} />
+        </PresentationHeadingLevel>
+        <details className="mt-8 border-t pt-4">
+          <summary className="cursor-pointer text-sm text-muted-foreground">应用与能力</summary>
+          <div className="mt-4">
+            <ApplicationEntryStrip />
+          </div>
+        </details>
       </EntityCacheProvider>
     </Suspense>
   );

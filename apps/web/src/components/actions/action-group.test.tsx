@@ -135,7 +135,7 @@ describe('ActionGroup compact density (member-table 行内动作)', () => {
     return entity;
   }
 
-  it('compact:不渲染图例、动作条目不再套边框盒子,钩子与危险组容器保留', () => {
+  it('compact:不渲染图例、动作条目不再套边框盒子,钩子与确认组容器保留', () => {
     const submit = acceptedSubmit();
     const { container } = render(
       <ActionGroup entity={dangerEntity()} submit={submit} density="compact" />,
@@ -156,10 +156,10 @@ describe('ActionGroup compact density (member-table 行内动作)', () => {
       expect(item.className).not.toContain('p-3');
     }
 
-    // 危险组容器与危险 tone 零变化。
-    expect(screen.getByTestId('action-danger-group')).toBeTruthy();
+    // 确认组可辨,不因 high 宣称危险或不可逆。
+    expect(screen.getByTestId('action-confirmation-group')).toBeTruthy();
     const purge = screen.getByRole('button', { name: '销毁' }) as HTMLButtonElement;
-    expect(purge.className).toContain('text-destructive');
+    expect(purge.className).not.toContain('text-destructive');
     expect(screen.getByRole('button', { name: '完成' })).toBeTruthy();
   });
 
@@ -172,7 +172,7 @@ describe('ActionGroup compact density (member-table 行内动作)', () => {
     expect(screen.getByRole('status').textContent).toBe('guard 不满足: item-ready=false');
   });
 
-  it('default:图例保留,条目扁平(零边框盒子;危险分隔与 tone 语义不变)', () => {
+  it('default:图例保留,条目扁平(零边框盒子;确认分组不宣称危险)', () => {
     const submit = acceptedSubmit();
     const { container } = render(<ActionGroup entity={dangerEntity()} submit={submit} />);
 
@@ -180,9 +180,11 @@ describe('ActionGroup compact density (member-table 行内动作)', () => {
     const items = [...container.querySelectorAll('[data-action-group-item]')];
     expect(items).toHaveLength(3);
     for (const item of items) expect(item.className).not.toContain('border');
-    const danger = screen.getByTestId('action-danger-group');
+    const danger = screen.getByTestId('action-confirmation-group');
     expect(danger.className).toContain('border-t');
-    expect(screen.getByRole('button', { name: '销毁' }).className).toContain('destructive');
+    expect(screen.getByRole('button', { name: '销毁' }).className).not.toContain(
+      'text-destructive',
+    );
   });
 });
 
@@ -291,4 +293,29 @@ describe('G07 材料入口收敛(线 attach 动作 → 选择器主路径)', () 
     expect(screen.queryByTestId('thread-add-material')).toBeNull();
     expect(screen.getByRole('button', { name: '添加涉及对象' })).toBeTruthy();
   });
+});
+
+it('discloses every unknown and blocked action without implying a current responsibility', () => {
+  const submit = acceptedSubmit();
+  render(
+    <ActionGroup entity={entityOf(['future-domain'], true)} submit={submit} posture="disclosure" />,
+  );
+  const trigger = screen.getByRole('button', { name: '更多操作' });
+  expect(trigger.getAttribute('aria-expanded')).toBe('false');
+  expect(screen.queryByRole('button', { name: '完成' })).toBeNull();
+  fireEvent.click(trigger);
+  expect(screen.getByRole('button', { name: '完成' }).getAttribute('disabled')).not.toBeNull();
+  expect(screen.getByRole('status').textContent).toContain('item-ready');
+  expect(screen.getByRole('button', { name: '修订' })).toBeTruthy();
+  expect(screen.queryByRole('menu')).toBeNull();
+  fireEvent.click(screen.getByRole('button', { name: '修订' }));
+  fireEvent.change(screen.getByRole('textbox', { name: /原因/ }), {
+    target: { value: 'keep this draft' },
+  });
+  fireEvent.click(trigger);
+  fireEvent.click(trigger);
+  expect((screen.getByRole('textbox', { name: /原因/ }) as HTMLInputElement).value).toBe(
+    'keep this draft',
+  );
+  expect(submit).not.toHaveBeenCalled();
 });

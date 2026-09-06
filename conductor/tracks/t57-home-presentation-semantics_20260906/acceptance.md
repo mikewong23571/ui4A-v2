@@ -59,7 +59,7 @@ FR09→US02/04/07/08/11/12；FR10→US10/12。
 
 ```bash
 pnpm governance:strict
-node --test scripts/governance/check-d54.test.mjs
+pnpm vitest run scripts/governance/check-d54.test.mjs
 pnpm vitest run --project unit packages/shared/src/definition/cognitive-semantics.test.ts packages/engine/src/contract/cognitive-semantics.test.ts packages/engine/src/presentation/surface/intent.test.ts packages/engine/src/presentation/surface/surface.test.ts
 pnpm vitest run apps/web/src/render/words apps/web/src/render/presentation
 ```

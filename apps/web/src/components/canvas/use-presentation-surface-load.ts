@@ -39,6 +39,7 @@ import {
 } from './presentation-sidecar-failure';
 import { frozenSpecsOf, withAbort } from './presentation-surface-helpers';
 import { notifyThreadUpdated } from './desk/thread-desk-shared';
+import { loadPresentationSidecar, requestPresentationSidecar } from './sidecar/load';
 
 /** 渲染中的 surface 条目(surface 模型进 state:渲染只读 state,不读 ref)。 */
 export interface SurfaceEntry {
@@ -238,37 +239,23 @@ export function usePresentationSurfaceLoad(parameters: PresentationSurfaceParame
         focusParam !== undefined &&
         requestedFocuses.length === 1
       ) {
-        const response = await fetch(withPolicyScope('/api/presentation', scopeParam), {
-          method: 'POST',
-          headers: { 'content-type': 'application/json' },
-          body: JSON.stringify({
-            schemaVersion: 1,
-            requestId: crypto.randomUUID(),
-            principal: 'local-user',
-            subject: requestedFocuses[0],
-            intent: 'read',
-            delivery: 'canvas',
-            sourceMessageIds: [],
-          }),
-          signal: controller.signal,
-        });
-        if (response.ok) {
-          const receipt = (await response.json()) as { sidecar?: { id?: unknown } };
-          if (typeof receipt.sidecar?.id === 'string') resolvedSidecarId = receipt.sidecar.id;
-        }
+        resolvedSidecarId = await requestPresentationSidecar(
+          requestedFocuses[0]!,
+          scopeParam,
+          controller.signal,
+        );
       }
       let sidecarSurface: SurfaceTree | undefined;
       let sidecarHydrationRels: string[] = [];
       if (resolvedSidecarId !== undefined && requestedFocuses.length === 1) {
-        const response = await fetch(
-          withPolicyScope(
-            `/api/presentation/sidecar?sidecarId=${encodeURIComponent(resolvedSidecarId)}`,
-            scopeParam,
-          ),
-          // T35 F-31:sidecar 是会话内可变面(重规划 bump 版本)——禁 HTTP 缓存,
-          // 否则 in-place reload 拿到旧树(批准退场卡残留实测根因)。
-          { signal: controller.signal, cache: 'no-store' },
+        const loaded = await loadPresentationSidecar(
+          resolvedSidecarId,
+          requestedFocuses[0]!,
+          scopeParam,
+          controller.signal,
         );
+        const response = loaded.response;
+        resolvedSidecarId = loaded.sidecarId;
         if (!response.ok) {
           // D51/B4 诚实分支:denied(403)与 unknown(404)在
           // presentation-sidecar-failure 单点映射为人话;其余传输失败维持

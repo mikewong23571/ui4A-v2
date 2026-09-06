@@ -1,4 +1,9 @@
-import type { SirenEntity, Sitemap } from '@ui4a/engine';
+import {
+  THREAD_INPUT_REL_PREFIX,
+  THREAD_REL_PREFIX,
+  type SirenEntity,
+  type Sitemap,
+} from '@ui4a/engine';
 import type { EngineSnapshot } from '@ui4a/shared';
 
 import { ProductionIdentityError } from './production/request-identity';
@@ -61,7 +66,9 @@ export function assertReachable(
     const onlyDeprecated =
       applications.length > 0 &&
       applications.every((application) => applicationDeprecated(context.snapshot, application));
-    throw new ProductionIdentityError(onlyDeprecated ? 'application_deprecated' : 'scope_insufficient');
+    throw new ProductionIdentityError(
+      onlyDeprecated ? 'application_deprecated' : 'scope_insufficient',
+    );
   }
 }
 
@@ -87,11 +94,16 @@ export function filterSitemapForPolicyScope(sitemap: Sitemap, policyScope: strin
   };
 }
 
-function ownedThreadReference(snapshot: EngineSnapshot, rel: string, principal: string): boolean {
-  return (
-    !rel.startsWith('thread:') ||
-    snapshot.threads?.[rel.slice('thread:'.length)]?.owner === principal
+function threadResourceId(rel: string): string | undefined {
+  const prefix = [THREAD_REL_PREFIX, THREAD_INPUT_REL_PREFIX].find((candidate) =>
+    rel.startsWith(candidate),
   );
+  return prefix === undefined ? undefined : rel.slice(prefix.length);
+}
+
+function ownedThreadReference(snapshot: EngineSnapshot, rel: string, principal: string): boolean {
+  const id = threadResourceId(rel);
+  return id === undefined || snapshot.threads?.[id]?.owner === principal;
 }
 
 function sourceRel(snapshot: EngineSnapshot, rel: string): string {
@@ -100,8 +112,9 @@ function sourceRel(snapshot: EngineSnapshot, rel: string): string {
 
 /** Exact thread reads and writes are always constrained by the trusted request principal. */
 export function assertThreadOwner(snapshot: EngineSnapshot, rel: string, principal: string): void {
-  if (!rel.startsWith('thread:')) return;
-  const thread = snapshot.threads?.[rel.slice('thread:'.length)];
+  const id = threadResourceId(rel);
+  if (id === undefined) return;
+  const thread = snapshot.threads?.[id];
   if (thread !== undefined && thread.owner !== principal) {
     throw new ProductionIdentityError('scope_insufficient');
   }

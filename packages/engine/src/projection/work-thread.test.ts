@@ -97,11 +97,13 @@ describe('Work Thread Siren projection', () => {
     });
     expect(entity?.links).toEqual([
       { rel: ['self'], href: '/api/entity?rel=threads', title: '我的工作线' },
+      { rel: ['current'], href: '/api/entity?rel=threads-current', title: '继续工作' },
+      { rel: ['history'], href: '/api/entity?rel=threads-history', title: '已结束的工作' },
     ]);
     expect(entity?.actions.map((action) => action.name)).toEqual(['create']);
     expect(entity?.actions[0]?.fields).toMatchObject({
       type: 'object',
-      required: ['id', 'goal', 'goalSource'],
+      required: ['commandId', 'goal'],
       additionalProperties: false,
     });
     expect(entity?.['guard-results']).toEqual([{ action: 'create', blocked: false, guards: [] }]);
@@ -269,11 +271,7 @@ describe('Work Thread Siren projection', () => {
 
   it('declares strict, non-collecting create/attach/detach action inputs for Phase D reuse', () => {
     expect(THREAD_CREATE_ACTION['collect-node-fields']).toBe(false);
-    expect(THREAD_CREATE_ACTION.fields?.map((field) => field.name)).toEqual([
-      'id',
-      'goal',
-      'goalSource',
-    ]);
+    expect(THREAD_CREATE_ACTION.fields?.map((field) => field.name)).toEqual(['commandId', 'goal']);
     for (const action of [THREAD_ATTACH_ACTION, THREAD_DETACH_ACTION]) {
       expect(action['collect-node-fields']).toBe(false);
       expect(action.fields).toEqual([
@@ -291,11 +289,7 @@ describe('Work Thread Siren projection', () => {
 
   it('declares task-language titles for every action and field (T33:人话归合同数据)', () => {
     expect(THREAD_CREATE_ACTION.title).toBe('创建工作线');
-    expect(THREAD_CREATE_ACTION.fields?.map((field) => field.title)).toEqual([
-      '工作线标识',
-      '目标',
-      '目标来源',
-    ]);
+    expect(THREAD_CREATE_ACTION.fields?.map((field) => field.title)).toEqual(['提交标识', '目标']);
     // T35 F-27(用户反馈):机制动词换任务语——"挂载/卸载引用"不可理解。
     expect(THREAD_ATTACH_ACTION.title).toBe('添加涉及对象');
     expect(THREAD_DETACH_ACTION.title).toBe('移出涉及对象');
@@ -314,7 +308,7 @@ describe('Work Thread Siren projection', () => {
     expect(entity?.properties).toMatchObject({ resume: '停在「published」' });
   });
 
-  it('falls back to the thread status when no active reference exists (T33)', () => {
+  it('omits redundant resume when the declared status already describes an empty work line', () => {
     const empty: EngineSnapshot = {
       ...snapshot(),
       threads: {
@@ -330,8 +324,8 @@ describe('Work Thread Siren projection', () => {
       },
     };
     const entity = project(empty, 'thread:release-1', deps);
-    // 回退线程自身状态时走任务语(F-21:机器名不进界面文案)。
-    expect(entity?.properties).toMatchObject({ resume: '停在「进行中」' });
+    expect(entity?.properties).toMatchObject({ status: 'open', statusText: '进行中' });
+    expect(entity?.properties).not.toHaveProperty('resume');
   });
 
   it('returns undefined for an unknown exact thread without inferring membership', () => {
@@ -347,7 +341,7 @@ describe('Work Thread Siren projection', () => {
         actor: 'agent',
         principal: 'user:mike',
         authorization: { sourceMessageId: 'message:goal-1', quote: 'Ship safely' },
-        params: { id: 'release-1', goal: 'Ship safely', goalSource: 'message:goal-1' },
+        params: { commandId: 'release-1', goal: 'Ship safely' },
       },
       empty,
     );
@@ -432,7 +426,7 @@ describe('Work Thread Siren projection', () => {
           rel: 'threads',
           action: 'create',
           principal: 'user:mike',
-          params: { id: 'release-2', goal: 'x'.repeat(2_049), goalSource: 'message:goal-2' },
+          params: { commandId: 'release-2', goal: 'x'.repeat(2_049) },
         },
         snapshot(),
       ),
@@ -447,7 +441,7 @@ describe('Work Thread Siren projection', () => {
       );
 
     // 基础组合:重复 id + 其余参数合法 → guard-failed(thread-id-available=false)。
-    expect(create({ id: 'release-1', goal: 'Ship safely', goalSource: 'message:goal-1' })).toEqual(
+    expect(create({ commandId: 'release-1', goal: 'Ship safely' })).toEqual(
       expect.objectContaining({
         kind: 'rejected',
         layer: 'guard-failed',
@@ -457,15 +451,15 @@ describe('Work Thread Siren projection', () => {
     );
     // 层序组合(D48 裁决 a):重复 id + 其余参数非法,schema 判定尚未执行,
     // 拒绝归 guard-failed 而非 schema-invalid——机械层序 declaration → guard → schema 成立。
-    expect(create({ id: 'release-1' })).toMatchObject({
+    expect(create({ commandId: 'release-1' })).toMatchObject({
       kind: 'rejected',
       layer: 'guard-failed',
       detail: [{ name: 'thread-id-available', pass: false }],
     });
     // 非字符串 id 安全处理:不做存在性判断,仍由 schema 层拒绝,不误报 guard-failed。
-    expect(create({ id: 7 })).toMatchObject({ kind: 'rejected', layer: 'schema-invalid' });
+    expect(create({ commandId: 7 })).toMatchObject({ kind: 'rejected', layer: 'schema-invalid' });
     // 反向钉:id 可用时非法参数照旧 schema-invalid,guard 未吞并 schema 判定。
-    expect(create({ id: 'brand-new-1' })).toMatchObject({
+    expect(create({ commandId: 'brand-new-1' })).toMatchObject({
       kind: 'rejected',
       layer: 'schema-invalid',
     });

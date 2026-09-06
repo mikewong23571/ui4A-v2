@@ -306,8 +306,8 @@ describe('region density 贯通 generic 规划(数据驱动选词,零特判)', (
     expect(plannedWordOf('table')).toBe('member-table');
   });
 
-  it('密度缺省 → 决策卡行为完全不变(member-card)', () => {
-    expect(plannedWordOf(undefined)).toBe('member-card');
+  it('密度缺省 → 声明语义选择摘要/责任姿态(member-row,D79)', () => {
+    expect(plannedWordOf(undefined)).toBe('member-row');
   });
 });
 

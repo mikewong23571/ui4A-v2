@@ -13,6 +13,7 @@ import { fieldDefinitionsToJsonSchema } from '../contract/schema';
 import type { ActionDefinition } from '../core/types';
 import type { EngineEvent } from '../execution/effects';
 import type { ExecRequest, JudgeLayer } from '../execution/judge';
+import { threadInputRel } from './work-thread-input';
 import { applyThreadEvent } from './fold/apply-thread';
 import {
   THREADS_REL,
@@ -30,6 +31,7 @@ export type ThreadCommandOutcome =
       event: EngineEvent & { kind: ThreadEventKind };
       entityRel: string;
     }
+  | { kind: 'replayed'; snapshot: EngineSnapshot; entityRel: string }
   | Rejected;
 
 const statusByAction: Readonly<Record<string, ThreadStatus>> = {
@@ -106,13 +108,13 @@ function detailFor(
 ): { kind: ThreadEventKind; detail: unknown; entityRel: string } {
   const params = request.params ?? {};
   if (request.rel === THREADS_REL) {
-    const id = params.id;
+    const id = params.commandId;
     return {
       kind: 'thread-created',
       detail: {
         threadId: id,
         owner: request.principal,
-        goal: { text: params.goal, source: params.goalSource },
+        goal: { text: params.goal, source: threadInputRel(String(id)) },
         receipt: judgment,
       },
       entityRel: threadRel(String(id)),
@@ -149,17 +151,21 @@ export function executeThreadCommand(
   const guarded = ownerGuards(request, snapshot, declared.threadId);
   if ('kind' in guarded) return guarded;
 
-  // D48 裁决(a):thread-id-available 是 guard 层判定,先于参数 schema 校验执行,
-  // 使 declaration → guard → schema 机械层序与拒绝分类同时成立。id 与 detailFor
-  // thread-created 分支同源取 request.params.id;非字符串 id 不做存在性判断,
-  // 留给 schema 层拒绝;存在性判定用自有属性,不被继承键误触发。
-  if (request.rel === THREADS_REL) {
-    const requestedId = request.params?.id;
-    if (typeof requestedId === 'string' && Object.hasOwn(snapshot.threads ?? {}, requestedId)) {
-      return rejected('guard-failed', 'guard 不满足: thread-id-available=false', [
-        { name: 'thread-id-available', pass: false },
-      ]);
-    }
+  // D79 keeps collision judgment before schema; an exact same-owner request may replay.
+  const requestedId = request.rel === THREADS_REL ? request.params?.commandId : undefined;
+  const existing =
+    typeof requestedId === 'string' && Object.hasOwn(snapshot.threads ?? {}, requestedId)
+      ? snapshot.threads?.[requestedId]
+      : undefined;
+  if (
+    existing !== undefined &&
+    (existing.owner !== request.principal ||
+      existing.goal.text !== request.params?.goal ||
+      existing.goal.source !== threadInputRel(existing.id))
+  ) {
+    return rejected('guard-failed', 'guard 不满足: thread-id-available=false', [
+      { name: 'thread-id-available', pass: false },
+    ]);
   }
 
   const schema = fieldDefinitionsToJsonSchema(declared.action.fields ?? []);
@@ -167,6 +173,8 @@ export function executeThreadCommand(
   if (!validate(request.params ?? {})) {
     return rejected('schema-invalid', '参数不符合动作字段 schema', validate.errors);
   }
+  if (existing !== undefined)
+    return { kind: 'replayed', snapshot, entityRel: threadRel(existing.id) };
   const candidate = detailFor(
     request,
     declared.threadId,

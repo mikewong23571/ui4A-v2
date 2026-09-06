@@ -18,11 +18,7 @@ export function EmptyStateWord(props: WordProps) {
   const copy = COPY[meaning as CognitiveSemanticsEmptyMeaning];
   if (copy === undefined) throw new Error(`词条 empty-state 不支持语义 ${meaning}`);
   return (
-    <p
-      data-word="empty-state"
-      role="status"
-      className="rounded-md border border-dashed p-3 text-sm"
-    >
+    <p data-word="empty-state" role="status" className="py-2 text-sm text-muted-foreground">
       {copy}
     </p>
   );

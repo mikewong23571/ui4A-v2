@@ -52,11 +52,11 @@ test('CLI without presence creates, attaches, reads, and audits one Work Thread'
       'exec',
       'threads',
       'create',
+      '--command-id',
+      'cli-release',
       '--params',
       JSON.stringify({
-        id: 'cli-release',
         goal: 'Ship through the public contract',
-        goalSource: 'command:t26-cli',
       }),
     );
     expect(
@@ -104,7 +104,7 @@ test('CLI without presence creates, attaches, reads, and audits one Work Thread'
     expect(entity.properties).toMatchObject({
       id: 'cli-release',
       owner: 'user:t26-cli',
-      goal: { text: 'Ship through the public contract', source: 'command:t26-cli' },
+      goal: { text: 'Ship through the public contract', source: 'thread-input:cli-release' },
       status: 'open',
       context: ['articles'],
       active: [
@@ -147,7 +147,7 @@ test('CLI without presence creates, attaches, reads, and audits one Work Thread'
       action: 'create',
       detail: {
         owner: 'user:t26-cli',
-        goal: { text: 'Ship through the public contract', source: 'command:t26-cli' },
+        goal: { text: 'Ship through the public contract', source: 'thread-input:cli-release' },
         receipt: {
           declaration: { passed: true },
           guards: [{ name: 'thread-owner', pass: true }],

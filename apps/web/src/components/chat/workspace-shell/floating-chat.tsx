@@ -67,6 +67,7 @@ export function FloatingChat() {
   const [dockedThread, setDockedThread] = useState<string | null>(null);
   // 覆盖层交互:收起后焦点恢复到唤起元素 FAB(design §1)。
   const fabRef = useRef<HTMLButtonElement | null>(null);
+  const openerRef = useRef<HTMLElement | null>(null);
   const restoreFocusRef = useRef(false);
 
   const switchMode = useCallback((next: ChatMode) => {
@@ -98,6 +99,16 @@ export function FloatingChat() {
     setOpen(true);
   }, [dockedThread, viewportWidth]);
 
+  useEffect(() => {
+    const openFromEntry = (event: Event): void => {
+      const opener = (event as CustomEvent<unknown>).detail;
+      openerRef.current = opener instanceof HTMLElement ? opener : null;
+      openPanel();
+    };
+    window.addEventListener('ui4a:chat-open', openFromEntry);
+    return () => window.removeEventListener('ui4a:chat-open', openFromEntry);
+  }, [openPanel]);
+
   // Escape 关闭助手(float/sidebar 同一覆盖层交互;S3 §4 现状缺失已补)。
   useEffect(() => {
     if (!open) return;
@@ -112,7 +123,7 @@ export function FloatingChat() {
   useEffect(() => {
     if (open || !restoreFocusRef.current) return;
     restoreFocusRef.current = false;
-    fabRef.current?.focus();
+    (openerRef.current?.isConnected ? openerRef.current : fabRef.current)?.focus();
   }, [open]);
 
   // 独立窗口(B4):window.open 弹出 /chat(同 sessionId 的历史投影);
@@ -138,7 +149,10 @@ export function FloatingChat() {
           aria-label="展开聊天窗"
           data-nav="local:chat-open"
           className="flex h-12 w-12 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-lg hover:bg-primary/90"
-          onClick={openPanel}
+          onClick={() => {
+            openerRef.current = fabRef.current;
+            openPanel();
+          }}
         >
           <MessageCircle className="h-5 w-5" />
         </button>

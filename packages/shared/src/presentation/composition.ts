@@ -163,3 +163,32 @@ export function parseCompositionDeclaration(value: unknown): CompositionDeclarat
     regions,
   };
 }
+
+/** One declared home composition also identifies the client's shared observation roots. */
+export const HOME_WORKSPACE_DECLARATION: CompositionDeclaration = {
+  id: 'my-work',
+  version: '3',
+  regions: [
+    {
+      region: 'waiting-for-me',
+      source: 'inbox',
+      intent: 'Review work waiting for me',
+      mode: 'invalidate',
+      shape: 'collection',
+    },
+    {
+      region: 'work-lines',
+      source: 'threads-current',
+      intent: 'Follow active work lines',
+      mode: 'invalidate',
+      shape: 'collection',
+    },
+    {
+      region: 'in-motion',
+      source: 'delegations-current',
+      intent: 'Track work currently in motion',
+      mode: 'rehydrate',
+      shape: 'collection',
+    },
+  ],
+};

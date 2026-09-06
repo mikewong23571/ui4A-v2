@@ -68,6 +68,13 @@ export function DetailWord(props: WordProps) {
     );
   }
 
+  if (mode === 'actions')
+    return (
+      <section data-word="detail" className="py-2">
+        <ActionGroup entity={entity} formHost="dialog" />
+      </section>
+    );
+
   return (
     <article
       data-word="detail"

@@ -8,3 +8,7 @@ export * from './intent';
 export { restoreSurfaceTree, validateSurfaceCatalog, validateSurfaceTree } from './validate';
 export { hashSurfaceTree, normalizeSurfaceTree, serializeSurfaceTree } from './normalize';
 export { planGenericSurface } from './generic';
+export {
+  validateResponsibilityCoverage,
+  type ResponsibilitySource,
+} from './responsibility/coverage';

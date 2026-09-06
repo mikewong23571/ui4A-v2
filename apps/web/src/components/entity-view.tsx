@@ -24,7 +24,11 @@ import { entityPageHref } from '@/presence/navigation';
 import { Table, TableBody, TableCell, TableRow } from '@/components/ui/table';
 
 import { ActionGroup } from './actions/action-group';
-import { createDirectActionSubmit, observedActionClientParams } from './actions/action-submit';
+import {
+  createDirectActionSubmit,
+  observedActionClientParams,
+  useActionCommandIds,
+} from './actions/action-submit';
 import { execAction } from './exec-client';
 import { hrefToRel } from './contract-href';
 import { RawContractDrawer } from './canvas/raw-contract-drawer';
@@ -262,6 +266,7 @@ export interface EntityViewProps {
 }
 
 export function EntityView({ rel, scope, entity, onChanged }: EntityViewProps) {
+  const commandIds = useActionCommandIds();
   // T40 F-02:h1 先回答"是什么"——实例身份(identity)优先,回退节点标题/rel。
   const heading =
     typeof entity.properties.identity === 'string' && entity.properties.identity !== ''
@@ -287,6 +292,7 @@ export function EntityView({ rel, scope, entity, onChanged }: EntityViewProps) {
   );
   const HANDLED_OBJECT_KEYS = new Set(['params', 'proposed-by', 'result', 'failure']);
   const submit = createDirectActionSubmit((input) => execAction({ ...input, scope }), {
+    commandIds,
     clientParams: ({ action }) => observedActionClientParams(action, entity.properties),
   });
 

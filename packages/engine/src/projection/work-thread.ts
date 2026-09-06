@@ -8,6 +8,8 @@ import {
   type ThreadStatus,
 } from '@ui4a/shared';
 
+import { threadInputRel } from './work-thread-input';
+
 import type { ActionDefinition } from '../core/types';
 import { entityHref, toSirenAction } from '../contract/siren/build';
 import { projectCognitiveSemantics } from '../contract/cognitive-semantics';
@@ -22,6 +24,8 @@ import type {
 } from '../contract/siren/types';
 
 export const THREADS_REL = 'threads';
+export const THREAD_CURRENT_REL = 'threads-current';
+export const THREAD_HISTORY_REL = 'threads-history';
 export const THREAD_REL_PREFIX = 'thread:';
 
 const THREADS_PRESENTATION = {
@@ -38,12 +42,18 @@ export const THREAD_CREATE_ACTION: ActionDefinition = {
   ...noNodeFields,
   fields: [
     {
-      name: 'id',
-      type: 'text',
-      title: '工作线标识',
+      name: 'commandId',
+      type: 'json',
+      title: '提交标识',
       required: true,
-      minLength: 1,
-      description: '唯一的短名字:小写字母或数字加横线,如 fix-webflux-cve',
+      schema: {
+        type: 'string',
+        minLength: 1,
+        maxLength: 64,
+        pattern: '^[a-z0-9][a-z0-9._-]*$',
+        'x-ui4a-input-owner': 'client',
+      },
+      description: '同一逻辑提交与重试复用此标识；改变目标后使用新标识',
     },
     {
       name: 'goal',
@@ -52,14 +62,6 @@ export const THREAD_CREATE_ACTION: ActionDefinition = {
       required: true,
       minLength: 1,
       description: '这条线要达成什么,一句话说清',
-    },
-    {
-      name: 'goalSource',
-      type: 'text',
-      title: '目标来源',
-      required: true,
-      minLength: 1,
-      description: '来源的引用标识(不含空格),如 chat:m41 或 review-0712',
     },
   ],
 };
@@ -197,6 +199,13 @@ function referenceLinks(
   const links: SirenLink[] = [
     { rel: ['self'], href: entityHref(deps.baseHref, threadRel(thread.id)) },
   ];
+  if (thread.goal.source === threadInputRel(thread.id)) {
+    links.push({
+      rel: ['source'],
+      href: entityHref(deps.baseHref, thread.goal.source),
+      title: '创建时的目标原文',
+    });
+  }
   for (const category of ['context', 'active', 'approval'] as const) {
     for (const rel of thread.references[category]) {
       const pointer = statusPointer(rel, snapshot);
@@ -301,6 +310,17 @@ function threadMemberCard(
           ? {}
           : { status: pointer.status }),
       category,
+      presentation: projectCognitiveSemantics({
+        declaration: {
+          version: 1,
+          traits:
+            category === 'approval' && pending !== undefined
+              ? pending.status === 'pending'
+                ? ['human-responsibility']
+                : ['human-responsibility', 'task-history']
+              : ['work-queue'],
+        },
+      }),
     },
     actions,
     links: [{ rel: ['self'], href: entityHref(deps.baseHref, rel) }],
@@ -355,7 +375,7 @@ export function projectWorkThread(
       status: thread.status,
       statusText: THREAD_STATUS_TITLES[thread.status],
       context: [...thread.references.context],
-      resume,
+      ...(firstActive === undefined ? {} : { resume }),
       active: thread.references.active.map((rel) => statusPointer(rel, snapshot)),
       approval: thread.references.approval.map((rel) => statusPointer(rel, snapshot)),
       'recent-events': [...thread.recentEventSeqs],
@@ -380,7 +400,15 @@ export function projectWorkThreads(snapshot: EngineSnapshot, deps: ProjectDeps):
       presentation: THREADS_PRESENTATION,
     },
     actions: [toSirenAction(THREAD_CREATE_ACTION, [], deps.baseHref)],
-    links: [{ rel: ['self'], href: entityHref(deps.baseHref, THREADS_REL), title: '我的工作线' }],
+    links: [
+      { rel: ['self'], href: entityHref(deps.baseHref, THREADS_REL), title: '我的工作线' },
+      { rel: ['current'], href: entityHref(deps.baseHref, THREAD_CURRENT_REL), title: '继续工作' },
+      {
+        rel: ['history'],
+        href: entityHref(deps.baseHref, THREAD_HISTORY_REL),
+        title: '已结束的工作',
+      },
+    ],
     'guard-results': unblocked([THREAD_CREATE_ACTION]),
     entities: threads.map((thread) => ({
       ...projectWorkThread(thread, snapshot, deps),

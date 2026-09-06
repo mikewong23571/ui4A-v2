@@ -21,20 +21,18 @@
  */
 import Form from '@rjsf/core';
 import { ChevronDown } from 'lucide-react';
-import {
-  useEffect,
-  useId,
-  useRef,
-  useState,
-  type ComponentType,
-  type KeyboardEvent,
-  type ReactNode,
-} from 'react';
+import { useEffect, useId, useRef, useState, type KeyboardEvent, type ReactNode } from 'react';
 
 import { callerActionSchema, type SirenAction, type SirenEntity } from '@ui4a/engine';
 
 import type { ExecClientResult } from '@/components/exec-client';
 import { Button } from '@/components/ui/button';
+import { ActionFormHost } from './actions/action-form-host';
+import {
+  FORM_CONTROL_STYLES,
+  RjsfFieldTemplate,
+  RjsfFieldErrorTemplate,
+} from './actions/action-form-templates';
 import { citationCanvasHref } from '@/presence/navigation';
 
 import {
@@ -50,112 +48,6 @@ function schemaHasFields(schema: SirenAction['fields']): boolean {
   const properties = schema.properties as Record<string, unknown> | undefined;
   return properties !== undefined && Object.keys(properties).length > 0;
 }
-
-// ---- RJSF 模板层样式包装(T9 Phase C)-------------------------------------------
-// 只包装外观:控件 id(#root_*)/原生 select/textarea/label 关联/required 全由
-// RJSF 缺省模板与控件链生成,此处零改动;结构差异仅限 label/错误的样式类与
-// 字段间距容器。props 取最小结构类型(@rjsf/utils 非直接依赖,pnpm 严格解析
-// 下不可 import;字段口径与 @rjsf/utils v6 的 FieldTemplateProps 对齐)。
-
-/** FieldTemplate 包装所需的最小 props(与 v6 FieldTemplateProps 的使用面一致)。 */
-interface RjsfFieldTemplateProps {
-  id: string;
-  label?: string;
-  required?: boolean;
-  hidden?: boolean;
-  displayLabel?: boolean;
-  description?: ReactNode;
-  errors?: ReactNode;
-  help?: ReactNode;
-  children?: ReactNode;
-  uiSchema?: { 'ui:widget'?: unknown };
-  registry: {
-    templates: {
-      WrapIfAdditionalTemplate: ComponentType<RjsfFieldTemplateProps>;
-    };
-  };
-}
-
-/** FieldErrorTemplate 包装所需的最小 props(fieldPathId 取 $id,同 errorId 口径)。 */
-interface RjsfFieldErrorTemplateProps {
-  errors?: ReactNode[];
-  fieldPathId: { $id: string };
-}
-
-/**
- * FieldTemplate 包装:与 RJSF 缺省实现同序(label → description → 控件 →
- * errors → help),只加样式类;WrapIfAdditional 经 registry 取缺省模板
- * (additionalProperties 的键编辑行为不变)。
- */
-function RjsfFieldTemplate(props: RjsfFieldTemplateProps) {
-  const {
-    id,
-    label,
-    children,
-    errors,
-    help,
-    description,
-    hidden,
-    required,
-    displayLabel,
-    registry,
-    uiSchema,
-  } = props;
-  if (hidden) {
-    return <div className="hidden">{children}</div>;
-  }
-  // 缺省实现判 getUiOptions(uiSchema).widget === 'checkbox';本站零 uiSchema,
-  // 直读 ui:widget 即等价(布尔字段的 label 由控件模板自渲染)。
-  const isCheckbox = uiSchema?.['ui:widget'] === 'checkbox';
-  const WrapIfAdditional = registry.templates.WrapIfAdditionalTemplate;
-  return (
-    <WrapIfAdditional {...props}>
-      <div className="mb-4 flex flex-col gap-1.5">
-        {displayLabel === true && !isCheckbox && label !== undefined && label !== '' && (
-          <label htmlFor={id} className="text-sm leading-none font-medium">
-            {label}
-            {required === true && <span className="text-destructive"> *</span>}
-          </label>
-        )}
-        {displayLabel === true && description !== undefined ? description : null}
-        {children}
-        {errors}
-        {help}
-      </div>
-    </WrapIfAdditional>
-  );
-}
-
-/** 字段级校验错误:如实逐条呈现(与缺省同文本),仅样式令牌化。 */
-function RjsfFieldErrorTemplate(props: RjsfFieldErrorTemplateProps) {
-  const { errors = [], fieldPathId } = props;
-  if (errors.length === 0) return null;
-  return (
-    <ul
-      id={`${fieldPathId.$id}__error`}
-      role="alert"
-      aria-live="polite"
-      className="list-disc pl-4 text-xs text-destructive"
-    >
-      {errors
-        .filter((error) => error !== null && error !== '')
-        .map((error, index) => (
-          // 错误条目无稳定键源(文本可重复),与 RJSF 缺省实现同用下标键。
-          <li key={index}>{error}</li>
-        ))}
-    </ul>
-  );
-}
-
-/** 原生控件(input/select/textarea)的外观令牌:结构零改动,仅经后代选择器上样式。 */
-const FORM_CONTROL_STYLES = [
-  '[&_input:not([type=checkbox])]:w-full [&_input:not([type=checkbox])]:rounded-md [&_input:not([type=checkbox])]:border [&_input:not([type=checkbox])]:border-input [&_input:not([type=checkbox])]:bg-background [&_input:not([type=checkbox])]:px-2 [&_input:not([type=checkbox])]:py-1 [&_input:not([type=checkbox])]:text-sm [&_input:not([type=checkbox])]:shadow-xs',
-  '[&_select]:w-full [&_select]:rounded-md [&_select]:border [&_select]:border-input [&_select]:bg-background [&_select]:px-2 [&_select]:py-1 [&_select]:text-sm [&_select]:shadow-xs',
-  '[&_textarea]:w-full [&_textarea]:min-h-20 [&_textarea]:rounded-md [&_textarea]:border [&_textarea]:border-input [&_textarea]:bg-background [&_textarea]:px-2 [&_textarea]:py-1 [&_textarea]:text-sm [&_textarea]:shadow-xs',
-  '[&_input]:focus-visible:border-ring [&_input]:focus-visible:ring-[3px] [&_input]:focus-visible:ring-ring/50 [&_input]:focus-visible:outline-none',
-  '[&_select]:focus-visible:border-ring [&_select]:focus-visible:ring-[3px] [&_select]:focus-visible:ring-ring/50 [&_select]:focus-visible:outline-none',
-  '[&_textarea]:focus-visible:border-ring [&_textarea]:focus-visible:ring-[3px] [&_textarea]:focus-visible:ring-ring/50 [&_textarea]:focus-visible:outline-none',
-].join(' ');
 
 /** 触发键的展开指示:与 site-nav 系统菜单同款的 ChevronDown,展开时旋转 180°;
  *  纯图标不进可访问名,触发键可访问名 = 动作 title。 */
@@ -185,7 +77,9 @@ export interface ActionRunnerProps {
   submit: ActionSubmit;
   /** 当前实体的实例字段值(同名动作字段预填;缺省=无预填,如 _meta 动作)。 */
   prefill?: Record<string, unknown>;
-  /** 危险操作的呈现分层(由 ActionGroup 按合同 requires-confirmation 派生)。 */
+  /** Explicit presentation host; never inferred from business names or confirmation level. */
+  formHost?: 'inline' | 'dialog';
+  /** Explicit destructive semantics from the host, never inferred from confirmation level. */
   tone?: 'danger';
 }
 
@@ -200,12 +94,17 @@ export function ActionRunner({
   submit: submitAction,
   prefill,
   tone,
+  formHost = 'inline',
 }: ActionRunnerProps) {
   const callerSchema = callerActionSchema(action.fields);
   const formProjection = projectActionFormSchema(callerSchema);
   const formSchema = formProjection.schema;
   const hasFields = schemaHasFields(formSchema);
   const highRisk = action['requires-confirmation'] === 'high';
+  const [draft, setDraft] = useState(() =>
+    initialActionFormData(callerSchema, prefill, formProjection.jsonTextFields),
+  );
+  const submitLock = useRef(false);
   const [submitting, setSubmitting] = useState(false);
   const [failure, setFailure] = useState<string | null>(null);
   const [outcome, setOutcome] = useState<SirenEntity | null>(null);
@@ -217,6 +116,7 @@ export function ActionRunner({
   >('closed');
   const [pendingParams, setPendingParams] = useState<Record<string, unknown> | undefined>();
   const triggerRef = useRef<HTMLButtonElement>(null);
+  const receiptRef = useRef<HTMLDivElement>(null);
   const formRegionRef = useRef<HTMLDivElement>(null);
   const focusFormOnOpen = useRef(false);
   const formRegionId = useId();
@@ -243,7 +143,6 @@ export function ActionRunner({
   function restoreTrigger(): void {
     setInteraction('closed');
     setPendingParams(undefined);
-    setFailure(null);
     (triggerRef.current as unknown as { focus(): void } | null)?.focus();
   }
 
@@ -254,6 +153,8 @@ export function ActionRunner({
   }
 
   async function submit(params?: Record<string, unknown>): Promise<void> {
+    if (submitLock.current || blocked) return;
+    submitLock.current = true;
     setSubmitting(true);
     setFailure(null);
     try {
@@ -275,6 +176,7 @@ export function ActionRunner({
     } catch (error) {
       setFailure(`[network] ${error instanceof Error ? error.message : String(error)}`);
     } finally {
+      submitLock.current = false;
       setSubmitting(false);
     }
   }
@@ -297,7 +199,13 @@ export function ActionRunner({
   }
 
   function handleKeyDown(event: KeyboardEvent<HTMLDivElement>): void {
-    if (event.key !== 'Escape' || submitting || interaction === 'closed') return;
+    if (
+      (formHost === 'dialog' && hasFields) ||
+      event.key !== 'Escape' ||
+      submitting ||
+      interaction === 'closed'
+    )
+      return;
     event.preventDefault();
     event.stopPropagation();
     restoreTrigger();
@@ -359,6 +267,7 @@ export function ActionRunner({
         data-presentation-action={presentationAction}
         data-nav={`presentation:${presentationAction}:${action.name}`}
         aria-controls={controls}
+        aria-haspopup={formHost === 'dialog' && hasFields ? 'dialog' : undefined}
         aria-expanded={open}
         disabled={disabled}
         title={hint}
@@ -419,75 +328,92 @@ export function ActionRunner({
 
   return (
     <div className="flex flex-col gap-2" onKeyDown={handleKeyDown}>
-      <div>{renderTrigger('open-form', interaction === 'form', openForm, formRegionId, true)}</div>
-      {interaction === 'form' && (
-        <div ref={formRegionRef} id={formRegionId} data-action={action.name}>
-          <Form
-            idPrefix={`action_${rel}_${action.name}_${formRegionId}`.replaceAll(
-              /[^A-Za-z0-9_-]/g,
-              '_',
-            )}
-            schema={formSchema}
-            uiSchema={formProjection.uiSchema}
-            validator={rjsfValidator}
-            noHtml5Validate
-            onError={() => undefined}
-            // Uncontrolled initial data keeps edits in place across local parse/server errors.
-            initialFormData={initialActionFormData(
-              callerSchema,
-              prefill,
-              formProjection.jsonTextFields,
-            )}
-            templates={{
-              FieldTemplate: RjsfFieldTemplate,
-              FieldErrorTemplate: RjsfFieldErrorTemplate,
-            }}
-            className={FORM_CONTROL_STYLES}
-            // 只提交当前 action schema 声明过的字段(铁律 3 的提交面):
-            // omitExtraData 剥离一切 schema 外键,liveOmit 在编辑期即保持剥离。
-            omitExtraData
-            liveOmit
-            onSubmit={({ formData }) =>
-              handleProjectedFormSubmit(formData as Record<string, unknown> | undefined)
-            }
-          >
-            <div className="flex flex-wrap gap-2">
-              <Button
-                type="submit"
-                size="sm"
-                data-action={action.name}
-                disabled={disabled}
-                title={hint}
-              >
-                {action.title}
-              </Button>
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                data-presentation-action="cancel-form"
-                data-nav={`presentation:cancel-form:${action.name}`}
-                disabled={submitting}
-                onClick={restoreTrigger}
-              >
-                取消
-              </Button>
-            </div>
-          </Form>
-        </div>
-      )}
-      {interaction === 'requested' && (
-        <RiskRequest
-          action={action}
-          disabled={disabled}
-          submitting={submitting}
-          onConfirm={() => void submit(pendingParams)}
-          onCancel={restoreTrigger}
-        />
-      )}
-      {outcomeNode}
-      {blockedNode}
-      {failureNode}
+      <div>
+        {renderTrigger(
+          'open-form',
+          interaction === 'form',
+          openForm,
+          formRegionId,
+          formHost === 'inline',
+        )}
+      </div>
+      <ActionFormHost
+        mode={formHost}
+        open={interaction === 'form' || interaction === 'requested'}
+        title={action.title}
+        submitting={submitting}
+        onClose={restoreTrigger}
+        triggerRef={triggerRef}
+        receiptRef={receiptRef}
+      >
+        {interaction === 'form' && (
+          <div ref={formRegionRef} id={formRegionId} data-action={action.name}>
+            <Form
+              idPrefix={`action_${rel}_${action.name}_${formRegionId}`.replaceAll(
+                /[^A-Za-z0-9_-]/g,
+                '_',
+              )}
+              schema={formSchema}
+              uiSchema={formProjection.uiSchema}
+              validator={rjsfValidator}
+              noHtml5Validate
+              onError={() => undefined}
+              formData={draft}
+              onChange={({ formData }) => setDraft(formData as Record<string, unknown>)}
+              templates={{
+                FieldTemplate: RjsfFieldTemplate,
+                FieldErrorTemplate: RjsfFieldErrorTemplate,
+              }}
+              className={FORM_CONTROL_STYLES}
+              // 只提交当前 action schema 声明过的字段(铁律 3 的提交面):
+              // omitExtraData 剥离一切 schema 外键,liveOmit 在编辑期即保持剥离。
+              omitExtraData
+              liveOmit
+              onSubmit={({ formData }) =>
+                handleProjectedFormSubmit(formData as Record<string, unknown> | undefined)
+              }
+            >
+              <div className="flex flex-wrap gap-2">
+                <Button
+                  type="submit"
+                  size="sm"
+                  data-action={action.name}
+                  disabled={disabled}
+                  title={hint}
+                >
+                  {action.title}
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  data-presentation-action="cancel-form"
+                  data-nav={`presentation:cancel-form:${action.name}`}
+                  disabled={submitting}
+                  onClick={restoreTrigger}
+                >
+                  取消
+                </Button>
+              </div>
+            </Form>
+          </div>
+        )}
+        {interaction === 'requested' && (
+          <RiskRequest
+            action={action}
+            disabled={disabled}
+            submitting={submitting}
+            onConfirm={() => void submit(pendingParams)}
+            onCancel={restoreTrigger}
+          />
+        )}
+        {interaction === 'form' || interaction === 'requested' ? failureNode : null}
+      </ActionFormHost>
+      <div ref={receiptRef} tabIndex={-1}>
+        {outcomeNode}
+        {blockedNode}
+        {interaction !== 'form' && interaction !== 'requested' ? failureNode : null}
+      </div>
     </div>
   );
 }

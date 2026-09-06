@@ -396,7 +396,7 @@ describe.skipIf(!temporalUp)('S3-续跑:SIGKILL worker → 重启 → 委托续�
               action: 'create',
               actor: 'human',
               principal: 'user:kill-test',
-              params: { id, goal: id, goalSource: 'message:kill-goal' },
+              params: { commandId: id, goal: id },
             })
           ).kind,
         ).toBe('accepted');

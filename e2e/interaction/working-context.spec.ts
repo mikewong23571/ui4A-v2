@@ -24,7 +24,7 @@ test('working context stays legible and switches the actual workline on desktop 
         ['shared-context', '核对公告与评论'],
         ['next-context', '下一件事'],
       ] as const) {
-        await exec(request, 'threads', 'create', { id, goal, goalSource: `message:${id}` });
+        await exec(request, 'threads', 'create', { commandId: id, goal });
       }
       for (const rel of ['post:post-welcome', 'comments']) {
         await exec(request, 'thread:shared-context', 'attach', { category: 'context', rel });

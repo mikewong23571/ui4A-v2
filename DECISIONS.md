@@ -1732,3 +1732,4 @@
 - 操作姿态与表单宿主是呈现选项：ActionGroup 可展开低频操作，ActionRunner 复用同一 RJSF/submit 与可访问 Dialog；默认保留 inline 和已声明动作。high 只表达需确认，不推断 destructive/不可逆。实际安装 primitives 为 radix-ui，复用它而非新增 Base UI 依赖；此为技术栈文档陈旧名称的实况纠正，不更换库。
 - 责任不可因 Recipe/Sidecar 调整而丢失：在既有呈现校验/复用边界校验必需授权引用与动作可达，不另造业务责任清单。catalog/策略改变提升版本使旧结构失效。
 - 不修订 D78.4 的 thread specialised 确认门现状，不新增 provider、worker、存储权威或规则智能。
+- 首页 `/` 的无显式 focus 观察由共享 HOME_WORKSPACE_DECLARATION 的源集合构造现有 selection；Web composition 与 clientView 使用同一声明，不新增观察类型/接口或复制事实。首页壳提供“与助手讨论”（打开既有会话）、“发起工作”（canonical threads action 面）与历史链接；不以新chat输入流写业务数据。

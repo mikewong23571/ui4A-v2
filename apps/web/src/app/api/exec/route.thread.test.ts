@@ -31,7 +31,7 @@ describe('POST /api/exec Work Thread contract', () => {
       action: 'create',
       actor: 'agent',
       principal: 'user:mike',
-      params: { id: 'release-1', goal: 'Ship safely', goalSource: 'message:goal-1' },
+      params: { commandId: 'release-1', goal: 'Ship safely' },
     });
     expect(response.status).toBe(200);
     await expect(response.json()).resolves.toMatchObject({
@@ -48,6 +48,43 @@ describe('POST /api/exec Work Thread contract', () => {
     );
   });
 
+  it('accepts a goal without LLM, recovers retries and protects its original input', async () => {
+    const input = {
+      rel: 'threads',
+      action: 'create',
+      actor: 'human',
+      principal: 'user:mike',
+      params: { commandId: 'original-input', goal: '  Verbatim original\n goal  ' },
+    };
+    const created = await exec(input);
+    expect(created.status).toBe(200);
+    const before = (await readLog(pool)).filter((event) => event.kind === 'thread-created');
+    const retried = await Promise.all([exec(input), exec(input)]);
+    expect(retried.map((response) => response.status)).toEqual([200, 200]);
+    expect((await readLog(pool)).filter((event) => event.kind === 'thread-created')).toEqual(
+      before,
+    );
+    resetEngineForTests();
+    const read = (principal: string) =>
+      GET(
+        new Request('http://localhost:3100/api/entity?rel=thread-input:original-input', {
+          headers: { 'x-ui4a-principal': principal },
+        }),
+      );
+    const own = await read('user:mike');
+    expect(own.status).toBe(200);
+    await expect(own.json()).resolves.toMatchObject({
+      actions: [],
+      properties: { owner: 'user:mike', text: input.params.goal },
+    });
+    const other = await read('user:other');
+    expect(other.status).not.toBe(200);
+    expect(await other.text()).not.toContain(input.params.goal);
+    const rejected = await exec({ ...input, params: { ...input.params, goal: 'Changed' } });
+    expect(rejected.status).toBe(422);
+    await expect(rejected.json()).resolves.toMatchObject({ layer: 'guard-failed' });
+  });
+
   it('hides foreign-owned thread references from local exec receipts and exact/list reads', async () => {
     for (const [id, principal, goal] of [
       ['mine', 'user:mike', 'My work'],
@@ -57,7 +94,7 @@ describe('POST /api/exec Work Thread contract', () => {
         rel: 'threads',
         action: 'create',
         principal,
-        params: { id, goal, goalSource: 'message:goal' },
+        params: { commandId: id, goal },
       });
       expect(created.status).toBe(200);
     }
@@ -65,12 +102,13 @@ describe('POST /api/exec Work Thread contract', () => {
       rel: 'thread:mine',
       action: 'attach',
       principal: 'user:mike',
-      params: { category: 'context', rel: 'thread:other' },
+      params: { category: 'context', rel: 'thread-input:other' },
     });
     expect(response.status).toBe(200);
     const receipt = await response.text();
     expect(receipt).not.toContain('OTHER_OWNER_SECRET');
     expect(receipt).not.toContain('thread:other');
+    expect(receipt).not.toContain('thread-input:other');
     for (const rel of ['thread:mine', 'threads']) {
       const read = await GET(
         new Request(`http://localhost:3100/api/entity?rel=${encodeURIComponent(rel)}`, {
@@ -81,9 +119,10 @@ describe('POST /api/exec Work Thread contract', () => {
       const body = await read.text();
       expect(body).not.toContain('OTHER_OWNER_SECRET');
       expect(body).not.toContain('thread:other');
+      expect(body).not.toContain('thread-input:other');
     }
     // Redaction is read-side only; the explicit source event remains auditable.
-    expect((await readLog(pool)).at(-1)?.detail).toMatchObject({ rel: 'thread:other' });
+    expect((await readLog(pool)).at(-1)?.detail).toMatchObject({ rel: 'thread-input:other' });
   });
 
   it.each([
@@ -100,9 +139,9 @@ describe('POST /api/exec Work Thread contract', () => {
         actor: 'agent',
         principal: 'user:mike',
         params: {
-          id: 'release-1',
+          commandId: 'release-1',
           goal: 'Ship safely',
-          goalSource: 'message:goal-1',
+
           extra: true,
         },
       },
@@ -126,7 +165,7 @@ describe('POST /api/exec Work Thread contract', () => {
       action: 'create',
       actor: 'human',
       principal: 'user:mike',
-      params: { id: 'release-1', goal: 'Ship safely', goalSource: 'message:goal-1' },
+      params: { commandId: 'release-1', goal: 'Ship safely' },
     });
     const response = await exec({
       rel: 'thread:release-1',

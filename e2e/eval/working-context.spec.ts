@@ -43,7 +43,13 @@ async function decisions(base: string, sessionId: string) {
   );
 }
 
-async function exec(base: string, rel: string, action: string, params: Record<string, unknown>) {
+async function exec(
+  base: string,
+  rel: string,
+  action: string,
+  params: Record<string, unknown>,
+  principal = 'local-user',
+) {
   const response = await fetch(`${base}/api/exec`, {
     method: 'POST',
     headers: { 'content-type': 'application/json' },
@@ -52,7 +58,7 @@ async function exec(base: string, rel: string, action: string, params: Record<st
       action,
       params,
       actor: 'human',
-      principal: 'local-user',
+      principal,
       channel: 'e2e',
     }),
   });
@@ -92,14 +98,12 @@ test('unlocated capability questions start at application discovery', async ({},
 test('a workline answers about its explicit cross-application resources', async ({}, info) => {
   await withIsolatedStoryServer(loadLlmEvalProfile(), async (base) => {
     await exec(base, 'threads', 'create', {
-      id: 'announcement-review',
+      commandId: 'announcement-review',
       goal: '核对公告与评论',
-      goalSource: 'message:announcement-review',
     });
     await exec(base, 'threads', 'create', {
-      id: 'unrelated-work',
+      commandId: 'unrelated-work',
       goal: '不相关的另一件事',
-      goalSource: 'message:unrelated-work',
     });
     for (const rel of ['post:post-welcome', 'comments']) {
       await exec(base, 'thread:announcement-review', 'attach', { category: 'context', rel });
@@ -127,6 +131,104 @@ test('a workline answers about its explicit cross-application resources', async 
     expect(await readEvalEntity(base, 'thread:announcement-review')).toEqual(before);
     await info.attach('workline-context.json', {
       body: JSON.stringify({ turn, trail }),
+      contentType: 'application/json',
+    });
+  });
+});
+
+test('homepage question uses the visible authorized roots and current work without treating empty delegations as no work', async ({}, info) => {
+  await withIsolatedStoryServer(loadLlmEvalProfile(), async (base) => {
+    const sessionId = 'home-context';
+    const principal = `user:${sessionId}`;
+    await exec(
+      base,
+      'threads',
+      'create',
+      { commandId: 'home-current', goal: '核验本次发布的测试证据' },
+      principal,
+    );
+    await exec(
+      base,
+      'threads',
+      'create',
+      { commandId: 'home-paused', goal: '等待补齐评审材料' },
+      principal,
+    );
+    await exec(base, 'thread:home-paused', 'pause', {}, principal);
+    await exec(
+      base,
+      'threads',
+      'create',
+      { commandId: 'home-history', goal: '已经归档的研究事项' },
+      principal,
+    );
+    await exec(base, 'thread:home-history', 'archive', {}, principal);
+    await exec(
+      base,
+      'threads',
+      'create',
+      { commandId: 'home-private', goal: '其他用户的保密目标' },
+      'other-principal',
+    );
+    const roots = ['inbox', 'threads-current', 'delegations-current'];
+    const readAsOwner = async (rel: string) => {
+      const response = await fetch(`${base}/api/entity?rel=${encodeURIComponent(rel)}`, {
+        headers: { 'x-ui4a-principal': principal },
+      });
+      expect(response.ok).toBe(true);
+      return response.json() as Promise<{
+        properties: Record<string, unknown>;
+        entities?: Array<{ properties: Record<string, unknown> }>;
+      }>;
+    };
+    const threadEvents = async () => {
+      const response = await fetch(`${base}/api/events?limit=1000`);
+      expect(response.ok).toBe(true);
+      const body = (await response.json()) as { events: StoredEventBody[] };
+      return body.events.filter((event) => event.kind.startsWith('thread-'));
+    };
+    const before = await Promise.all(roots.map(readAsOwner));
+    const beforeEvents = await threadEvents();
+    expect(before[1].entities?.map((entry) => entry.properties.rel)).toEqual(
+      expect.arrayContaining(['thread:home-current', 'thread:home-paused']),
+    );
+    expect(before[2].entities ?? []).toHaveLength(0);
+    const homeView: ClientViewReport = {
+      ...view(),
+      presence: { ...view().presence, focus: { selection: roots } },
+    };
+    const turn = await runEvalTurn(
+      base,
+      sessionId,
+      'home-context-1',
+      '我在首页。这里有什么需要我决定，还有哪些工作可以继续？请按当前可见事实说明，给出引用依据，只阅读，不执行修改。',
+      homeView,
+    );
+    expect(turn.outcome, JSON.stringify(turn)).toBe('answered');
+    expect(turn.driver).toBe('llm');
+    const trail = await decisions(base, sessionId);
+    expect(trail.length).toBeGreaterThan(0);
+    for (const root of roots) expect(trail[0].prompt.user).toContain(root);
+    const sources = trail.flatMap((step) => step.op.sources ?? []);
+    expect(sources.some((source) => source.rel === 'inbox')).toBe(true);
+    expect(
+      sources.some((source) =>
+        ['threads-current', 'thread:home-current', 'thread:home-paused'].includes(source.rel),
+      ),
+    ).toBe(true);
+    expect(
+      sources.every(
+        (source) => source.rel !== 'thread:home-private' && source.rel !== 'thread:home-history',
+      ),
+    ).toBe(true);
+    expect(trail.every((step) => ['answer', 'navigate', 'clarify'].includes(step.op.kind))).toBe(
+      true,
+    );
+    expect(trail.every((step) => !step.prompt.user.includes('其他用户的保密目标'))).toBe(true);
+    expect(await Promise.all(roots.map(readAsOwner))).toEqual(before);
+    expect(await threadEvents()).toEqual(beforeEvents);
+    await info.attach('home-context.json', {
+      body: JSON.stringify({ before, homeView, turn, trail }),
       contentType: 'application/json',
     });
   });

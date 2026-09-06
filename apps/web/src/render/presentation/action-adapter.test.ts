@@ -203,6 +203,7 @@ describe('Surface Action Adapter', () => {
       adapter.submit({
         subject: 'post:first',
         action: 'archive',
+        params: { reason: 'complete' },
         expected: {
           actionSchema: {
             required: ['reason'],

@@ -1,4 +1,5 @@
 import {
+  HOME_WORKSPACE_DECLARATION,
   parseRenderSubject,
   type PresenceChange,
   type PresenceChangeKind,
@@ -34,6 +35,10 @@ function boundedQueryValue(url: URL, key: string): string | null {
 }
 
 function focusFromLocation(url: URL): RenderSubject | null {
+  if (url.pathname === '/')
+    return parseRenderSubject({
+      selection: HOME_WORKSPACE_DECLARATION.regions.map((region) => region.source),
+    });
   const focus = boundedQueryValue(url, 'focus');
   if (focus !== null) return parseRenderSubject(focus);
   const roots = boundedQueryValue(url, 'roots');

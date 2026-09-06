@@ -23,7 +23,7 @@ Discover and read:
 
 Business operations:
   actions list <rel>
-  actions exec <rel> <action> --params JSON|--params-file FILE [--dry-run]
+  actions exec <rel> <action> --params JSON|--params-file FILE [--command-id ID] [--dry-run]
   plans submit --file FILE
 
 Definition Bundles and governed Drafts:

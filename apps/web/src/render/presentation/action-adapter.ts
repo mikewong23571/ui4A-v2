@@ -6,6 +6,12 @@
  * state, then rebuilds the existing action gate from that fresh entity. It never persists enabled
  * state, guard results or form data.
  */
+import { createActionCommandIds } from '../../components/actions/action-command-ids';
+import {
+  createDirectActionSubmit,
+  observedActionClientParams,
+} from '../../components/actions/action-client-submit';
+
 import type { SirenAction, SirenEntity } from '@ui4a/engine';
 
 import { blockedForRenderer } from '../../components/actions/action-group';
@@ -163,10 +169,11 @@ function refreshSubjectsOf(input: SurfaceActionSubmission, result: SirenEntity):
   ];
 }
 
-/** Create a stateless adapter. Each submit owns one fresh entity read and at most one exec call. */
+/** Each submit rereads authority; only transient command IDs survive retries in this adapter. */
 export function createSurfaceActionAdapter(
   dependencies: SurfaceActionAdapterDependencies,
 ): SurfaceActionAdapter {
+  const commandIds = createActionCommandIds();
   return {
     async submit(input) {
       if (input.subject.trim() === '' || input.action.trim() === '') {
@@ -287,7 +294,13 @@ export function createSurfaceActionAdapter(
         }
       }
 
-      const gate = createActionGate(dependencies.exec);
+      const submit = createDirectActionSubmit(dependencies.exec, {
+        commandIds,
+        clientParams: ({ action }) => observedActionClientParams(action, entity.properties),
+      });
+      const gate = createActionGate(({ rel, params }) =>
+        submit({ rel, action: liveAction, params }),
+      );
       gate.register(entity);
       const result = await gate.handle(clientActionOf({ ...input, subject: targetRel }));
       if (result.outcome === 'executed') {

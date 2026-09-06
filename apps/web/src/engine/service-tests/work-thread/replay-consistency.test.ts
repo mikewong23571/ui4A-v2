@@ -66,9 +66,8 @@ async function suspendArchive(rel: string): Promise<string> {
 async function buildThreadFixture(): Promise<string> {
   const threadId = `t56p13-r-${RUN}`;
   await execAccepted('threads', 'create', {
-    id: threadId,
+    commandId: threadId,
     goal: GOAL,
-    goalSource: `chat:t56p13-${RUN}`,
   });
   const pendingApprovalRel = await suspendArchive('post:post-welcome');
   const attach = (category: string, rel: string): Promise<void> =>
