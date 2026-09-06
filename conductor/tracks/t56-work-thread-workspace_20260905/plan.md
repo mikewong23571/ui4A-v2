@@ -58,7 +58,7 @@
 - [x] Task: P2 Phase Verification & Checkpoint (6a89b8e)
   - [ ] 实际操作 US01/05/07，与几何和截图交叉核对；更新 evidence 与 checkpoint。
 
-## P3 材料、责任与聊天依据闭环（US02/04/06–10/12）
+## P3 材料、责任与聊天依据闭环（US02/04/06–10/12） [checkpoint: fd6ade3]
 
 - [x] Task: P3.1 Red→Green：材料关联与 pin (4adb676)
   - [ ] 先钉材料/pin-only/两者都有、重复添加、detach 被拒、archived 无动作、权限变化负例。
@@ -76,7 +76,7 @@
 - [x] Task: P3.4 Red→Green：可辨引用 (bb52a83)
   - [ ] 钉同对象多字段、集合重排、缺历史 identity、改名、权限撤回/读取失败及导航参数保留。
   - [ ] 实现精确型/集合型两型引用 chip 与时点边界（无全局标签缓存），保留原 FactRef；不从当前索引猜历史实体。
-- [ ] Task: P3 Phase Verification & Checkpoint
+- [x] Task: P3 Phase Verification & Checkpoint (fd6ade3)
   - [ ] 运行 G1/G2/G3 受影响范围，亲走添加→阅读→决定→回执→历史→依据，记录 checkpoint。
 
 ## P4 全景验收与证据（US01–US12）
