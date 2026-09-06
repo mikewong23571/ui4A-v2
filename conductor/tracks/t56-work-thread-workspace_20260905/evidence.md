@@ -367,3 +367,36 @@ engine/presentation 3707)与本次实测**逐一吻合**。本次跑的是默认
   960×540 CSS + deviceScaleFactor 2 等效模拟(真实浏览器缩放交互未用);SessionList
   切会话 abort(仅代码级核对);读屏器/真人键盘走查、打印/RTL;用户 3100 dev server
   渲染内容与本 HEAD 一致性。`ui4a_s3_test` 库保留供并行复核,清理由编排 agent 决定。
+
+---
+
+## E-P2.3 P2 Gate 浏览器交互与视觉(P2.3 + P2 Phase 实际操作)
+
+- **Story/Gate**:US01/US05/US07;G2/G3;FR1/FR4/FR7(存续)。
+- **Version**:被测 HEAD = `12397a0d` 的工作树前身(35552afd + P2.3 修复),隔离栈与
+  G3 CI server 两路验证;编排 agent 复跑时 HEAD=`12397a0d` dirty 仅 plan.md。
+- **Environment**:①CI=true Playwright 自管 server(3100,ui4a_test,Temporal 7235);
+  ②编排 agent 亲走查:3110 + `ui4a_s3_test` 本地 profile(agent-browser 会话),走查后
+  server 已停、端口已释放、3100 dev server 已恢复。
+- **Reproduction**:
+  G2:`pnpm vitest run apps/web/src/components/canvas apps/web/src/components/actions/thread-material-add.test.tsx`;
+  `pnpm vitest run apps/web/src/components/chat apps/web/src/app/api/chat/history/route.test.ts apps/web/src/chat/conversation.test.ts`。
+  G3:`CI=true pnpm e2e e2e/workstation e2e/t26-work-thread.spec.ts e2e/interaction/chat-citations.spec.ts e2e/chat.spec.ts`;
+  `CI=true pnpm e2e e2e/t24-presentation-honesty.spec.ts`。
+  走查:3110 隔离栈按 US01(进线)→US05(展开/Escape/焦点/分栏)→US07(材料→对象→返回本线→后退)顺序点击。
+- **Result**:PASS。
+- **Evidence**:
+  - G2 组 1:70 用例 69 pass/1 fail(唯一 fail=P3.1「固定视图」预期 Red);组 2:16 files 116/116。
+  - G3:21 passed/1 skipped(fixme=US07 clientView 等 P3),exit 0;编排 agent 后台复跑同结果;
+    t24 单跑 3/3;t16-golden `--list` 收录。
+  - 截图:`evidence/shots/` 17 张 + README(viewport/route/fixture/sha);编排 agent 亲看
+    01(本线概览主内容)、03-vp-390(覆盖不出屏)、08/09(决定前/后)、走查过程 4 张(/tmp)。
+  - 走查实测(编排 agent 亲操作,1280×?):US01 进线 H1=目标、成员卡、材料入口;助手 FAB
+    展开=float(遮蔽后可读 728px≥640)、Escape 关闭焦点回 FAB、草稿跨关开/跨形态保留;
+    「分栏」→ in-flow aside 384 + surface 848(=vw−48−384,D78 公式吻合)、零重叠、
+    body.scrollWidth=视口;US07 desk 条目保留 thread、返回本线→H1=目标、浏览器后退 URL 正确。
+  - **Finding(F-P2.3-1,P3 处理)**:surface 成员卡与内容区实体链接(collection→object)导航丢
+    `thread=` 参数,落点页无「返回本线」;desk 条目与带 thread 深链正确。已登记进 plan P3.1。
+  - **Note**:停靠形态跨客户端导航回到 float(FAB),草稿保留;属「尊重当次选择」的呈现语义,不判缺陷。
+- **NOT RUN**:US04 归档回顾浏览器走查(G3 无归档线用例,P3/P4);pin-only 区分(P3.1);
+  US12 真实 LLM(G4);200% 真实缩放交互(E2E 以 960 CSS 等效);读屏/真人五秒测试(G6,未测)。
