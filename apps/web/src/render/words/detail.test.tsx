@@ -13,7 +13,15 @@ import { derefSpec } from '../deref';
 import { articlesCollection, specOf } from './fixtures';
 import { DetailWord } from './detail';
 
-afterEach(cleanup);
+vi.mock('next/navigation', () => ({
+  usePathname: () => window.location.pathname,
+  useSearchParams: () => new URLSearchParams(window.location.search),
+}));
+
+afterEach(() => {
+  cleanup();
+  window.history.replaceState({}, '', '/');
+});
 
 const submit: ActionSubmit = vi.fn();
 
@@ -61,6 +69,9 @@ describe('detail 词条', () => {
     expect(screen.getByText(/欢迎来到 UI4A/)).toBeTruthy();
     // 链接(合同 href → 页面路由)
     expect(screen.getByText('articles')).toBeTruthy();
+    expect(screen.getByRole('link', { name: 'articles' }).getAttribute('href')).toBe(
+      '/entity?rel=articles',
+    );
     // 动作(ActionRunner,data-action 标注)
     expect(await screen.findByRole('button', { name: '下线' })).toBeTruthy();
     expect(container.querySelector('[data-action="unpublish"]')).not.toBeNull();
@@ -104,5 +115,37 @@ describe('detail 词条', () => {
     expect(screen.getByText('待办捕捉')).toBeTruthy();
     expect(screen.queryByText('collection')).toBeNull();
     expect(screen.queryByText('flow')).toBeNull();
+  });
+
+  it('links mode stays on the workspace, preserves context, and keeps meta and external destinations distinct', () => {
+    window.history.replaceState(
+      {},
+      '',
+      '/canvas?scope=publishing&thread=review&returnTo=%2Fthreads&focus=threads-current',
+    );
+    const entity = detailEntity();
+    entity.links = [
+      { rel: ['collection'], href: '/api/entity?rel=threads', title: '全部工作线' },
+      { rel: ['related'], href: '/api/entity?rel=thread%3Aother', title: '另一条线' },
+      { rel: ['related'], href: '/_meta/api/entity?rel=meta%2Fflow%3Areview', title: '治理定义' },
+      { rel: ['related'], href: '/api/entity?rel=draft%3Achange', title: '草稿' },
+      { rel: ['help'], href: 'https://docs.example/api/entity?rel=external', title: '外部说明' },
+    ];
+    render(<DetailWord entity={entity} mode="links" />);
+    expect(screen.getByRole('link', { name: '全部工作线' }).getAttribute('href')).toBe(
+      '/canvas?focus=threads&scope=publishing&thread=review&returnTo=%2Fthreads',
+    );
+    expect(screen.getByRole('link', { name: '另一条线' }).getAttribute('href')).toBe(
+      '/canvas?focus=thread%3Aother&scope=publishing&thread=other&returnTo=%2Fthreads',
+    );
+    expect(screen.getByRole('link', { name: '治理定义' }).getAttribute('href')).toBe(
+      '/meta/entity?rel=meta%2Fflow%3Areview&scope=publishing&thread=review&returnTo=%2Fthreads',
+    );
+    expect(screen.getByRole('link', { name: '草稿' }).getAttribute('href')).toBe(
+      '/meta/entity?rel=draft%3Achange&scope=publishing&thread=review&returnTo=%2Fthreads',
+    );
+    expect(screen.getByRole('link', { name: '外部说明' }).getAttribute('href')).toBe(
+      'https://docs.example/api/entity?rel=external',
+    );
   });
 });

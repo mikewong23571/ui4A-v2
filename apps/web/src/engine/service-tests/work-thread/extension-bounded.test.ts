@@ -280,14 +280,29 @@ describe('第二应用零改动可读(P1.3 A7/US11 Fixture H)', () => {
     expect(presentation.version).toBe(1);
     expect(presentation.traits).toEqual(['human-responsibility', 'work-queue']);
 
-    // 同一呈现链路(Broker → generic → Sidecar)零分支命中:member-card 责任区。
+    // 同一呈现链路逐成员携带认知:普通对象摘要行,当前责任由词汇展开为决定卡。
     const receipt = await present(threadRel, `t56p13-h-present-${RUN}`, [app]);
     expect(receipt.status).toBe('ready');
     const snapshot = await loadPresentationSnapshot(getDb());
     const version = snapshot.sidecars[receipt.sidecar!.id]!.versions[receipt.sidecar!.version]!;
     expect(version.provenance.kind).toBe('generic-fallback');
     const nodes = nodesOf(version.surface.root);
-    expect(nodes.some((node) => node.kind === 'word' && node.word === 'member-card')).toBe(true);
+    const memberWord = nodes.find((node) => node.kind === 'word' && node.word === 'member-row');
+    expect(memberWord).toMatchObject({
+      bindings: {
+        cognitive: { kind: 'item', path: 'properties.presentation' },
+        members: { kind: 'item', path: 'entities' },
+        actions: { kind: 'item', path: 'actions' },
+      },
+    });
+    expect(firstMaterial!.properties.presentation).toMatchObject({
+      version: 1,
+      traits: ['work-queue'],
+    });
+    expect(approvalCard!.properties.presentation).toMatchObject({
+      version: 1,
+      traits: ['human-responsibility'],
+    });
     const repeat = nodes.find((node) => node.kind === 'repeat');
     expect(repeat!.role).toBe('primary-content');
 
@@ -298,6 +313,10 @@ describe('第二应用零改动可读(P1.3 A7/US11 Fixture H)', () => {
       (member) => (member.properties as { rel?: string }).rel === pendingApprovalRel,
     );
     expect(decidedCard!.actions).toEqual([]);
+    expect(decidedCard!.properties.presentation).toMatchObject({
+      version: 1,
+      traits: ['human-responsibility', 'task-history'],
+    });
   });
 });
 

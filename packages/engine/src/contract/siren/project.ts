@@ -1,16 +1,11 @@
+import { projectDelegation, projectDelegations } from './project-delegation';
 import { projectWorkThreadView } from '../../projection/work-thread-views';
 import { projectThreadInput, THREAD_INPUT_REL_PREFIX } from '../../projection/work-thread-input';
 /**
  * Siren 业务平面投影:实例/集合/确认/inbox/委托/渲染 spec(arch-brief §2 四件组装)。
  * 纯函数;rel → Siren 实体,未知 rel 返回 undefined(HTTP 层映射 404)。
  */
-import type {
-  CognitiveSemanticsEmptyMeaning,
-  ConfirmationSnapshot,
-  DelegationSnapshot,
-  EngineSnapshot,
-  FrozenRenderSpec,
-} from '@ui4a/shared';
+import type { ConfirmationSnapshot, EngineSnapshot, FrozenRenderSpec } from '@ui4a/shared';
 import { fieldValues } from '@ui4a/shared';
 
 import {
@@ -18,7 +13,7 @@ import {
   CONFIRMATION_REJECT_ACTION,
   confirmationRel,
 } from '../../execution/confirmation';
-import { DELEGATIONS_REL, delegationRel } from '../../delegation/delegation';
+import { DELEGATIONS_REL } from '../../delegation/delegation';
 import { appendedCollections } from '../../core/parse';
 import { flowForInstance } from '../../execution/judge';
 import {
@@ -36,7 +31,13 @@ import {
   projectWorkThread,
   projectWorkThreads,
 } from '../../projection/work-thread';
-import { entityHref, fieldPresentationsOf, guardResultsFor, toSirenAction } from './build';
+import {
+  collectionIdentity,
+  entityHref,
+  fieldPresentationsOf,
+  guardResultsFor,
+  toSirenAction,
+} from './build';
 import {
   collectionFilterDeclarations,
   isMemberCollectionRel,
@@ -53,20 +54,6 @@ import {
   type CollectionOwner,
 } from '../collection-ownership';
 import type { ProjectDeps, SirenEntity, SirenLink } from './types';
-
-function collectionIdentity(
-  title: string,
-  emptyMeaning?: CognitiveSemanticsEmptyMeaning,
-): Record<string, unknown> {
-  return {
-    title,
-    presentation: {
-      fields: [{ path: 'properties.title', title: '标题', role: 'identity' }],
-      // 空态语义(F-04/T40):首页组合区消费声明引导;无声明时渲染侧干净留白。
-      ...(emptyMeaning === undefined ? {} : { emptyMeaning }),
-    },
-  };
-}
 
 function exactCollectionIdentity(owner: CollectionOwner): Record<string, unknown> {
   return owner.title === undefined
@@ -411,75 +398,6 @@ function projectInbox(snapshot: EngineSnapshot, deps: ProjectDeps): SirenEntity 
     },
     actions: [],
     links: [{ rel: ['self'], href: entityHref(deps.baseHref, 'inbox'), title: '在等我' }],
-    'guard-results': [],
-    entities,
-  };
-}
-
-/**
- * 委托实体投影(T5 / spec 架构决定 2):class [delegation, status],
- * properties 含 goal/driver-kind/start-rel/principal/status/steps/successes
- * (+summary/reason);无动作(委托的每步操作走事件日志,不经实体动作面)。
- */
-function projectDelegation(delegation: DelegationSnapshot, deps: ProjectDeps): SirenEntity {
-  return {
-    class: ['delegation', delegation.status],
-    properties: {
-      id: delegation.id,
-      goal: delegation.goal,
-      'driver-kind': delegation.driverKind,
-      ...(delegation.model !== undefined ? { model: delegation.model } : {}),
-      'start-rel': delegation.startRel,
-      ...(delegation.principal !== undefined ? { principal: delegation.principal } : {}),
-      status: delegation.status,
-      steps: delegation.steps,
-      successes: delegation.successes,
-      // T33"在动"进度行:机械计数派生(successes/steps + 状态),投影数据。
-      resume: `${delegation.successes}/${delegation.steps} · ${delegation.status}`,
-      ...(delegation.summary !== undefined ? { summary: delegation.summary } : {}),
-      ...(delegation.reason !== undefined ? { reason: delegation.reason } : {}),
-    },
-    actions: [],
-    // collection 回链 delegations(与确认实体同口径:状态终局后列表当次失效)。
-    links: [
-      { rel: ['self'], href: entityHref(deps.baseHref, delegationRel(delegation.id)) },
-      { rel: ['collection'], href: entityHref(deps.baseHref, 'delegations') },
-    ],
-    'guard-results': [],
-  };
-}
-
-/** delegations 集合投影(舰队页数据源):全部委托的集合实体,子实体直达。 */
-function projectDelegations(
-  snapshot: EngineSnapshot,
-  deps: ProjectDeps,
-  currentOnly = false,
-): SirenEntity {
-  const rel = currentOnly ? 'delegations-current' : DELEGATIONS_REL;
-  const entries = Object.values(snapshot.delegations ?? {}).filter(
-    (entry) => !currentOnly || entry.status === 'running',
-  );
-  const entities = entries.map((delegation) => ({
-    ...projectDelegation(delegation, deps),
-    rel: ['item'],
-    href: entityHref(deps.baseHref, delegationRel(delegation.id)),
-  }));
-  return {
-    class: ['collection', DELEGATIONS_REL],
-    properties: {
-      rel,
-      ...collectionIdentity(currentOnly ? '执行中委托' : '在动', 'nothing-in-motion'),
-      count: entries.length,
-    },
-    actions: [],
-    links: [
-      {
-        rel: ['self'],
-        href: entityHref(deps.baseHref, rel),
-        title: currentOnly ? '执行中委托' : '在动',
-      },
-      { rel: ['collection'], href: entityHref(deps.baseHref, DELEGATIONS_REL), title: '全部委托' },
-    ],
     'guard-results': [],
     entities,
   };

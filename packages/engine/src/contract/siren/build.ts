@@ -1,3 +1,4 @@
+import type { CognitiveSemanticsEmptyMeaning } from '@ui4a/shared';
 /**
  * Siren 实体构件:href 拼装、action 声明 → Siren action、guard-results 求值。
  * 投影口径:guard 以空参数求值;真正裁决以 exec 时的 guard 层为准(拒绝即教育)。
@@ -108,4 +109,19 @@ export function fieldPresentationsOf(
         : { contentMediaType: field.contentMediaType }),
     };
   });
+}
+
+/** Shared collection heading/empty semantics; values remain projection data. */
+export function collectionIdentity(
+  title: string,
+  emptyMeaning?: CognitiveSemanticsEmptyMeaning,
+): Record<string, unknown> {
+  return {
+    title,
+    presentation: {
+      fields: [{ path: 'properties.title', title: '标题', role: 'identity' }],
+      // 空态语义(F-04/T40):首页组合区消费声明引导;无声明时渲染侧干净留白。
+      ...(emptyMeaning === undefined ? {} : { emptyMeaning }),
+    },
+  };
 }

@@ -371,7 +371,7 @@ describe('Work Thread 授权读合同(D78 路线 A 目标语义;Red)', () => {
     expect(viaEntityGate).toEqual(entity);
   });
 
-  it('C10 「裁剪 vs 真空」同形:同一可见状态下语义声明一致,唯一 sanctioned 差异是 resume 行消失(D78 决定 3;US10)', async () => {
+  it('C10 「裁剪 vs 真空」同形:同一可见状态下语义声明一致,两侧均无冗余 resume(D79;US10)', async () => {
     const { threadRel, pendingApprovalRel, decidedApprovalRel } = await buildFixtureA();
     // 真空对照线:同目标语 ensured 不同 id、同 context、同 approval 引用,但从未挂 active。
     const vacuumId = `t56p11-b-${RUN}`;
@@ -396,10 +396,12 @@ describe('Work Thread 授权读合同(D78 路线 A 目标语义;Red)', () => {
     // active 区域同形:裁剪后与从未挂载的线都输出 [](D78 决定 3 的「不可区分」本体)。
     expect(trimmedProperties.active).toEqual([]);
     expect(vacuumProperties.active).toEqual([]);
-    // 唯一 sanctioned 差异:D78 明示的 resume 行消失(裁剪侧);真空侧不加占位语义。
+    // D79:裁剪侧移除不可见 active 派生内容,真空侧不添加重复自身状态的 resume。
     const trimmedKeys = Object.keys(trimmedProperties).sort();
     const vacuumKeys = Object.keys(vacuumProperties).sort();
-    expect(vacuumKeys.filter((key) => !trimmedKeys.includes(key))).toEqual(['resume']);
+    expect(trimmedProperties).not.toHaveProperty('resume');
+    expect(vacuumProperties).not.toHaveProperty('resume');
+    expect(vacuumKeys).toEqual(trimmedKeys);
     expect(trimmedKeys.filter((key) => !vacuumKeys.includes(key))).toEqual([]);
     // 语义声明(cognition 部分)只从可见状态派生:可见剩余一致 → 声明一致,
     // 渲染层无从对「被裁剪」写出与「真空」不同的全称断言分支。

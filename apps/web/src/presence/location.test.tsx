@@ -35,7 +35,7 @@ describe('location observation hook', () => {
     });
   });
 
-  it('treats a null search-param hook value as an empty query', () => {
+  it('treats a null search-param hook as empty query while retaining declared homepage roots', () => {
     routeState.pathname = '/';
     routeState.search = null;
 
@@ -43,7 +43,12 @@ describe('location observation hook', () => {
 
     expect(result.current).toEqual({
       route: '/',
-      observation: { site: 'workstation', scope: null, thread: null, focus: null },
+      observation: {
+        site: 'workstation',
+        scope: null,
+        thread: null,
+        focus: { selection: ['inbox', 'threads-current', 'delegations-current'] },
+      },
     });
   });
 });

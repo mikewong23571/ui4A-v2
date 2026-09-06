@@ -16,3 +16,21 @@
 
 创建原文/owner/幂等与client参数防伪造经独立review未发现新的阻断；D78.4既有边界未声称修复。
 范围内新增接口、catalog与策略更新已记录D79。最终合并diff、运行与视觉仍待复审。
+
+
+## 合并后的第二次交叉复审（进行中）
+
+范围：bf58603d..e0ce5a0a 加 T57 集成修复工作树。governance 交叉复核创建、CLI、UI 提交及Dialog，
+creation 交叉复核呈现责任，action_ui 复核首页与助手共同处境；各自不以自己先前实施的核心代码为独立结论。
+主agent亲自运行统一检查及复核。角色交叉提供独立视角，不宣称与本项目完全无关的外部审计。
+
+- 创建/原文同事件/owner/同键重试、client-owned 参数、fresh schema、Dialog输入焦点未发现新阻断；
+  定向6files/26tests通过，最终以主agent统一检查为准。
+- R9：explicit review-queue 被过度行化、delegation缺可读identity与rel、canonical集合重复链：已修并通过全仓。
+- R10：首页有open线时空委托文案概括“无工作”，旧E2E排除子串还没命中真实句子：已收窄为当前列表并加强断言。
+- R11：当前/历史read slice与canonical集合不同rel，执行后未失效。由观测到的collection回链发现相关切片，
+  无应用/实体名条件；空列表和分页变体同样刷新，无关缓存保持。2个Red负例→4files/33通过。
+- R12：结构合法Surface可以绑定不存在的label却被认为保全责任；另需验证已存折叠view不能隐藏责任。
+  核心与Web所有实际命中/patch/revert/promotion路径正补齐，未关闭前保持阻断。
+
+浏览器像素、真实模型结果和这些修复的最终统一重验尚待记录。

@@ -294,7 +294,10 @@ export function getPresentationBroker(): WebPresentationBroker {
       }
       const active = sidecar.versions[sidecar.activeVersion]!;
       const validation = validateSurfaceTree(active.surface, PRESENTATION_SURFACE_CATALOG);
-      if (!validation.valid || !hasResponsibilityCoverage(validation.surface, situation)) {
+      if (
+        !validation.valid ||
+        !hasResponsibilityCoverage(validation.surface, situation, active.view)
+      ) {
         await appendSidecarCommand(getDb(), {
           kind: 'stale',
           eventId: `${request.requestId}:surface-invalid:event`,

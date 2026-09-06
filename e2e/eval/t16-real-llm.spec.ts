@@ -1,5 +1,7 @@
 import { expect, test } from '@playwright/test';
 import { createPresentationRevisionAgent } from '@ui4a/agent';
+import type { SurfaceTree } from '../../packages/engine/src/index';
+import { runPresentationResponsibilityStory } from './presentation-responsibility-story';
 
 import {
   captureReadOnlyStory,
@@ -18,6 +20,25 @@ const variants = [
   '这里有哪些主要流程和可操作资源？',
   '如果我是新用户，这个应用是干嘛的？',
 ];
+
+test('T57 G4: real Presentation revisions preserve responsibility through generic, Recipe and Sidecar', async ({}, testInfo) => {
+  test.setTimeout(600_000);
+  expect(process.env.DATABASE_URL).toBe(isolatedEvalDatabaseUrl());
+  const profile = loadLlmEvalProfile();
+  const evidence: unknown[] = [];
+  try {
+    await withIsolatedStoryServer(profile, (base) =>
+      runPresentationResponsibilityStory(base, profile, evidence),
+    );
+  } finally {
+    await testInfo.attach('presentation-responsibility-real-llm-evidence.json', {
+      body: Buffer.from(
+        JSON.stringify({ schemaVersion: 1, model: profile.model, evidence }, null, 2),
+      ),
+      contentType: 'application/json',
+    });
+  }
+});
 
 test('S1/S3: real Chat understands the application and current Markdown layers', async ({}, testInfo) => {
   test.setTimeout(600_000);
@@ -63,7 +84,7 @@ test('S24: real Presentation Agent produces semantic patches for five human phra
     'Increase the body emphasis and collapse the actions region.',
     '让文章内容更醒目，操作工具先隐藏。',
   ];
-  const surface = {
+  const surface: SurfaceTree = {
     schemaVersion: 1 as const,
     root: {
       kind: 'layout' as const,

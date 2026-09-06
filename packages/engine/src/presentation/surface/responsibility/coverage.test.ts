@@ -4,15 +4,26 @@ import type { SirenEntity } from '../../../contract/siren/index';
 import type { SurfaceCatalog, SurfaceNode, SurfaceTree } from '../types';
 import { validateResponsibilityCoverage } from './coverage';
 
+const memberBindings: SurfaceCatalog['words'][string]['bindings'] = {
+  label: { sources: ['item'], required: true },
+  rel: { sources: ['item'], required: true },
+  actions: { sources: ['item'] },
+  cognitive: { sources: ['item'] },
+  members: { sources: ['item'] },
+};
+
 const catalog: SurfaceCatalog = {
   id: 'semantic',
   version: '1',
   words: {
-    row: { pattern: 'member-row', roles: ['identity'], bindings: {} },
-    card: { pattern: 'member-card', roles: ['identity'], bindings: {} },
-    link: { pattern: 'member-link', roles: ['identity'], bindings: {} },
+    row: { pattern: 'member-row', roles: ['identity'], bindings: memberBindings },
+    card: { pattern: 'member-card', roles: ['identity'], bindings: memberBindings },
+    link: { pattern: 'member-link', roles: ['identity'], bindings: memberBindings },
     controls: { roles: ['actions'], bindings: { actions: { sources: ['actions'] } } },
-    heading: { roles: ['identity'], bindings: { value: { sources: ['property'] } } },
+    heading: {
+      roles: ['identity'],
+      bindings: { value: { sources: ['property'], required: true } },
+    },
   },
 };
 
@@ -21,6 +32,7 @@ function entity(rel: string, responsible = false, members?: SirenEntity[]): Sire
     class: ['opaque'],
     properties: {
       rel,
+      identity: `Read ${rel}`,
       presentation: {
         version: 1,
         traits: responsible ? ['human-responsibility'] : [],
@@ -42,6 +54,7 @@ function row(word = 'row'): SurfaceNode {
     dependencies: [],
     provenance: [],
     bindings: {
+      label: { kind: 'item', path: 'properties.identity' },
       rel: { kind: 'item', path: 'properties.rel' },
       actions: { kind: 'item', path: 'actions' },
       cognitive: { kind: 'item', path: 'properties.presentation' },
@@ -134,9 +147,9 @@ describe('declared responsibility Surface coverage', () => {
     ).toBe(true);
   });
 
-  it.each([[], [entity('evidence:one')]])(
+  it.each([{ members: [] }, { members: [entity('evidence:one')] }])(
     'does not let member arrays erase a leaf responsibility without an explicit groupRole: %j',
-    (members) => {
+    ({ members }) => {
       const leaf = entity('decision:leaf', true, members);
       leaf.properties.presentation = { version: 1, traits: ['human-responsibility'] };
       const roots = [{ subject: 'queue', entity: entity('queue', false, [leaf]) }];
@@ -202,4 +215,112 @@ describe('declared responsibility Surface coverage', () => {
       ).valid,
     ).toBe(true);
   });
+});
+
+describe('responsibility word inputs must actually resolve', () => {
+  it.each([undefined, '', '   ', 0, { hidden: true }])(
+    'rejects an unreadable row label: %j',
+    (label) => {
+      const decision = entity('decision:a', true);
+      decision.properties.label = label;
+      const item = row();
+      if (item.kind !== 'word') throw new Error('word fixture');
+      item.bindings.label = { kind: 'item', path: 'properties.label' };
+      expect(
+        validateResponsibilityCoverage(
+          surface(item),
+          [{ subject: 'queue', entity: entity('queue', false, [decision]) }],
+          catalog,
+        ),
+      ).toEqual({ valid: false, missing: ['decision:a'] });
+    },
+  );
+  it('does not cover nested duties through a parent row whose label cannot render', () => {
+    const item = row();
+    if (item.kind !== 'word') throw new Error('word fixture');
+    item.bindings.label = { kind: 'item', path: 'properties.missing' };
+    const group = entity('group:a', true, [entity('decision:a', true)]);
+    expect(
+      validateResponsibilityCoverage(
+        surface(item),
+        [{ subject: 'queue', entity: entity('queue', false, [group]) }],
+        catalog,
+      ).missing,
+    ).toEqual(['decision:a']);
+  });
+  it('requires a real identity value for an exact-subject identity word', () => {
+    const candidate = surface(row(), ['decision:a']);
+    candidate.root = {
+      kind: 'layout',
+      id: 'root',
+      role: 'primary-content',
+      layout: 'stack',
+      dependencies: [],
+      provenance: [],
+      children: [
+        candidate.root,
+        {
+          kind: 'word',
+          id: 'name',
+          role: 'identity',
+          word: 'heading',
+          dependencies: [],
+          provenance: [],
+          bindings: {
+            value: { kind: 'property', subject: 'decision:a', path: 'properties.missing' },
+          },
+        },
+        {
+          kind: 'word',
+          id: 'actions',
+          role: 'actions',
+          word: 'controls',
+          dependencies: [],
+          provenance: [],
+          bindings: { actions: { kind: 'actions', subject: 'decision:a' } },
+        },
+      ],
+    };
+    expect(validateResponsibilityCoverage(candidate, sources, catalog)).toEqual({
+      valid: false,
+      missing: ['decision:a'],
+    });
+  });
+  it('allows a different declared, readable label property without coupling to entity names', () => {
+    const decision = entity('third-domain:choice', true);
+    decision.properties.caption = 'A readable alternative';
+    const item = row();
+    if (item.kind !== 'word') throw new Error('word fixture');
+    item.bindings.label = { kind: 'item', path: 'properties.caption' };
+    expect(
+      validateResponsibilityCoverage(
+        surface(item),
+        [{ subject: 'queue', entity: entity('queue', false, [decision]) }],
+        catalog,
+      ).valid,
+    ).toBe(true);
+  });
+});
+
+it.each(['members', 'row'])(
+  'does not count responsibility inside a collapsed node %s',
+  (nodeId) => {
+    expect(
+      validateResponsibilityCoverage(surface(), sources, catalog, { collapsedNodeIds: [nodeId] }),
+    ).toEqual({ valid: false, missing: ['decision:a'] });
+  },
+);
+it('allows collapse outside responsibility and collapse when there are no current duties', () => {
+  expect(
+    validateResponsibilityCoverage(surface(), sources, catalog, { collapsedNodeIds: ['unrelated'] })
+      .valid,
+  ).toBe(true);
+  expect(
+    validateResponsibilityCoverage(
+      surface(),
+      [{ subject: 'queue', entity: entity('queue', false, [entity('ordinary')]) }],
+      catalog,
+      { collapsedNodeIds: ['members'] },
+    ).valid,
+  ).toBe(true);
 });

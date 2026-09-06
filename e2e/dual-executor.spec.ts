@@ -307,7 +307,7 @@ test('S1 双视角收拢:proposed-by agent → approved-by human 同链,生效�
         principal: AGENT_PRINCIPAL,
         channel: 'e2e',
       });
-      expect(suspend.status).toBe(202);
+      expect(suspend.status, JSON.stringify(suspend.json)).toBe(202);
       expect((await getEntity('post:post-welcome')).properties.node).toBe('published');
 
       // human 裁决:renderer 合同身份 approve(审批不委托——铁律 5)。

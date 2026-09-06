@@ -127,3 +127,27 @@ describe('production responsibility reuse boundaries', () => {
     expect(hasResponsibilityCoverage(planned.surface, situation)).toBe(true);
   });
 });
+
+it('invalidates a previously usable collapsed Sidecar when fresh responsibility must be shown', async () => {
+  const runtime = hooks();
+  await runtime.plan(request, situation);
+  const command = mocks.append.mock.calls[0]![1] as {
+    version: { surface: SurfaceTree; dependencies: unknown[] };
+  };
+  mocks.append.mockClear();
+  mocks.active.mockResolvedValue({
+    id: 'sidecar:a',
+    activeVersion: 1,
+    versions: {
+      1: {
+        ...command.version,
+        view: { collapsedNodeIds: [command.version.surface.root.id], densityByNodeId: {} },
+      },
+    },
+  });
+  await expect(runtime.resolve(request, situation)).resolves.toEqual({ kind: 'miss' });
+  expect(mocks.append).toHaveBeenCalledWith(
+    expect.anything(),
+    expect.objectContaining({ kind: 'stale', sidecarId: 'sidecar:a' }),
+  );
+});

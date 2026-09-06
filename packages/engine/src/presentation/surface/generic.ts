@@ -258,10 +258,8 @@ export function planGenericSurface(
       entity.entities!.every((member) => readPath(member, 'properties.identity') !== undefined)
         ? 'properties.identity'
         : 'properties.rel';
-    // T33 D50:成员携带已声明动作(纯结构判定,零 class/rel 分支)→ 决策卡词条;
-    // 否则维持导航卡片(member-link)。密度贯通:region 声明 density='table' 时,
-    // 携带动作的成员选 member-table pattern;目录缺该 pattern 时回退决策卡
-    // (回退本身也是通用 pattern 查找,零实体特判);缺省/'card' 行为完全不变。
+    // Table/compare and explicitly declared review queues retain their presentation intent.
+    // Other members use reading rows; their own cognition preserves responsibility cards.
     const membersDeclareActions = entity.entities!.some((member) => member.actions.length > 0);
     const findPattern = (pattern: NonNullable<SurfaceCatalogWord['pattern']>) =>
       Object.entries(catalog.words).find(([, definition]) => definition.pattern === pattern);
@@ -269,8 +267,10 @@ export function planGenericSurface(
     const memberDecision =
       density === 'table' || options.intent === 'compare'
         ? (findPattern('member-table') ?? findPattern('member-row') ?? findPattern('member-card'))
-        : (findPattern('member-row') ??
-          (membersDeclareActions ? findPattern('member-card') : undefined));
+        : density === 'card' && memberTraits?.includes('review-queue')
+          ? (findPattern('member-card') ?? findPattern('member-row'))
+          : (findPattern('member-row') ??
+            (membersDeclareActions ? findPattern('member-card') : undefined));
     const memberLink = findPattern('member-link');
     // T35 F-21:成员状态优先取节点标题(任务语),成员缺 title 时回退 node 名。
     const declaredStatuses = entity.entities!.map((member) => {

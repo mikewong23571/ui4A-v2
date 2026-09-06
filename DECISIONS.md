@@ -1730,6 +1730,6 @@
 - 创建合同改为 caller goal 与 client-owned commandId；复用已有 JSON schema x-ui4a-input-owner 注解，不扩大 FieldDefinition。commandId 固定逻辑提交重试，目标变更或成功后新请求使用新键。纯命令以该键形成合法 thread id，原始 goal 随同一 thread-created 事件原子保存；新只读 thread-input:<id> 引用该不可变创建输入，使用同一 owner 授权，零新事件种类/状态库。此原子来源不要求先独立写一条 chat 消息，替代规划期“来源必须预先单独存在”的假设；接受时来源与对象同时真实存在。相同 owner/key/goal 重试不追加事件，冲突或越权诚实拒绝。CLI/agent 同一 schema，历史不增加双实现。
 - 首页复用 my-work 的授权来源和既有呈现链，当前/历史按线程生命周期语义形成可发现读切片，不在 React 聚合业务事实。普通空态轻量显示且限当前可见范围，工作线独立于 delegation 数量。
 - 操作姿态与表单宿主是呈现选项：ActionGroup 可展开低频操作，ActionRunner 复用同一 RJSF/submit 与可访问 Dialog；默认保留 inline 和已声明动作。high 只表达需确认，不推断 destructive/不可逆。实际安装 primitives 为 radix-ui，复用它而非新增 Base UI 依赖；此为技术栈文档陈旧名称的实况纠正，不更换库。
-- 责任不可因 Recipe/Sidecar 调整而丢失：在既有呈现校验/复用边界校验必需授权引用与动作可达，不另造业务责任清单。catalog/策略改变提升版本使旧结构失效。
+- 责任不可因 Recipe/Sidecar 调整而丢失：在既有呈现校验/复用边界校验必需授权引用与动作可达，不另造业务责任清单。覆盖判定必须按当前事实解析可读标识/必填绑定，并考虑已保存的折叠状态；省略或隐藏责任的 patch/revert/promotion 在写入前拒绝，新责任使不再保全责任的旧 Sidecar 失效并重规划。catalog/策略改变提升版本使旧结构失效。
 - 不修订 D78.4 的 thread specialised 确认门现状，不新增 provider、worker、存储权威或规则智能。
 - 首页 `/` 的无显式 focus 观察由共享 HOME_WORKSPACE_DECLARATION 的源集合构造现有 selection；Web composition 与 clientView 使用同一声明，不新增观察类型/接口或复制事实。首页壳提供“与助手讨论”（打开既有会话）、“发起工作”（canonical threads action 面）与历史链接；不以新chat输入流写业务数据。

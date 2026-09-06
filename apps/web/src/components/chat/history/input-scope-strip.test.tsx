@@ -9,7 +9,7 @@ import { cleanup, render, screen } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 vi.mock('next/navigation', () => ({
-  usePathname: () => '/',
+  usePathname: () => window.location.pathname,
   useSearchParams: () => new URLSearchParams(window.location.search),
   useRouter: () => ({ push: vi.fn() }),
 }));
@@ -45,12 +45,26 @@ describe('InputScopeStrip(当前输入范围与 URL observation 同源)', () => 
     expect(strip.textContent).toContain('注视 idea:x');
   });
 
-  it('无 thread/focus 的 URL:显式「未定位」,不猜当前范围', () => {
-    window.history.replaceState({}, '', '/');
+  it('非首页无 thread/focus 的 URL:显式「未定位」,不猜当前范围', () => {
+    window.history.replaceState({}, '', '/canvas');
     render(<InputScopeStrip />);
     const strip = screen.getByTestId('input-scope-strip');
     expect(strip.getAttribute('data-thread')).toBeNull();
     expect(strip.getAttribute('data-focus')).toBeNull();
     expect(strip.textContent).toContain('未定位');
+  });
+
+  it('首页披露真实声明的根集合,与发送侧 selection 一致', () => {
+    window.history.replaceState({}, '', '/');
+    render(<InputScopeStrip />);
+    const roots = ['inbox', 'threads-current', 'delegations-current'];
+    const strip = screen.getByTestId('input-scope-strip');
+    expect(strip.getAttribute('data-thread')).toBeNull();
+    expect(strip.getAttribute('data-focus')).toBe(roots.join(','));
+    expect(strip.textContent).toContain(`注视 ${roots.join('、')}`);
+    expect(clientViewReportForLocation('home-strip-test', '/').presence.focus).toEqual({
+      selection: roots,
+    });
+    expect(strip.textContent).not.toContain('未定位');
   });
 });

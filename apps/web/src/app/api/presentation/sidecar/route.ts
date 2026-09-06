@@ -86,6 +86,18 @@ async function presentationIdentity(
   }
 }
 
+function responsibilityConflict(): Response {
+  return Response.json(
+    {
+      error: {
+        code: 'presentation-responsibility-stale',
+        detail: 'Replan from the current authorized contract',
+      },
+    },
+    { status: 409, headers: { 'cache-control': 'no-store' } },
+  );
+}
+
 export async function GET(request: Request): Promise<Response> {
   const sidecarId = new URL(request.url).searchParams.get('sidecarId');
   if (sidecarId === null || sidecarId === '') {
@@ -125,15 +137,7 @@ export async function GET(request: Request): Promise<Response> {
   }
   const active = sidecar.versions[sidecar.activeVersion]!;
   if (!(await storedResponsibilityCoverage(sidecar, identity, resolveCompositionSubject))) {
-    return Response.json(
-      {
-        error: {
-          code: 'presentation-responsibility-stale',
-          detail: 'Replan from the current authorized contract',
-        },
-      },
-      { status: 409, headers: { 'cache-control': 'no-store' } },
-    );
+    return responsibilityConflict();
   }
   // T35 F-31:同 sidecarId 会话内可变(重规划 bump activeVersion)——禁缓存,
   // 否则浏览器以旧树应答 in-place reload(批准退场卡残留实测根因)。
@@ -218,6 +222,16 @@ export async function POST(request: Request): Promise<Response> {
       { status: 403 },
     );
   }
+  if (
+    body.action !== 'patch' &&
+    !(await storedResponsibilityCoverage(
+      current,
+      identity,
+      resolveCompositionSubject,
+      body.action === 'revert' ? current.versions[body.targetVersion as number] : undefined,
+    ))
+  )
+    return responsibilityConflict();
   const principal = identity.principal;
 
   if (body.action === 'patch') {
@@ -240,6 +254,13 @@ export async function POST(request: Request): Promise<Response> {
         current.activeVersion,
       );
       if (!applied.ok) return Response.json({ error: applied.reason }, { status: 409 });
+      if (
+        !(await storedResponsibilityCoverage(current, identity, resolveCompositionSubject, {
+          surface: applied.target.surface,
+          view: { collapsedNodeIds: applied.target.collapsedNodeIds },
+        }))
+      )
+        return responsibilityConflict();
       const id = crypto.randomUUID();
       const result = await appendSidecarCommand(getDb(), {
         kind: 'revise',

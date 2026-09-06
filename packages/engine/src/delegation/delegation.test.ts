@@ -313,3 +313,36 @@ describe('project(delegations 投影)', () => {
     expect(project(snapshot, delegationRel('nope'), deps)).toBeUndefined();
   });
 });
+
+it('current delegations exclude terminal work and link to the complete canonical collection', () => {
+  const snapshot = fold(
+    [
+      event('delegation-started', startedDetail()),
+      event(
+        'delegation-started',
+        { ...startedDetail(), delegationId: 'wf-2' },
+        { rel: delegationRel('wf-2') },
+      ),
+      event('delegation-completed', { steps: 0, successes: 0, summary: 'done' }),
+    ],
+    deps,
+  );
+  const current = project(snapshot, 'delegations-current', deps);
+  expect(current?.properties).toMatchObject({
+    rel: 'delegations-current',
+    count: 1,
+    title: '执行中委托',
+  });
+  expect(current?.entities?.map((entity) => entity.properties.status)).toEqual(['running']);
+  expect(current?.entities?.map((entity) => entity.properties.id)).toEqual(['wf-2']);
+  expect(current?.entities?.[0]?.properties).toMatchObject({
+    rel: 'delegation:wf-2',
+    identity: GOAL.verb,
+  });
+  expect(current?.actions).toEqual([]);
+  expect(current?.links).toEqual([
+    { rel: ['self'], href: '/api/entity?rel=delegations-current', title: '执行中委托' },
+    { rel: ['collection'], href: '/api/entity?rel=delegations', title: '全部委托' },
+  ]);
+  expect(project(snapshot, DELEGATIONS_REL, deps)?.properties.count).toBe(2);
+});

@@ -1,7 +1,8 @@
 /** Standing home stories. Authored for the final merged verification, not a per-track server. */
 import { randomUUID } from 'node:crypto';
+import { execFileSync } from 'node:child_process';
 
-import { expect, test, type Page } from '@playwright/test';
+import { expect, test, type Page, type TestInfo } from '@playwright/test';
 import type { SirenEntity } from '@ui4a/engine';
 
 import { terminateStaleNotifyWorkflows } from '../../apps/web/src/temporal/notify';
@@ -53,6 +54,24 @@ async function home(page: Page) {
   await expect(page.getByTestId('canvas-errors')).toHaveCount(0);
 }
 
+async function capture(page: Page, info: TestInfo, name: string) {
+  const imagePath = info.outputPath(`${name}.png`);
+  await page.screenshot({ path: imagePath, fullPage: true });
+  await info.attach(`${name}.png`, {
+    path: imagePath,
+    contentType: 'image/png',
+  });
+  await info.attach(`${name}.json`, {
+    body: JSON.stringify({
+      scenario: name,
+      route: page.url(),
+      viewport: page.viewportSize(),
+      sha: execFileSync('git', ['rev-parse', 'HEAD'], { encoding: 'utf8' }).trim(),
+    }),
+    contentType: 'application/json',
+  });
+}
+
 test.describe.configure({ mode: 'serial' });
 test.beforeEach(() => test.setTimeout(240_000));
 
@@ -84,14 +103,21 @@ test('home shows current work without delegations and separates history under th
     expect(history.actions).toEqual([]);
     expect((await read(page, 'delegations')).entities ?? []).toHaveLength(0);
 
-    for (const width of [1440, 1080, 768, 390]) {
-      await page.setViewportSize({ width, height: 900 });
+    for (const viewport of [
+      { width: 1440, height: 900 },
+      { width: 1080, height: 820 },
+      { width: 768, height: 1024 },
+      { width: 390, height: 844 },
+    ]) {
+      const { width } = viewport;
+      await page.setViewportSize(viewport);
       await home(page);
       await expect(page.locator(`[data-word="member-row"][data-rel="${open}"]`)).toBeVisible();
       await expect(page.locator(`[data-word="member-row"][data-rel="${paused}"]`)).toBeVisible();
       await expect(page.locator(`[data-rel="${completed}"]`)).toHaveCount(0);
       await expect(page.locator('main')).not.toContainText('其他人的私有目标');
-      await expect(page.locator('main')).not.toContainText('当前没有正在推进的工作');
+      await expect(page.locator('main')).toContainText('当前可见列表没有进行中的事项。');
+      await expect(page.locator('main')).not.toContainText(/没有正在推进的工作/);
       expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(
         true,
       );
@@ -102,26 +128,25 @@ test('home shows current work without delegations and separates history under th
       );
       await expect(row.locator('[data-action]:visible')).toHaveCount(0);
       if (width === 1440 || width === 390) {
-        await info.attach(`home-${width}.png`, {
-          body: await page.screenshot({ fullPage: true }),
-          contentType: 'image/png',
-        });
+        await capture(page, info, `home-current-${width}`);
       }
     }
     await page.locator('a[href*="focus=threads-history"]').click();
     await expect(page).toHaveURL(/focus=threads-history/);
     await expect(page.getByText('已经完成的研究', { exact: true })).toBeVisible();
     await expect(page.getByText('归档不代表已经验收', { exact: true })).toBeVisible();
+    await capture(page, info, 'home-history-390');
   }, NO_MODEL);
 });
 
 test('empty home offers goal-only creation; lost accepted response retries once with an auditable original source', async ({
   page,
-}) => {
+}, info) => {
   await withFreshServer(async () => {
     await page.setViewportSize({ width: 390, height: 844 });
     await home(page);
     await expect(page.locator('[data-word="member-row"]')).toHaveCount(0);
+    await capture(page, info, 'home-empty-390');
     await page.getByRole('link', { name: '发起工作', exact: true }).click();
     await expect(page).toHaveURL(/focus=threads/);
     const trigger = page.getByRole('button', { name: '创建工作线', exact: true });
@@ -132,6 +157,7 @@ test('empty home offers goal-only creation; lost accepted response retries once 
     await expect(dialog.getByLabel(/提交标识|目标来源|工作线标识/)).toHaveCount(0);
     const goal = '给下周评审准备可核验的版本差异';
     await dialog.getByRole('textbox', { name: /目标/ }).fill(goal);
+    await capture(page, info, 'home-create-dialog-390');
     const sent: Array<{ goal: string; commandId: string }> = [];
     await page.route('**/api/exec', async (route) => {
       const body = route.request().postDataJSON() as {
@@ -150,6 +176,7 @@ test('empty home offers goal-only creation; lost accepted response retries once 
     });
     await dialog.getByRole('button', { name: '创建工作线', exact: true }).click();
     await expect(dialog.getByRole('alert')).toBeVisible();
+    await capture(page, info, 'home-create-failure-390');
     await dialog.getByRole('button', { name: '关闭', exact: true }).click();
     await expect(trigger).toBeFocused();
     await trigger.click();
@@ -182,12 +209,13 @@ test('empty home offers goal-only creation; lost accepted response retries once 
     await expect(page.getByRole('link', { name: '创建时的目标原文' })).toBeVisible();
     await page.getByRole('link', { name: '创建时的目标原文' }).click();
     await expect(page.locator('main')).toContainText(goal);
+    await capture(page, info, 'home-created-source-390');
   }, NO_MODEL);
 });
 
 test('390px keyboard assistant shares session and unsent draft through work navigation and return', async ({
   page,
-}) => {
+}, info) => {
   await withFreshServer(async () => {
     const rel = await create(page, '保持本次工作的上下文');
     const sessionId = randomUUID();
@@ -199,6 +227,7 @@ test('390px keyboard assistant shares session and unsent draft through work navi
     await page.keyboard.press('Enter');
     const input = page.getByPlaceholder('输入目标…');
     await input.fill('先帮我核对目标，暂时不要执行');
+    await capture(page, info, 'home-assistant-draft-390');
     await page.keyboard.press('Escape');
     await expect(input).not.toBeVisible();
     await expect(discuss).toBeFocused();
@@ -223,9 +252,10 @@ test('390px keyboard assistant shares session and unsent draft through work navi
 
 test('current responsibility stays expanded beside ordinary summary rows and remains actionable', async ({
   page,
-}) => {
+}, info) => {
   await terminateStaleNotifyWorkflows(['c1']);
   await withWorkerServer(async () => {
+    await page.setViewportSize({ width: 1440, height: 900 });
     const rel = await create(page, '普通工作的管理动作按需展开');
     const proposal = await page.request.post(`${SCENARIO_BASE}/api/exec`, {
       data: {
@@ -249,6 +279,7 @@ test('current responsibility stays expanded beside ordinary summary rows and rem
       'aria-expanded',
       'false',
     );
+    await capture(page, info, 'home-responsibility-and-summary-1440');
     await card.getByRole('button', { name: '批准', exact: true }).click();
     await expect(card.getByText('已请求“批准”，尚未执行。')).toBeVisible();
     await card.locator('button[data-action="approve"]').click();

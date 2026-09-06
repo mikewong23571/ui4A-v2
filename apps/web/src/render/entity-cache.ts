@@ -161,10 +161,11 @@ export class PageEntityCache {
   /** 逐出 rel 的缓存/inflight 条目,含全部读面变体键(`rel?readQuery`)。 */
   private evictRel(rel: string): void {
     // The read key may be an entry alias while actions use the returned canonical rel.
-    // Discover aliases from observed contract identity, never from application naming rules.
+    // Discover aliases and read slices from observed identity/collection links. A mutation of
+    // the canonical collection also changes empty, filtered or paged slices of that collection.
     const targets = new Set([rel]);
     for (const [key, entity] of this.entities) {
-      if (key === rel || entity.properties.rel === rel) {
+      if (key === rel || entity.properties.rel === rel || collectionBacklinkOf(entity) === rel) {
         targets.add(key.split('?')[0]);
         if (typeof entity.properties.rel === 'string') targets.add(entity.properties.rel);
       }

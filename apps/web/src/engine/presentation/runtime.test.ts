@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 
 import { contentVersion, type SurfaceNode } from '@ui4a/engine';
-import { completePresentationRequest } from '@ui4a/shared';
+import { completePresentationRequest, HOME_WORKSPACE_DECLARATION } from '@ui4a/shared';
 
 import {
   appendSidecarCommand,
@@ -45,7 +45,7 @@ function expectApplicationSurface(
     ),
   );
   expect(catalogVersions.length).toBeGreaterThan(0);
-  expect(new Set(catalogVersions)).toEqual(new Set(['semantic-v10']));
+  expect(new Set(catalogVersions)).toEqual(new Set([PRESENTATION_SURFACE_CATALOG.version]));
 
   const headings = nodes.filter(
     (node) =>
@@ -92,18 +92,19 @@ describe('durable user Sidecar fastpath', () => {
     const surface = sidecar!.versions[sidecar!.activeVersion]!.surface;
     expect(surface.root).toMatchObject({
       kind: 'layout',
-      children: [
-        { kind: 'slot', name: 'waiting-for-me' },
-        { kind: 'slot', name: 'in-motion' },
-        { kind: 'slot', name: 'work-lines' },
-      ],
+      children: HOME_WORKSPACE_DECLARATION.regions.map(({ region }) => ({
+        kind: 'slot',
+        name: region,
+      })),
     });
-    expect(JSON.stringify(surface)).not.toMatch(/"value":"(?:inbox|delegations|threads)"/);
+    expect(JSON.stringify(surface)).not.toMatch(
+      /"value":"(?:inbox|delegations-current|threads-current)"/,
+    );
     expect(
       sidecar!.versions[sidecar!.activeVersion]!.dependencies.filter(
         (dependency) => dependency.kind === 'entity-contract',
       ),
-    ).toHaveLength(3);
+    ).toHaveLength(HOME_WORKSPACE_DECLARATION.regions.length);
     expect(contentVersion((await getEngine(getDb())).getSnapshot())).toBe(beforeHash);
     expect(
       (await listEvents(getDb())).filter((event) => event.domain !== 'presentation'),
@@ -342,19 +343,22 @@ describe('durable user Sidecar fastpath', () => {
 
   it('keeps denied regions as non-leaking diagnostics and reports partial authorization', async () => {
     const declaration = getBuiltinComposition('my-work')!;
-    const threads = await (await getEngine(getDb())).getEntity('threads');
+    const visibleSource = declaration.regions.find(({ region }) => region === 'work-lines')!.source;
+    const threads = await (await getEngine(getDb())).getEntity(visibleSource);
     const planned = planWorkspaceComposition({
-      rels: ['threads'],
+      rels: [visibleSource],
       entities: [threads],
       declaration,
       regions: declaration.regions.map((region) => ({
         declaration: region,
-        ...(region.source === 'threads' ? { entity: threads } : {}),
+        ...(region.source === visibleSource ? { entity: threads } : {}),
       })),
     });
     expect(planned.partial).toBe(true);
     const serialized = JSON.stringify(planned.surface);
-    expect(serialized.match(/"code":"region-unavailable"/g)).toHaveLength(2);
+    expect(serialized.match(/"code":"region-unavailable"/g)).toHaveLength(
+      declaration.regions.length - 1,
+    );
     expect(serialized).not.toContain('inbox');
     expect(serialized).not.toContain('delegations');
     expect(

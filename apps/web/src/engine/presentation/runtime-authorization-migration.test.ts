@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { completePresentationRequest } from '@ui4a/shared';
+import { completePresentationRequest, HOME_WORKSPACE_DECLARATION } from '@ui4a/shared';
 
 const authorization = vi.hoisted(() => ({
   visible: new Map<string, unknown>(),
@@ -31,6 +31,10 @@ const key = {
   intent: 'authorization migration',
   deviceClass: 'any' as const,
 };
+const homeSources = HOME_WORKSPACE_DECLARATION.regions.map(({ source }) => source);
+const currentThreadsSource = HOME_WORKSPACE_DECLARATION.regions.find(
+  ({ region }) => region === 'work-lines',
+)!.source;
 
 function request(requestId: string) {
   return completePresentationRequest(
@@ -63,14 +67,14 @@ beforeEach(async () => {
 
 describe('durable composition authorization migration', () => {
   it('stales and revises the same Sidecar from partial to full visibility', async () => {
-    await setVisible('threads');
+    await setVisible(currentThreadsSource);
     const first = await getPresentationBroker().present(request('migration:partial'));
     const partial = await findActiveSidecar(getDb(), key);
     expect(first).toMatchObject({ status: 'ready', reasonCode: 'partial-authorization' });
     expect(JSON.stringify(partial?.versions[1]?.surface)).not.toContain('inbox');
     expect(JSON.stringify(partial?.versions[1]?.surface)).not.toContain('delegations');
 
-    await setVisible('inbox', 'delegations', 'threads');
+    await setVisible(...homeSources);
     const second = await getPresentationBroker().present(request('migration:full'));
     const full = await findActiveSidecar(getDb(), key);
 
@@ -82,7 +86,7 @@ describe('durable composition authorization migration', () => {
     expect(full?.activeVersion).toBe(2);
     expect(
       full?.versions[2]?.dependencies.filter(({ kind }) => kind === 'entity-contract'),
-    ).toHaveLength(3);
+    ).toHaveLength(homeSources.length);
     expect(sidecarKinds(await listEvents(getDb()))).toEqual([
       'user-sidecar-instantiated',
       'user-sidecar-staled',
@@ -91,12 +95,12 @@ describe('durable composition authorization migration', () => {
   });
 
   it('stales and revises the same Sidecar from full to partial visibility', async () => {
-    await setVisible('inbox', 'delegations', 'threads');
+    await setVisible(...homeSources);
     const first = await getPresentationBroker().present(request('migration:full-first'));
     expect(first).toMatchObject({ status: 'ready', sidecar: { version: 1 } });
     expect(first).not.toHaveProperty('reasonCode');
 
-    await setVisible('threads');
+    await setVisible(currentThreadsSource);
     const second = await getPresentationBroker().present(request('migration:partial-second'));
     const partial = await findActiveSidecar(getDb(), key);
 

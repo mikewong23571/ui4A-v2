@@ -5,8 +5,9 @@
 > 中间执行必要 Red/Green 定向测试；阶段重度/E2E/真实模型/全量验证集中在合并主仓库后执行。
 > 合并必须保留 T56 在途修改，先集成其最终提交；未完成统一门禁不标 DONE。
 
-**仅规划，全部实施任务未开始。** P0 只读复核可与 T56 并行；代码实施须等待 T56 完成并通过 review，
-记录交接 SHA 后继续。按 workflow 做 Red→Green→Gate、阶段 checkpoint 与 git notes。
+**实施中。** 用户覆盖串行依赖后，P0–P3 已在独立工作树完成定向 Red→Green 与交叉 review。
+已集成 T56 P4.1/P4.2 提交，并将 T57 合并回主仓库；当前统一执行 P4/P5。
+按 workflow 做 Red→Green→Gate、阶段 checkpoint 与 git notes。
 任务/子任务状态须同步，不能以“父项完成/子项未做”或 registry 陈旧状态证明通过。
 
 ## P0 交接、探针与决定
@@ -27,7 +28,7 @@
   - [x] 追加有实证的 DECISIONS，精确替代 D50/D78.2 的组件选择假设，保留 D78 其余边界。
   - [x] 将 S1–S3 出口回写 spec/design/acceptance/plan，复审愿景、接口、大小、同门与责任保全。
 - [x] Task: P0 Phase Verification & Checkpoint
-  - [x] 探针有证据、T56 正式交接成立、未决接口已定案，记录 checkpoint；否则不得开始 P1。
+  - [x] 探针有定向证据、T56 P3 基线已记录、接口已定案；按用户并行授权记录轻量 checkpoint。
 
 ## P1 通用呈现语义与机械门禁
 
@@ -41,7 +42,7 @@
 - [x] Task: P1.3 Red→Green 责任保全与失效
   - [x] 测 Surface 省略/折叠责任、成员/值/schema/授权变化和分页到达；修到各路径行为一致。
 - [x] Task: P1 Phase Verification & Checkpoint
-  - [x] 跑 G1/G2 对应门禁，亲看同一 fixture 的列表/决定卡/表格及其合同，记录 checkpoint。
+  - [x] 完成 G1/G2 定向语义/组件/合同验证与轻量 checkpoint；实际浏览器与重度门禁移至 P4。
 
 ## P2 首页工作简报与来源覆盖
 
@@ -52,7 +53,7 @@
   - [x] 应用发现退为轻入口，保留完整目录与九项上限；不把业务区块写进首页 React。
   - [x] 压缩重复状态、边框、机器标识/图例与空盒子，保留 raw/why 与失败出口。
 - [x] Task: P2 Phase Verification & Checkpoint
-  - [x] 跑 G2/G3 对应故事并审阅首页各状态截图；证明同源而非写死 fixture，记录 checkpoint。
+  - [x] 完成 G2 定向同源/读源故事与轻量 checkpoint；G3 实际首页截图审查移至 P4。
 
 ## P3 输入宿主与首页协作
 
@@ -66,7 +67,7 @@
   - [x] 首页紧凑入口接既有 session，区别讨论/直接创建；页面加载无自动请求/业务写入。
   - [x] 验证首页→T56本线→返回的 observation/clientView、草稿/SSE/停止与历史引用回归。
 - [x] Task: P3 Phase Verification & Checkpoint
-  - [x] 亲走 US04–09，复跑相关合同/组件/E2E，记录 checkpoint；不重复实现 T56 的壳或缓存。
+  - [x] 完成 US04–09 相关合同/组件与轻量 checkpoint；真实浏览器/E2E移至 P4，复用 T56 壳和缓存。
 
 ## P4 全景验证与愿景反例
 
@@ -86,7 +87,14 @@
 - [~] Task: P5.1 Review 实际最终 diff
   - [ ] 创建 review.md，记录 reviewer 独立性、base/HEAD、FR/US/G、截图与架构 A1–A6 复核。
   - [ ] 检查没有新真相/规则助手/每应用分支/业务内视觉DSL/重复session，也未扩大已知执行差异。
-- [ ] Task: P5.2 Review Fixes
+- [~] Task: P5.2 Review Fixes
+  - [x] R1–R8：合并前交叉 review 的字段、分组、unknown、上下文、状态、焦点、Escape、回执已修（edb35f03）。
+  - [x] R9：合并后精确 review-queue 姿态、委托canonical rel/identity与集合回链已修，首轮全仓通过。
+  - [x] R10：空委托覆盖口径与错误子串验收已修（empty-state Red→Green 6项）。
+  - [x] R11：canonical集合变更未失效首页read slice缓存，泛型回链修复（2 Red→4files/33 Green），待浏览器同一行更新验证。
+  - [x] R12：真实绑定与view折叠覆盖已补纯/服务/route负例修复，第二轮全仓通过。
+  - [x] R13：新slice关系回链必须保留工作台/上下文，links mode改Next Link；meta/external/full边界保留，2files/16 Green。
+  - [x] R14：旧E2E书架/CLI参数/banner/portal定位同步新合同，待最终完整浏览器运行。
   - [ ] 将 finding 逐条追加子任务，补复现后修复，记录 commit/受影响故事；无发现不造修复提交。
   - [ ] 复跑受影响门禁与必要全量，更新像素/模型/来源证据，不用旧测试绿灯覆盖新代码。
 - [ ] Task: P5.3 Re-review 与关闭

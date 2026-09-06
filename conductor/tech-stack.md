@@ -23,7 +23,7 @@
 | 认证与委托链(actor/principal) | **Keycloak 26.2+** | RFC 8693 Token Exchange 正式支持,`act` claim 链即信任线 |
 | 确认通知 | Temporal activity + Web Push / SMTP | 重试/超时免费 |
 | 哑表单 / BIOS 编辑器 | **RJSF(react-jsonschema-form)v6** | JSON Schema 直接渲染;field-definition 即输入 |
-| UI 组件库 | **shadcn/ui**(Base UI 底层) | 骨架五面全用现成组件拼 |
+| UI 组件库 | **shadcn/ui**（现行 primitives 使用 Radix UI） | 骨架五面全用现成组件拼 |
 | 聊天 + 生成式 UI | **Vercel AI SDK 5 + assistant-ui** | tool-rendering / UI state 一等公民;`generateObject` 即 clarify 机制 |
 | 机械 diff | **deep-object-diff**(备选 TerminusDB JSON Diff & Patch)+ **react-diff-view** | diff 是纯数据 → 渲染零 AI |
 | 流程图渲染 | **React Flow** | XState 图谱可直接喂 |
@@ -126,3 +126,6 @@ isolated recovery 已验证。最终 Compose 与 K8s Runtime 都 `failed-honest`
 fault injection 未实测，因此不形成 GA、SLA、LTS 或 production-ready 口径，也不标记 T22/Phase
 完成。最终工件与镜像身份见
 [`release-manifest.json`](../release/v0.1.0-experimental.1/release-manifest.json)。
+
+2026-09-06 T57 核实：现有 `apps/web/package.json` 与 UI primitives 使用已安装的 `radix-ui`。
+本次 Dialog 复用该依赖，以上修正既有 Base UI 描述，不是组件框架迁移（D79）。

@@ -1,6 +1,12 @@
 import { parseCognitiveSemanticsProjection } from '../../../contract/cognitive-semantics';
 import { isRecord } from '../internal';
-import type { SurfaceCatalog, SurfaceNode, SurfaceTree, SurfaceWordNode } from '../types';
+import type {
+  SurfaceBinding,
+  SurfaceCatalog,
+  SurfaceNode,
+  SurfaceTree,
+  SurfaceWordNode,
+} from '../types';
 
 export interface ResponsibilitySource {
   subject: string;
@@ -27,6 +33,19 @@ function cognitionOf(entity: Record<string, unknown>) {
   }
 }
 
+function pathValue(value: unknown, path: string): unknown {
+  return path.split('.').reduce<unknown>((current, segment) => {
+    if (typeof current !== 'object' || current === null || !Object.hasOwn(current, segment)) {
+      return undefined;
+    }
+    return (current as Record<string, unknown>)[segment];
+  }, value);
+}
+
+function readableIdentity(value: unknown): value is string {
+  return typeof value === 'string' && value.trim() !== '';
+}
+
 function itemBinding(node: SurfaceWordNode, name: string, path: string): boolean {
   const binding = node.bindings[name];
   return binding?.kind === 'item' && binding.path === path;
@@ -41,12 +60,14 @@ export function validateResponsibilityCoverage(
   surface: SurfaceTree,
   sources: readonly ResponsibilitySource[],
   catalog: SurfaceCatalog,
+  view?: { collapsedNodeIds: readonly string[] },
 ): { valid: boolean; missing: string[] } {
   const entities = new Map<string, Record<string, unknown>>();
   const required = new Map<string, boolean>();
   const identified = new Set<string>();
   const actionable = new Set<string>();
   const visited = new Set<unknown>();
+  const collapsed = new Set(view?.collapsedNodeIds ?? []);
   const collect = (value: unknown, alias?: string) => {
     if (!isRecord(value)) return;
     const rel = canonicalRel(value) ?? alias;
@@ -77,7 +98,13 @@ export function validateResponsibilityCoverage(
       coverNested(child);
     }
   };
+  const resolveBinding = (binding: SurfaceBinding, item?: Record<string, unknown>): unknown => {
+    if (binding.kind === 'item') return pathValue(item, binding.path);
+    const source = entities.get(binding.subject);
+    return binding.kind === 'property' ? pathValue(source, binding.path) : source?.[binding.kind];
+  };
   const visit = (node: SurfaceNode, item?: Record<string, unknown>) => {
+    if (collapsed.has(node.id)) return;
     if (node.kind === 'layout') node.children.forEach((child) => visit(child, item));
     else if (node.kind === 'slot') visit(node.child, item);
     else if (node.kind === 'repeat') {
@@ -91,12 +118,28 @@ export function validateResponsibilityCoverage(
     } else if (node.kind === 'word') {
       const definition = catalog.words[node.word];
       if (definition === undefined) return;
+      const values = Object.fromEntries(
+        Object.entries(node.bindings).map(([name, binding]) => [
+          name,
+          resolveBinding(binding, item),
+        ]),
+      );
+      // Structural validation cannot prove a reference resolves on this authorized live item.
+      // An unrenderable word proves neither its own identity nor nested responsibility links.
+      if (
+        Object.entries(definition.bindings).some(
+          ([name, binding]) =>
+            binding.required && (values[name] === undefined || values[name] === null),
+        )
+      )
+        return;
       const pattern = definition.pattern;
       if (item !== undefined && itemBinding(node, 'rel', 'properties.rel')) {
         const rel = canonicalRel(item);
         const row =
           pattern === 'member-row' && itemBinding(node, 'cognitive', 'properties.presentation');
         const decision = pattern === 'member-card' || pattern === 'member-table' || row;
+        if (decision && (!readableIdentity(values.label) || !readableIdentity(values.rel))) return;
         if (rel !== undefined && decision) {
           identified.add(rel);
           if (itemBinding(node, 'actions', 'actions')) actionable.add(rel);
@@ -107,10 +150,14 @@ export function validateResponsibilityCoverage(
       }
       for (const [name, binding] of Object.entries(node.bindings)) {
         if (!definition.bindings[name]?.sources.includes(binding.kind)) continue;
-        if (binding.kind === 'property' && node.role === 'identity') {
+        if (
+          binding.kind === 'property' &&
+          node.role === 'identity' &&
+          readableIdentity(values[name])
+        ) {
           identified.add(relOf(binding.subject));
         }
-        if (binding.kind === 'actions' && node.role === 'actions') {
+        if (binding.kind === 'actions' && node.role === 'actions' && Array.isArray(values[name])) {
           actionable.add(relOf(binding.subject));
         }
       }

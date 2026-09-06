@@ -733,8 +733,17 @@ describe('generic semantic fallback planner', () => {
       word: 'member-card',
     });
 
-    // 密度只影响携带动作的成员词选择;无动作成员仍走 member-link。
+    // 显式比较密度不依赖动作存在性;无动作也用可比较的表格。
     expect(plan('col:plain', plain, withTable, 'table')).toMatchObject({
+      kind: 'word',
+      word: 'member-table',
+      bindings: {
+        label: { kind: 'item', path: 'properties.identity' },
+        actions: { kind: 'item', path: 'actions' },
+      },
+    });
+    // 未声明比较密度且目录没有摘要行时,无动作对象保持可导航链接。
+    expect(plan('col:plain', plain, withTable)).toMatchObject({
       kind: 'word',
       word: 'member-link',
     });

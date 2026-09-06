@@ -5,7 +5,7 @@
   "status": "in_progress",
   "createdAt": "2026-09-06",
   "updatedAt": "2026-09-06",
-  "description": "以产品愿景组织首页注意力，按任务语义选择列表/决定卡/表格/输入宿主，复用同一合同与呈现平面，补齐组件层防特判门禁；含架构承载审查与实施后 review 闭环，当前仅规划。",
+  "description": "以产品愿景组织首页注意力，按任务语义选择列表/决定卡/表格/输入宿主，复用同一合同与呈现平面，补齐组件层防特判门禁；含架构承载审查与实施后 review 闭环，实现已合并主仓库，正在统一验证与最终 review。",
   "dependsOn": [
     "t56-work-thread-workspace_20260905"
   ],
@@ -16,7 +16,9 @@
     "design.md",
     "acceptance.md",
     "plan.md",
-    "planning-review.md"
+    "planning-review.md",
+    "evidence.md",
+    "review.md"
   ],
   "dependencyMode": "parallel-implementation-integration-before-closeout",
   "implementationBase": "bf58603d",

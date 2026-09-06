@@ -6,7 +6,7 @@
 > 合并必须保留 T56 在途修改，先集成其最终提交；未完成统一门禁不标 DONE。
 
 
-**状态：new，规划完成，未实施。** 用户本轮要求新 track 与整体架构承载/愿景审查；不启动产品实现或部署。
+**状态：in_progress。** 实现已从独立 worktree 合并主仓库，正在统一验收与实施后复审；不包含部署。
 
 ## 自包含执行入口
 
@@ -17,6 +17,7 @@
 5. [Plan](./plan.md)：P0–P5、TDD、实施后 review/fix/re-review。
 6. [Planning Review](./planning-review.md)：规划自审，不能替代实施验收。
 7. [Metadata](./metadata.json)：状态及依赖。
+8. [Evidence](./evidence.md) 与 [Review](./review.md)：执行证据和实际 diff 复审。
 
 无需原聊天、个人 memory、线上测试账号或临时示意图即可理解范围。仓库根的 `AGENTS.md`、
 `GOAL.md`、`DECISIONS.md` 优先；另读 `conductor/product-vision.md`、`product.md`、
@@ -31,9 +32,9 @@ T57 负责**首页**的注意力组织、通用组件姿态/动作披露、低�
 
 - 规划时 T56 已提交 P0/D78，plan 有 P1/P2 在进行；metadata/registry 仍写 new，存在状态不同步。
   不能只凭 registry 判断未开工，也不由 T57 改写其他正在执行的 track。
-- T57 P0 的只读对照可先做；正式代码任务 P1–P5 **依赖 T56 完成并通过 review，且共用文件无在途改动**。
-  启动时重查实际任务、提交、证据与工作树；记录交接 SHA。
-- 若 T56 尚未交付，继续完成独立规划/探针设计，不擅自接管它的实现，不降低验收。
+- 用户后续授权覆盖原串行依赖：T57 从 T56 P3 提交 bf58603d 独立实施，再集成其 P4.1/P4.2。
+  T56 在途修改由原 agent 负责；合并前检查 clean 状态，冲突保留双方故事与新创建合同。
+- 统一验收覆盖双方共用模块；不由 T57 改写或关闭 T56，不降低 T57 自身验收。
 
 ## 给 coding agent 的任务合同
 

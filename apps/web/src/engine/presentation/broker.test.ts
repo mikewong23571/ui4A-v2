@@ -1,6 +1,10 @@
 import { describe, expect, it, vi } from 'vitest';
 
-import { completePresentationRequest, type PresentationRequest } from '@ui4a/shared';
+import {
+  completePresentationRequest,
+  HOME_WORKSPACE_DECLARATION,
+  type PresentationRequest,
+} from '@ui4a/shared';
 
 import { createWebPresentationBroker } from './broker';
 
@@ -135,8 +139,11 @@ describe('web Presentation Broker adapter', () => {
   });
 
   it('reauthorizes workspace regions in declaration order and keeps unavailable slots', async () => {
+    const unavailableSource = HOME_WORKSPACE_DECLARATION.regions.find(
+      ({ region }) => region === 'in-motion',
+    )!.source;
     const getEntity = vi.fn(async (rel: string) =>
-      rel === 'delegations' ? undefined : { properties: { rel } },
+      rel === unavailableSource ? undefined : { properties: { rel } },
     );
     const resolve = vi.fn(async (_candidate, situation) => {
       expect(
@@ -144,11 +151,12 @@ describe('web Presentation Broker adapter', () => {
           region.declaration.region,
           region.entity,
         ]),
-      ).toEqual([
-        ['waiting-for-me', { properties: { rel: 'inbox' } }],
-        ['in-motion', undefined],
-        ['work-lines', { properties: { rel: 'threads' } }],
-      ]);
+      ).toEqual(
+        HOME_WORKSPACE_DECLARATION.regions.map(({ region, source }) => [
+          region,
+          source === unavailableSource ? undefined : { properties: { rel: source } },
+        ]),
+      );
       return { kind: 'ready' as const, reasonCode: 'partial-authorization' };
     });
     const broker = createWebPresentationBroker({ getEntity, resolve });
@@ -163,8 +171,12 @@ describe('web Presentation Broker adapter', () => {
       status: 'ready',
       reasonCode: 'partial-authorization',
     });
-    expect(getEntity.mock.calls.map(([rel]) => rel)).toEqual(['inbox', 'delegations', 'threads']);
-    expect(getEntity).toHaveBeenCalledWith('threads', 'local-user', ['publishing']);
+    expect(getEntity.mock.calls.map(([rel]) => rel)).toEqual(
+      HOME_WORKSPACE_DECLARATION.regions.map(({ source }) => source),
+    );
+    for (const { source } of HOME_WORKSPACE_DECLARATION.regions) {
+      expect(getEntity).toHaveBeenCalledWith(source, 'local-user', ['publishing']);
+    }
   });
 
   it('threads the trusted granted applications into entity authorization', async () => {
@@ -234,6 +246,6 @@ describe('web Presentation Broker adapter', () => {
 
     await broker.present(workspace('workspace:fresh:1'));
     await broker.present(workspace('workspace:fresh:2'));
-    expect(getEntity).toHaveBeenCalledTimes(6);
+    expect(getEntity).toHaveBeenCalledTimes(HOME_WORKSPACE_DECLARATION.regions.length * 2);
   });
 });

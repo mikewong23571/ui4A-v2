@@ -9,9 +9,28 @@ import {
   entityPageHref,
   locationHrefWithChanges,
   withThreadTarget,
+  workspaceContractHref,
 } from './navigation';
 
 describe('explicit URL navigation', () => {
+  it('routes only local contract links and drops unsafe return targets', () => {
+    const route = '/canvas?scope=publishing&thread=review&returnTo=%2F%2Fevil.example&focus=old';
+    expect(workspaceContractHref(route, '/api/entity?rel=threads')).toBe(
+      '/canvas?focus=threads&scope=publishing&thread=review',
+    );
+    expect(workspaceContractHref(route, '/_meta/api/entity?rel=activation%3Aone')).toBe(
+      '/meta/entity?rel=activation%3Aone&scope=publishing&thread=review',
+    );
+    for (const href of [
+      'https://docs.example/api/entity?rel=threads',
+      '//docs.example/api/entity?rel=threads',
+      '/\u005cdocs.example/api/entity?rel=threads',
+      '/search?rel=threads',
+      '/api/entity',
+      '/api/entity?rel=',
+    ])
+      expect(workspaceContractHref(route, href)).toBeNull();
+  });
   it('enters the directory with explicit attention context but no stale focus', () => {
     expect(
       applicationDirectoryHref(

@@ -80,16 +80,21 @@ describe('首页 `/` 页面边界', () => {
     expect(screen.getByTestId('shared-presentation-host')).toBeTruthy();
   });
 
-  it('不再渲染旧首页的硬编码内容面;书架层(应用目录条)先于主面(F-23)', () => {
+  it('目标入口和共享工作面优先,应用发现位于主面后的默认折叠区域', () => {
     const { container } = render(<Home />);
     const host = screen.getByTestId('shared-presentation-host');
-
-    // T35 F-23:首页 = 应用目录条(壳级书架,数据来自 sitemap)+ 主面;两者都不是
-    // 旧首页的硬编码内容面。
-    expect(container.childElementCount).toBe(2);
-    expect(container.firstElementChild?.getAttribute('data-testid')).toBe(
-      'application-entry-strip',
+    const heading = screen.getByRole('heading', { level: 1, name: '我的事' });
+    const header = heading.closest('header');
+    const applications = screen.getByText('应用与能力').closest('details');
+    expect(Array.from(container.children)).toEqual([header, host, applications]);
+    expect(header?.contains(screen.getByRole('button', { name: '与助手讨论' }))).toBe(true);
+    expect(screen.getByRole('link', { name: '发起工作' }).getAttribute('href')).toBe(
+      '/canvas?focus=threads',
     );
-    expect(container.lastElementChild).toBe(host);
+    expect(screen.getByRole('link', { name: '已结束的工作' }).getAttribute('href')).toBe(
+      '/canvas?focus=threads-history',
+    );
+    expect(applications?.open).toBe(false);
+    expect(applications?.contains(screen.getByTestId('application-entry-strip'))).toBe(true);
   });
 });

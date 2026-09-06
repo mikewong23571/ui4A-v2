@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it } from 'vitest';
-import { completePresentationRequest } from '@ui4a/shared';
+import { completePresentationRequest, HOME_WORKSPACE_DECLARATION } from '@ui4a/shared';
 
 import {
   appendSidecarCommand,
@@ -198,14 +198,15 @@ describe('Sidecar human lifecycle route', () => {
 
   it('fails partial workspace promotion closed', async () => {
     const declaration = getBuiltinComposition('my-work')!;
-    const threads = await (await getEngine(getDb())).getEntity('threads');
+    const visibleSource = declaration.regions.find(({ region }) => region === 'work-lines')!.source;
+    const threads = await (await getEngine(getDb())).getEntity(visibleSource);
     const partial = planWorkspaceComposition({
-      rels: ['threads'],
+      rels: [visibleSource],
       entities: [threads],
       declaration,
       regions: declaration.regions.map((region) => ({
         declaration: region,
-        ...(region.source === 'threads' ? { entity: threads } : {}),
+        ...(region.source === visibleSource ? { entity: threads } : {}),
       })),
     });
     expect(partial.partial).toBe(true);
@@ -241,11 +242,14 @@ describe('Sidecar human lifecycle route', () => {
         };
       };
     };
-    expect(explanation.explanation.composition?.regions.map(({ region }) => region)).toEqual([
-      'waiting-for-me',
-      'in-motion',
-      'work-lines',
-    ]);
+    expect(explanation.explanation.composition?.regions.map(({ region }) => region)).toEqual(
+      declaration.regions.map(({ region }) => region),
+    );
+    expect(
+      explanation.explanation.composition?.regions.filter(
+        ({ availability }) => availability === 'available',
+      ),
+    ).toEqual([expect.objectContaining({ region: 'work-lines' })]);
     const unavailable = explanation.explanation.composition?.regions.find(
       ({ availability }) => availability === 'unavailable',
     );
@@ -311,15 +315,14 @@ describe('Sidecar human lifecycle route', () => {
       explanation: {
         composition: {
           id: 'my-work',
-          version: '2',
-          regions: [
-            { region: 'waiting-for-me', availability: 'available' },
-            { region: 'in-motion', availability: 'available' },
-            { region: 'work-lines', availability: 'available' },
-          ],
+          version: HOME_WORKSPACE_DECLARATION.version,
+          regions: HOME_WORKSPACE_DECLARATION.regions.map(({ region }) => ({
+            region,
+            availability: 'available',
+          })),
           declarationProvenance: {
             kind: 'composition-declaration',
-            ref: 'composition:my-work@2',
+            ref: `composition:my-work@${HOME_WORKSPACE_DECLARATION.version}`,
           },
         },
       },
@@ -328,7 +331,7 @@ describe('Sidecar human lifecycle route', () => {
     expect(response.status).toBe(200);
     await expect(response.json()).resolves.toMatchObject({
       diff: {
-        subjectSlots: ['waiting-for-me', 'in-motion', 'work-lines'],
+        subjectSlots: HOME_WORKSPACE_DECLARATION.regions.map(({ region }) => region),
         parameterized: true,
       },
     });

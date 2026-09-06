@@ -147,3 +147,23 @@ export function citationCanvasHref(route: string, rel: string): string {
   appendSituationDeclarations(params, source);
   return withThreadTarget(`/canvas?${params.toString()}`, rel);
 }
+
+/** Workspace relationship links keep context; only local entity-contract endpoints are routed. */
+export function workspaceContractHref(route: string, href: string): string | null {
+  if (!href.startsWith('/') || href.startsWith('//')) return null;
+  const target = new URL(href, 'http://ui4a.local');
+  if (target.origin !== 'http://ui4a.local') return null;
+  if (target.pathname !== '/api/entity' && target.pathname !== '/_meta/api/entity') return null;
+  const rel = target.searchParams.get('rel');
+  if (rel === null || rel === '') return null;
+  if (
+    target.pathname === '/_meta/api/entity' ||
+    rel.startsWith('meta/') ||
+    rel.startsWith('draft:')
+  ) {
+    const params = new URLSearchParams({ rel });
+    appendSituationDeclarations(params, new URL(route, 'http://ui4a.local'));
+    return `/meta/entity?${params.toString()}`;
+  }
+  return citationCanvasHref(route, rel);
+}

@@ -5,7 +5,7 @@ import { expect, test } from '@playwright/test';
 test('首页返回 HTTP 200 且 App 壳存在', async ({ page }) => {
   const response = await page.goto('/');
   expect(response?.status()).toBe(200);
-  await expect(page.locator('header')).toBeVisible();
+  await expect(page.getByRole('banner')).toBeVisible();
   await expect(page.locator('header a[data-nav="home"]').first()).toBeVisible();
   await expect(page.locator('main')).toBeVisible();
 });

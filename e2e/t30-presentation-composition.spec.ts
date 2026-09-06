@@ -8,6 +8,7 @@ import type {
   UserSidecarKey,
 } from '@ui4a/engine';
 import { contentVersion, fold } from '@ui4a/engine';
+import { HOME_WORKSPACE_DECLARATION } from '../packages/shared/src/presentation/composition';
 
 import { listEvents, readLog } from '../packages/db/src/events';
 import { getPool } from '../packages/db/src/pool';
@@ -99,10 +100,16 @@ test('my-work request renders one binding-only three-region Canvas and replays i
       kind: 'layout',
       children: [
         { kind: 'slot', name: 'waiting-for-me' },
-        { kind: 'slot', name: 'in-motion' },
         { kind: 'slot', name: 'work-lines' },
+        { kind: 'slot', name: 'in-motion' },
       ],
     });
+
+    expect(HOME_WORKSPACE_DECLARATION.regions.map(({ source }) => source)).toEqual([
+      'inbox',
+      'threads-current',
+      'delegations-current',
+    ]);
 
     const bindings: Array<{
       nodeId: string;
@@ -121,11 +128,11 @@ test('my-work request renders one binding-only three-region Canvas and replays i
       }
     });
     expect(new Set(bindings.map(({ binding }) => binding.subject))).toEqual(
-      new Set(['inbox', 'delegations', 'threads']),
+      new Set(['inbox', 'threads-current', 'delegations-current']),
     );
 
     const entities = new Map<string, SirenEntity>();
-    for (const rel of ['inbox', 'delegations', 'threads']) {
+    for (const rel of ['inbox', 'threads-current', 'delegations-current']) {
       const entityResponse = await fetch(
         `${SCENARIO_BASE}/api/entity?rel=${encodeURIComponent(rel)}`,
       );
@@ -153,7 +160,9 @@ test('my-work request renders one binding-only three-region Canvas and replays i
       expect(hydration.values[nodeId]?.[name]).toEqual(snapshotValue);
       comparedPropertySubjects.add(binding.subject);
     }
-    expect(comparedPropertySubjects).toEqual(new Set(['inbox', 'delegations', 'threads']));
+    expect(comparedPropertySubjects).toEqual(
+      new Set(['inbox', 'threads-current', 'delegations-current']),
+    );
     for (const repeat of repeats) {
       expect(hydration.repeats[repeat.nodeId]).toEqual(entities.get(repeat.subject)?.entities);
     }
@@ -162,11 +171,11 @@ test('my-work request renders one binding-only three-region Canvas and replays i
     // Cold dev-compile grace window(与 t33-a 冷启动兜底同口径):非减窗不断言。
     await expect(page.locator('[data-surface]')).toHaveCount(1, { timeout: 30_000 });
     await expect(page.locator('[data-testid="canvas-errors"]')).toHaveCount(0);
-    // T33:区域 self 链接标签优先合同 title(在等我/在动/我的工作线),rel 退居 href。
+    // 固定 my-work 区域标签与当前来源切片同合同;rel 退居 href。
     const regionTitles: Record<string, string> = {
       inbox: '在等我',
-      delegations: '在动',
-      threads: '我的工作线',
+      'threads-current': '继续工作',
+      'delegations-current': '执行中委托',
     };
     for (const [rel, title] of Object.entries(regionTitles)) {
       expect(entities.get(rel)?.properties.rel).toBe(rel);

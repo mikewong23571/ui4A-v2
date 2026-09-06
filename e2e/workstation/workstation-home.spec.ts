@@ -5,6 +5,8 @@ import { promisify } from 'node:util';
 import { expect, test, type Request, type Response } from '@playwright/test';
 import type { SurfaceBinding, SurfaceNode, SurfaceTree } from '@ui4a/engine';
 
+import { HOME_WORKSPACE_DECLARATION } from '../../packages/shared/src/presentation/composition';
+
 import { MECHANISM_WORDS } from '../../apps/web/src/lib/mechanism-words';
 import {
   SCENARIO_BASE,
@@ -38,8 +40,18 @@ const SOURCE_REGIONS = [
     title: '在等我',
     emptyMeaning: 'no-current-responsibility',
   },
-  { region: 'in-motion', rel: 'delegations', title: '在动', emptyMeaning: 'nothing-in-motion' },
-  { region: 'work-lines', rel: 'threads', title: '我的工作线', emptyMeaning: 'ready-to-start' },
+  {
+    region: 'work-lines',
+    rel: 'threads-current',
+    title: '继续工作',
+    emptyMeaning: 'ready-to-start',
+  },
+  {
+    region: 'in-motion',
+    rel: 'delegations-current',
+    title: '执行中委托',
+    emptyMeaning: 'nothing-in-motion',
+  },
 ] as const;
 
 interface CliEnvelope<T> {
@@ -160,6 +172,9 @@ test('workstation home and the real CLI read the same three declared source enti
       },
     });
 
+    expect(
+      HOME_WORKSPACE_DECLARATION.regions.map(({ region, source }) => ({ region, rel: source })),
+    ).toEqual(SOURCE_REGIONS.map(({ region, rel }) => ({ region, rel })));
     const entities = new Map<string, SirenEntity>();
     for (const { rel, title, emptyMeaning } of SOURCE_REGIONS) {
       const entity = expectSuccess(await cli<SirenEntity>('entities', 'get', rel), 'entities.get');
@@ -168,7 +183,13 @@ test('workstation home and the real CLI read the same three declared source enti
       expect(entity.properties.presentation).toEqual({
         fields: [{ path: 'properties.title', title: '标题', role: 'identity' }],
         emptyMeaning,
+        ...(rel === 'threads-current' ? { version: 1, traits: ['work-queue'] } : {}),
       });
+      const response = await page.request.get(`${SCENARIO_BASE}/api/entity`, {
+        params: { rel, scope: 'publishing' },
+      });
+      expect(response.ok()).toBe(true);
+      expect(await response.json()).toEqual(entity);
       entities.set(rel, entity);
     }
 
@@ -222,8 +243,10 @@ test('workstation home and the real CLI read the same three declared source enti
     // 成员链接;区域的声明动作仍是 action-backed(创建工作线按钮在下文走合同)。
 
     const mainText = await page.locator('main').innerText();
-    // 完整用途由应用目录承接；首页只显示有界缩略入口。
+    // 应用发现默认折叠且位于工作面之后,展开后完整目录入口仍可达。
     const shelf = page.getByTestId('application-entry-strip');
+    await expect(shelf).not.toBeVisible();
+    await page.getByText('应用与能力', { exact: true }).click();
     await expect(shelf.getByRole('link', { name: '全部应用' })).toBeVisible();
     await expect(shelf.getByText(/只有人类审批才能激活版本/, { exact: false })).toHaveCount(0);
     const forbiddenFirstScreenWords = [
@@ -273,7 +296,7 @@ test('waiting-for-me 成员决策卡:批准两段确认零导航零参数,同一
     expect(((await propose.json()) as { status?: string }).status).toBe('suspended');
 
     // 建线先于首次 Presentation 规划(work-lines 为 invalidate 区域,成员
-    // 变化重规划;首版规划即见带动作成员 → 决策卡)。
+    // 变化重规划;普通工作线以摘要行呈现,责任仍是决定卡)。
     const created = await fetch(`${SCENARIO_BASE}/api/exec`, {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
@@ -301,7 +324,7 @@ test('waiting-for-me 成员决策卡:批准两段确认零导航零参数,同一
     await expect(surface).toHaveCount(1);
 
     // 在等我区域:成员渲染为决策卡(身份行 = 投影携带的任务语言 identity);
-    // 工作线的建线成员同为决策卡(成员带已声明动作),按文本分别定位。
+    // 普通工作线以摘要行呈现,不因管理动作被误作当前责任。
     const card = surface.locator('[data-word="member-card"]', {
       // G03(T54):身份行携带风险标注(archive 声明 requires-confirmation=high)。
       hasText: 'archive〔需high确认〕 · 由 agent 提议',
@@ -339,20 +362,47 @@ test('waiting-for-me 成员决策卡:批准两段确认零导航零参数,同一
     expect(decision?.actor).toBe('human');
     expect(decision?.channel).toBe('confirmation');
 
-    // 投影随事件更新:重载后在等我清零,确认决策卡退场;工作线成员卡呈现
-    // 目标 +「停在「进行中」」(T35 D-2 成员状态标题化;active 空回退线程状态,投影数据,零渲染器模板)。
+    // 批准后责任退场;工作线仍是无重复状态的摘要,管理动作保留真实合同能力。
     await page.reload();
     await expect(
       page.locator('[data-word="member-card"]', {
         hasText: 'archive〔需high确认〕 · 由 agent 提议',
       }),
     ).toHaveCount(0);
-    const threadCard = page.locator('[data-word="member-card"]', {
-      hasText: 'T33 验收工作线',
+    const threadRow = page.locator('[data-word="member-row"][data-rel="thread:release-t33"]');
+    await expect(threadRow).toHaveCount(1);
+    await expect(
+      threadRow.getByRole('link', { name: 'T33 验收工作线', exact: true }),
+    ).toBeVisible();
+    await expect(threadRow.getByText('进行中', { exact: true })).toHaveCount(1);
+    await expect(threadRow).not.toContainText('停在');
+    await expect(threadRow.locator('[data-action]:visible')).toHaveCount(0);
+    const more = threadRow.getByRole('button', { name: '更多操作' });
+    await expect(more).toHaveAttribute('aria-expanded', 'false');
+    await more.click();
+    await expect(threadRow.getByTestId('thread-add-material')).toBeEnabled();
+    const pauseResponse = page.waitForResponse(
+      (response) =>
+        response.request().method() === 'POST' &&
+        new URL(response.url()).pathname === '/api/exec' &&
+        response.request().postDataJSON().action === 'pause',
+    );
+    await threadRow.getByRole('button', { name: '暂停工作线', exact: true }).click();
+    const paused = await pauseResponse;
+    expect(paused.ok()).toBe(true);
+    expect(paused.request().postDataJSON()).toMatchObject({
+      rel: 'thread:release-t33',
+      action: 'pause',
     });
-    await expect(threadCard).toHaveCount(1);
-    await expect(threadCard).toContainText('停在「进行中」');
-    await expect(threadCard).toContainText('添加涉及对象');
+    const currentThread = (await (
+      await page.request.get(`${SCENARIO_BASE}/api/entity?rel=thread%3Arelease-t33`)
+    ).json()) as SirenEntity;
+    expect(currentThread.properties.status).toBe('paused');
+    expect(currentThread.properties.statusText).toBe('已暂停');
+    expect(currentThread.properties).not.toHaveProperty('resume');
+    await expect(threadRow.getByText('已暂停', { exact: true })).toHaveCount(1);
+    await expect(threadRow.getByText('已暂停', { exact: true })).toBeVisible();
+    await expect(threadRow.getByText('进行中', { exact: true })).toHaveCount(0);
     const inbox = (await (await fetch(`${SCENARIO_BASE}/api/entity?rel=inbox`)).json()) as {
       properties: { count: number };
     };

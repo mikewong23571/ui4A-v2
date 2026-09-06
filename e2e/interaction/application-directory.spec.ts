@@ -21,11 +21,24 @@ for (const width of [390, 640, 768, 1512]) {
     });
     await page.goto('/?scope=old&thread=release-1&returnTo=%2Fthreads');
     const shelf = page.getByTestId('application-entry-strip');
+    const discovery = page.locator('details').filter({
+      has: page.getByText('应用与能力', { exact: true }),
+    });
+    await expect(discovery).toHaveJSProperty('open', false);
+    await expect(shelf).not.toBeVisible();
+    await discovery.locator('summary').click();
+    await expect(discovery).toHaveJSProperty('open', true);
+    await expect(shelf).toBeVisible();
     const entries = shelf.locator('a[data-nav^="local:app-entry:"]');
     await expect(entries).toHaveCount(7);
     const originalHeight = (await shelf.boundingBox())!.height;
     count = 30;
     await page.reload();
+    await expect(discovery).toHaveJSProperty('open', false);
+    await expect(shelf).not.toBeVisible();
+    await discovery.locator('summary').click();
+    await expect(discovery).toHaveJSProperty('open', true);
+    await expect(shelf).toBeVisible();
     await expect(entries).toHaveCount(9);
     await expect(entries).toHaveText(applications.slice(0, 9).map((app) => app.title));
     await expect(shelf).toContainText('30 个');

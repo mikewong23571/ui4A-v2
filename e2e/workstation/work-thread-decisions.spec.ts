@@ -135,8 +135,11 @@ test.describe('work-thread decisions', () => {
       await page.locator('[data-desk-entry="article-drafting:main"] a').click();
       const next = page.locator('[data-action-group-item="next"]');
       await next.locator('button[data-presentation-action="open-form"]').click();
-      await page.getByRole('textbox', { name: /文章标题/ }).fill('T56 US03 推进');
-      await next.locator('form button[data-action="next"]').click();
+      // 短任务表单挂在 Dialog portal；以该声明动作的标题定位精确宿主。
+      const nextDialog = page.getByRole('dialog', { name: '下一步', exact: true });
+      await expect(nextDialog).toBeVisible();
+      await nextDialog.getByRole('textbox', { name: /文章标题/ }).fill('T56 US03 推进');
+      await nextDialog.locator('form').getByRole('button', { name: '下一步', exact: true }).click();
       // 对象面自身先见合同状态变化(分类 = classification 节点标题)。
       await expect(page.locator('main')).toContainText('分类', { timeout: 15_000 });
 

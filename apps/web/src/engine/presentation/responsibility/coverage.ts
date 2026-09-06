@@ -14,6 +14,7 @@ import type { CompositionSubjectResolver } from '../sidecar-authorization';
 export function hasResponsibilityCoverage(
   surface: SurfaceTree,
   root: Pick<AuthorizedRoot, 'rels' | 'entities'>,
+  view?: { collapsedNodeIds: readonly string[] },
 ): boolean {
   return validateResponsibilityCoverage(
     surface,
@@ -22,6 +23,7 @@ export function hasResponsibilityCoverage(
       entity: root.entities[index],
     })),
     PRESENTATION_SURFACE_CATALOG,
+    view,
   ).valid;
 }
 
@@ -34,9 +36,10 @@ export async function storedResponsibilityCoverage(
   sidecar: UserSidecarAggregate,
   trusted: { principal: string; grantedApplications: readonly string[] },
   resolveComposition: CompositionSubjectResolver = resolveBuiltinCompositionSubject,
+  candidate?: { surface: SurfaceTree; view?: { collapsedNodeIds: readonly string[] } },
 ): Promise<boolean> {
   if (sidecar.key.principal !== trusted.principal) return false;
-  const active = sidecar.versions[sidecar.activeVersion];
+  const active = candidate ?? sidecar.versions[sidecar.activeVersion];
   if (active === undefined) return false;
   try {
     const subject = sidecar.key.subject;
@@ -61,10 +64,14 @@ export async function storedResponsibilityCoverage(
     const visible = authorized.filter(
       ({ result }) => result.kind === 'authorized' && result.entity !== undefined,
     );
-    return hasResponsibilityCoverage(active.surface, {
-      rels: visible.map(({ rel }) => rel),
-      entities: visible.map(({ result }) => result.entity),
-    });
+    return hasResponsibilityCoverage(
+      active.surface,
+      {
+        rels: visible.map(({ rel }) => rel),
+        entities: visible.map(({ result }) => result.entity),
+      },
+      active.view,
+    );
   } catch {
     return false;
   }

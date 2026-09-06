@@ -7,6 +7,11 @@
  *   actions(共享 ActionGroup/ActionRunner,data-action 标注)、links(合同 href → 页面路由);
  * - 与 entity-view 复用同一 contract-driven 动作组,不经页面或实体类型组装。
  */
+import Link from 'next/link';
+import type { SirenEntity } from '@ui4a/engine';
+import { useLocationObservation } from '@/presence/location';
+import { workspaceContractHref } from '@/presence/navigation';
+
 import { entityPageHref } from '../../components/entity-view';
 import { hrefToRel } from '../../components/contract-href';
 import { ActionGroup } from '../../components/actions/action-group';
@@ -34,39 +39,7 @@ export function DetailWord(props: WordProps) {
   // 壳;self 指回实体自身,卡题已在场,属重复噪音——通通不渲染(空区块即留白)。
   // T40 F-06:机械 rel 标签(Badge)退守 raw 层(RawContractDrawer),首屏主文案
   // 为链接 title/target 任务语言。
-  if (mode === 'links') {
-    const navigable = entity.links.filter((link) => !link.rel.includes('self'));
-    // 词条组件类型要求返回元素:空区块以隐藏节段留白(不渲染任何可交互内容)。
-    if (navigable.length === 0) {
-      return <section data-word="detail" aria-label="链接" className="hidden" />;
-    }
-    return (
-      <section data-word="detail" aria-label="链接" className="text-xs text-muted-foreground">
-        <ul className="flex flex-wrap items-center gap-x-3 gap-y-1">
-          {navigable.map((link) => {
-            const target = hrefToRel(link.href);
-            return (
-              <li key={`${link.rel.join('/')}:${link.href}`} className="flex items-center gap-1.5">
-                {target !== null ? (
-                  <a
-                    href={entityPageHref(target)}
-                    data-nav={link.rel[0]}
-                    className="text-muted-foreground hover:text-foreground hover:underline"
-                  >
-                    {link.title ?? target}
-                  </a>
-                ) : (
-                  <a href={link.href} className="text-muted-foreground hover:underline">
-                    {link.href}
-                  </a>
-                )}
-              </li>
-            );
-          })}
-        </ul>
-      </section>
-    );
-  }
+  if (mode === 'links') return <WorkspaceLinks entity={entity} />;
 
   if (mode === 'actions')
     return (
@@ -143,5 +116,45 @@ export function DetailWord(props: WordProps) {
         </section>
       )}
     </article>
+  );
+}
+
+function WorkspaceLinks({ entity }: { entity: SirenEntity }) {
+  const { route } = useLocationObservation();
+  const navigable = entity.links.filter((link) => !link.rel.includes('self'));
+  // 词条组件类型要求返回元素:空区块以隐藏节段留白(不渲染任何可交互内容)。
+  if (navigable.length === 0) {
+    return <section data-word="detail" aria-label="链接" className="hidden" />;
+  }
+  return (
+    <section data-word="detail" aria-label="链接" className="text-xs text-muted-foreground">
+      <ul className="flex flex-wrap items-center gap-x-3 gap-y-1">
+        {navigable.map((link) => {
+          const destination = workspaceContractHref(route, link.href);
+          const target = destination === null ? null : hrefToRel(link.href);
+          return (
+            <li key={`${link.rel.join('/')}:${link.href}`} className="flex items-center gap-1.5">
+              {destination !== null ? (
+                <Link
+                  href={destination}
+                  data-nav={link.rel[0]}
+                  className="text-muted-foreground hover:text-foreground hover:underline"
+                >
+                  {link.title ?? target}
+                </Link>
+              ) : (
+                <a
+                  href={link.href}
+                  data-nav={link.rel[0]}
+                  className="text-muted-foreground hover:underline"
+                >
+                  {link.title ?? link.href}
+                </a>
+              )}
+            </li>
+          );
+        })}
+      </ul>
+    </section>
   );
 }

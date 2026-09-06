@@ -299,8 +299,8 @@ test('human approval of a CLI-submitted bundle installs it and apps list discove
     'exec',
     activation,
     'approve',
-    '--params',
-    JSON.stringify({ commandId: `e2e:bundle:cli-approve:${bundleName}` }),
+    '--command-id',
+    `e2e:bundle:cli-approve:${bundleName}`,
   ]);
   expect(forbidden.status).toBe(4);
   expect(forbidden.envelope.error?.code).toBe('APPROVAL_FORBIDDEN');

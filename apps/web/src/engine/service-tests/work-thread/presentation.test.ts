@@ -429,11 +429,33 @@ describe('T56 S1 探针:Work Thread 合同与呈现链路现状', () => {
     //(状态指针数组本身不作为 property 词位绑定——成员事实由 item 绑定 + deref 携带)。
     expect(boundPaths.some((ref) => ref.startsWith('property:properties.active'))).toBe(false);
     expect(boundPaths.some((ref) => ref.startsWith('property:properties.approval'))).toBe(false);
-    // 责任卡成员声明动作(membersDeclareActions 结构判定)→ member-card 词条;
-    // human-responsibility/work-queue 声明 → repeat 区角色 = 主内容(责任区优先)。
-    expect(nodes.some((node) => node.kind === 'word' && node.word === 'member-card')).toBe(true);
+    // 通用行携带逐成员认知/动作,由同一词汇区分普通材料与知情决定面。
+    const memberWord = nodes.find((node) => node.kind === 'word' && node.word === 'member-row');
+    expect(memberWord?.bindings).toEqual(
+      expect.arrayContaining([
+        { kind: 'cognitive', ref: 'item:properties.presentation' },
+        { kind: 'members', ref: 'item:entities' },
+        { kind: 'actions', ref: 'item:actions' },
+      ]),
+    );
     expect(repeat!.role).toBe('primary-content');
     const entity = await getEngine(pool).then((engine) => engine.getEntity(threadRel));
+    const pendingMember = entity!.entities!.find(
+      (member) =>
+        member.properties.category === 'approval' && member.properties.status === 'pending',
+    );
+    expect(pendingMember?.properties.presentation).toMatchObject({
+      version: 1,
+      traits: ['human-responsibility'],
+    });
+    expect(pendingMember?.actions.map((action) => action.name)).toEqual(['approve', 'reject']);
+    const materialMember = entity!.entities!.find(
+      (member) => member.properties.category === 'context',
+    );
+    expect(materialMember?.properties.presentation).toMatchObject({
+      version: 1,
+      traits: ['work-queue'],
+    });
     const presentation = entity!.properties.presentation as Record<string, unknown>;
     // P1.2(D78 决定 2/D54 单一落点):version:1 认知声明经服务层同合同可见。
     expect(presentation.version).toBe(1);

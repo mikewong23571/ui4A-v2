@@ -115,3 +115,19 @@ describe('stored responsibility coverage reads current authorized declared roots
     ).resolves.toBe(false);
   });
 });
+
+it('checks collapsed active views and a proposed repaired view against the same fresh roots', async () => {
+  const stored = sidecar();
+  const active = stored.versions[1]!;
+  active.view = { collapsedNodeIds: [active.surface.root.id], densityByNodeId: {} };
+  mocks.read.mockResolvedValue({ kind: 'authorized', entity: collection });
+  const resolve = async () => ({ kind: 'composition' as const, declaration });
+  await expect(storedResponsibilityCoverage(stored, trusted, resolve)).resolves.toBe(false);
+  await expect(
+    storedResponsibilityCoverage(stored, trusted, resolve, {
+      surface: active.surface,
+      view: { collapsedNodeIds: [] },
+    }),
+  ).resolves.toBe(true);
+  expect(active.view.collapsedNodeIds).toEqual([active.surface.root.id]);
+});

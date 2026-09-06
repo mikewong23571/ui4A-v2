@@ -201,11 +201,15 @@ test.describe('work-thread extensibility', () => {
           '[data-action-group-item="submit-review"] button[data-presentation-action="open-form"]',
         )
         .click();
-      await page.getByRole('textbox', { name: /登记标题/ }).fill('扩展登记样例 01(浏览器提交)');
-      await page
-        .locator(
-          '[data-action-group-item="submit-review"] form button[data-action="submit-review"]',
-        )
+      // 新应用的声明标题同时是 Dialog 的可访问名称，表单由 portal 承载。
+      const reviewDialog = page.getByRole('dialog', { name: '提交复核', exact: true });
+      await expect(reviewDialog).toBeVisible();
+      await reviewDialog
+        .getByRole('textbox', { name: /登记标题/ })
+        .fill('扩展登记样例 01(浏览器提交)');
+      await reviewDialog
+        .locator('form')
+        .getByRole('button', { name: '提交复核', exact: true })
         .click();
       // 节点迁移生效(起草 → 复核):回到概览,成员卡状态指针逐字更新
       // (身份行取声明 title,以 data-rel 锚定成员)。
