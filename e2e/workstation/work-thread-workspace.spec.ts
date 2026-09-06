@@ -4,58 +4,26 @@
  * t56-work-thread-workspace_20260905/probes/s3-layout-session.md` §1/§2 实测表。
  *
  * P2.2 起,壳重构已落地(去 noGaze 旁路/无永久材料栏/剩余宽度助手/覆盖层
- * 交互/客户端导航),「等 P2.2」的 fixme 转为活跃 test;仅 clientView 断言
- * (依赖 P3 ChatTurn 投影)保留 fixme 并注明。fixture 走规范 `/api/exec`
- * create/attach(acceptance §1 A 线;每次运行唯一前缀 `t56-<runId>`,隔离库
- * 由 server-kit 保证)。
+ * 交互/客户端导航);P3.3 起 ChatTurn 投影 clientView/userContextKnown 落地,
+ * US01 责任卡/材料卡区分(全量 Fixture A)与 US07 clientView 断言为活跃 test。
+ * fixture 走规范 `/api/exec` create/attach(acceptance §1 A 线;每次运行唯一
+ * 前缀 `t56-<runId>`,隔离库由 server-kit 保证)。
  */
 import { expect, test, type Page } from '@playwright/test';
 
 import { SCENARIO_BASE, withFreshServer } from '../kits/server-kit';
 
-/** 每场景唯一前缀(acceptance §1:`t56-<runId>`,防跨轮次残留)。 */
-function runId(): string {
-  return `t56-${Date.now().toString(36)}-${Math.floor(Math.random() * 1e6).toString(36)}`;
-}
-
-async function execAction(
-  page: Page,
-  rel: string,
-  action: string,
-  params?: Record<string, unknown>,
-): Promise<void> {
-  const response = await page.request.post(`${SCENARIO_BASE}/api/exec`, {
-    data: {
-      rel,
-      action,
-      ...(params === undefined ? {} : { params }),
-      actor: 'human',
-      principal: 'local-user',
-      channel: 'e2e',
-    },
-  });
-  expect(response.ok()).toBe(true);
-}
-
-/** acceptance §1 A 线(最小集):open + 明确目标 + context/active/approval
- * (t26 同款 attach 口径,approval 允许 dangling;跨第二应用 context、历史决定
- * 与显式 event 的完整 fixture 随 P4 全景验收补齐)。 */
-async function createThreadFixture(page: Page, threadId: string): Promise<void> {
-  await execAction(page, 'threads', 'create', {
-    id: threadId,
-    goal: '完成一项跨应用评审并记录决定',
-    goalSource: 'e2e:t56',
-  });
-  await execAction(page, `thread:${threadId}`, 'attach', { category: 'context', rel: 'articles' });
-  await execAction(page, `thread:${threadId}`, 'attach', {
-    category: 'active',
-    rel: 'article-drafting:main',
-  });
-  await execAction(page, `thread:${threadId}`, 'attach', {
-    category: 'approval',
-    rel: `confirmation:${threadId}`,
-  });
-}
+import {
+  NO_LLM_ENV,
+  cleanupNotifyWorkflows,
+  createFullThreadFixture,
+  createThreadFixture,
+  expectAssistantTurnFailed,
+  memberCard,
+  runId,
+  saveShot,
+  sendChatGoal,
+} from './work-thread-fixtures';
 
 async function coreEventKinds(page: Page): Promise<string[]> {
   const response = await page.request.get(`${SCENARIO_BASE}/api/events?domain=core`);
@@ -132,13 +100,15 @@ test.describe('work-thread-workspace', () => {
     });
   });
 
-  test('US01 深链进入本线:目标/生命周期/当前可见责任为主内容,非说明书+应用书架(D78 去 noGaze 旁路)', async ({
+  test('US01 深链进入本线:目标/生命周期/当前可见责任为主内容,非说明书+应用书架;责任卡与材料卡明确区分(D78)', async ({
     page,
   }) => {
-    test.setTimeout(180_000);
+    test.setTimeout(300_000);
+    await cleanupNotifyWorkflows();
     await withFreshServer(async () => {
       const thread = runId();
-      await createThreadFixture(page, thread);
+      // Fixture A 完整集:跨两 application 的 context + active + 已决定/待决 approval + 显式 event。
+      const fixture = await createFullThreadFixture(page, thread);
       await page.setViewportSize({ width: 1440, height: 900 });
       await page.goto(`${SCENARIO_BASE}/canvas?thread=${thread}&focus=thread%3A${thread}`);
       const main = page.locator('main');
@@ -149,10 +119,23 @@ test.describe('work-thread-workspace', () => {
       await expect(main).not.toContainText('左侧书桌常驻');
       await expect(page.getByTestId('application-entry-strip')).toHaveCount(0);
       // 当前可见责任入口可到达(D78 决定 3 口径:approval 成员卡,D50 责任卡;
-      // 「被裁剪 vs 真空」不可辨,文案只陈述「当前可见」)。精确责任断言随
-      // P1.2 投影成员卡落地后在 P4 细化。
+      // 「被裁剪 vs 真空」不可辨,文案只陈述「当前可见」)。
       await expect(main.getByText('进行中')).toBeVisible();
+      // 当前责任与普通材料明确区分(P1 成员卡语义):待决责任卡带声明动作
+      // (批准),context 材料卡无任何动作;跨应用 context 同线可见。
+      const duty = memberCard(page, fixture.pending);
+      await expect(duty).toBeVisible();
+      await expect(duty.getByRole('button', { name: '批准' })).toBeVisible();
+      const material = memberCard(page, 'articles');
+      await expect(material).toBeVisible();
+      await expect(material.getByRole('button')).toHaveCount(0);
+      await expect(memberCard(page, 'comment:c1')).toBeVisible();
+      // 身份行(archive · 由 agent 提议)在待决责任卡内可读(已决卡同式身份,
+      // 以 data-rel 定位区分,见上方 duty/material 断言)。
+      await expect(duty).toContainText('archive · 由 agent 提议');
+      await saveShot(page, 'p4-us01-thread-overview-full');
     });
+    await cleanupNotifyWorkflows();
   });
 
   test('US01 thread=T 无显式 focus:落本线概览而非默认对象注视(D78)', async ({ page }) => {
@@ -266,12 +249,57 @@ test.describe('work-thread-workspace', () => {
     });
   });
 
-  test.fixme(
-    'US07 clientView:X→Y→本线每步发送的 clientView.presence 与 URL 一致,历史回合当时上下文未知显式呈现' +
-      '(等 P3:ChatTurn 投影 clientView/userContextKnown 与引用时点语义)',
-    async () => {
-      // P3.3/P3.4 落地后补:发送侧 clientView 由 URL 单一来源捕获(S3 §3 实测
-      // 无漂移),历史侧按 principal×session×turn 精确 join、不回填。
-    },
-  );
+  test('US07 clientView:X→Y→本线每步输入范围常显与发送侧 clientView 一致,历史回合按当时上下文呈现(P3.3 已落地,转活跃)', async ({
+    page,
+  }) => {
+    test.setTimeout(300_000);
+    await withFreshServer(async () => {
+      const thread = runId();
+      await createThreadFixture(page, thread);
+      await page.setViewportSize({ width: 1440, height: 900 });
+      await page.goto(`${SCENARIO_BASE}/canvas?thread=${thread}&focus=thread%3A${thread}`);
+      await expect(page.locator('[data-surface]').first()).toBeVisible({ timeout: 30_000 });
+      await page.getByRole('button', { name: '展开聊天窗' }).click();
+
+      const strip = page.getByTestId('input-scope-strip');
+      // 本线概览:输入范围常显 = 线 + 注视 thread:<id>(与 URL 同一观察单源)。
+      await expect(strip).toHaveAttribute('data-thread', thread, { timeout: 15_000 });
+      await expect(strip).toHaveAttribute('data-focus', `thread:${thread}`);
+
+      // X(articles):常显条随客户端导航更新 → 提问(LLM 未配置 → 诚实失败,
+      // user 消息的 clientView 真实落账)。
+      await page.getByRole('button', { name: /相关材料/ }).click();
+      await page.locator('[data-desk-entry="articles"] a').click();
+      await expect(strip).toHaveAttribute('data-focus', 'articles');
+      await sendChatGoal(page, 'X 处提问:这篇文章讲什么?');
+      await expectAssistantTurnFailed(page);
+
+      // Y(article-drafting:main):URL、常显条、下一步发送的 clientView 同源一致。
+      await page.getByRole('button', { name: /相关材料/ }).click();
+      await page.locator('[data-desk-entry="article-drafting:main"] a').click();
+      await expect(strip).toHaveAttribute('data-focus', 'article-drafting:main');
+      await sendChatGoal(page, 'Y 处提问:向导停在哪一步?');
+      await expectAssistantTurnFailed(page);
+
+      // 返回本线:常显条回到本线注视,线保留。
+      await page.getByRole('link', { name: '返回本线' }).click();
+      await expect(strip).toHaveAttribute('data-focus', `thread:${thread}`);
+
+      // 刷新:历史回合按「当时」clientView 呈现(join 自 user 事件,服务端
+      // 真相;P3.3 ChatTurn 投影),与每步 URL 一致;无 clientView 的旧回合
+      // 显式未知(负例在 work-thread-history US08)。
+      await page.reload();
+      await page.getByRole('button', { name: '展开聊天窗' }).click();
+      const notice = page.getByTestId('turn-context-notice');
+      await expect(notice).toBeVisible({ timeout: 15_000 });
+      const rows = notice.locator('[data-testid="turn-context-row"]');
+      await expect(rows).toHaveCount(2);
+      await expect(rows.nth(0)).toHaveAttribute('data-known', 'true');
+      await expect(rows.nth(0)).toContainText(`线 ${thread}`);
+      await expect(rows.nth(0)).toContainText('注视 articles');
+      await expect(rows.nth(1)).toHaveAttribute('data-known', 'true');
+      await expect(rows.nth(1)).toContainText('注视 article-drafting:main');
+      await saveShot(page, 'p4-us07-clientview-history');
+    }, NO_LLM_ENV);
+  });
 });
