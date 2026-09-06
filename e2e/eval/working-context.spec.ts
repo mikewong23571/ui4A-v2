@@ -217,7 +217,7 @@ test('homepage question uses the visible authorized roots and current work witho
       base,
       sessionId,
       'home-context-1',
-      '我在首页。这里有什么需要我决定，还有哪些工作可以继续？请按当前可见事实说明，给出引用依据，只阅读，不执行修改。',
+      '我在首页。这里有没有待我批准或驳回的事项？还有哪些工作可以继续？请列出工作目标和当前状态，分别给出待决项与可继续工作的引用依据，只阅读，不执行修改。',
       homeView,
     );
     expect(turn.outcome, JSON.stringify(turn)).toBe('answered');
@@ -230,6 +230,13 @@ test('homepage question uses the visible authorized roots and current work witho
     expect(trail.length).toBeGreaterThan(0);
     for (const root of roots) expect(trail[0].prompt.user).toContain(root);
     const sources = trail.flatMap((step) => step.op.sources ?? []);
+    for (const source of sources) {
+      expect(await citationVerifiable(base, source), JSON.stringify(source)).toBe(true);
+    }
+    for (const member of before[1].entities ?? []) {
+      expect(turn.summary).toContain(String(member.properties.identity));
+    }
+    expect(turn.summary).toMatch(/暂停|paused/);
     expect(sources.some((source) => source.rel === 'inbox')).toBe(true);
     expect(
       sources.some((source) =>

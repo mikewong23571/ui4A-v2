@@ -325,10 +325,17 @@ export function usePresentationSurfaceLoad(parameters: PresentationSurfaceParame
               densityByNodeId:
                 typeof body.sidecar.view?.densityByNodeId === 'object' &&
                 body.sidecar.view.densityByNodeId !== null
-                  ? (body.sidecar.view.densityByNodeId as Record<
-                      string,
-                      'compact' | 'comfortable' | 'spacious'
-                    >)
+                  ? Object.fromEntries(
+                      Object.entries(
+                        body.sidecar.view.densityByNodeId as Record<
+                          string,
+                          'compact' | 'comfortable' | 'spacious'
+                        >,
+                      ).map(([nodeId, density]) => [
+                        nodeId === originalRootId ? versionedRootId : nodeId,
+                        density,
+                      ]),
+                    )
                   : {},
             },
           });
