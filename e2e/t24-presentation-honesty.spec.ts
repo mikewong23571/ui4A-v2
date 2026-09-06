@@ -85,6 +85,8 @@ test('canvas 首屏:focus 实体语义上屏,主区域零机制词;机制信息�
     await shoot(page, 't24-canvas-first-screen');
 
     // ---- 抽屉:机制信息的唯一入口,如实在场 ----------------------------------
+    // T56 D78:机制工具收进「页面工具」面板——先开面板,抽屉入口才在 DOM 内。
+    await page.getByRole('button', { name: '页面工具' }).click();
     await page.locator('[data-nav="local:canvas-why"]').click();
     const drawer = page.getByTestId('canvas-why-drawer');
     await expect(drawer).toBeVisible();

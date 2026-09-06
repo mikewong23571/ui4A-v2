@@ -1,9 +1,11 @@
 import { expect, test } from '@playwright/test';
 
-// T24 Phase A Task 4 断言适配:Sidecar 工具条(个人呈现/疏密/收起/pin/explain/
-// 团队默认)不再渲染在画布主区域,只经「为什么这样展示」抽屉可达——先开抽屉,
-// 工具条操作按抽屉范围定位(抽屉入口与工具条 explain 按钮同名「为什么这样展示」,
-// 须以 data-nav 区分)。生命周期行为(pin/patch/解释/晋升预览)本身未变。
+// T24 Phase A Task 4 断言适配 + T56 D78 页面工具适配:Sidecar 工具条(个人呈现/
+// 疏密/收起/pin/explain/团队默认)不再渲染在画布主区域,只经「为什么这样展示」
+// 抽屉可达——抽屉入口又收进「页面工具」面板(D78:机制工具二步可达),故先开
+// 「页面工具」再开抽屉;工具条操作按抽屉范围定位(抽屉入口与工具条 explain
+// 按钮同名「为什么这样展示」,须以 data-nav 区分)。生命周期行为(pin/patch/
+// 解释/晋升预览)本身未变。
 test.describe('T16 Golden Story presentation lifecycle', () => {
   test('Entity, Entities, semantic patch, pin, rollback, promotion preview and explanation', async ({
     page,
@@ -28,7 +30,9 @@ test.describe('T16 Golden Story presentation lifecycle', () => {
     await expect(page.getByRole('heading', { name: '第一篇', exact: true })).toBeVisible();
     await expect(page.getByText('这是第一篇完整文章')).toBeVisible();
 
-    // T24:开抽屉——Sidecar 工具条的唯一入口(首屏主区域零机制文案)。
+    // T24/T56:先开「页面工具」面板,再开抽屉——Sidecar 工具条的唯一入口
+    // (首屏主区域零机制文案)。
+    await page.getByRole('button', { name: '页面工具' }).click();
     await page.locator('[data-nav="local:canvas-why"]').click();
     const drawer = page.getByTestId('canvas-why-drawer');
     await expect(drawer).toBeVisible();

@@ -86,7 +86,10 @@ async function measureGeometry(page: Page): Promise<Geometry> {
       (el.textContent ?? '').includes('UI4A 助手'),
     );
     const mainRect = main === null ? null : box(main);
-    const assistantRect = assistant === null ? null : box(assistant);
+    // P2.3 装置修复:querySelectorAll+find 未命中返回 undefined(收起态 FAB
+    // 无「UI4A 助手」文本),原 `=== null` 判空必抛 TypeError;宽松判空回到
+    // 「收起态 assistantRect=null」的既有语义,断言阈值零变化。
+    const assistantRect = assistant == null ? null : box(assistant);
     return {
       vw: window.innerWidth,
       mainWidth: Math.round(mainRect?.width ?? 0),

@@ -90,6 +90,9 @@ test('canonical flow bridges preserve the declared work line and keep alias fail
     await expect(page).toHaveURL(
       `${SCENARIO_BASE}/canvas?focus=flow%3Aghost&scope=publishing&thread=release-1`,
     );
+    // 弹层开合状态跨导航保持(与上文同口径):收起「在哪」弹层,避免 sticky
+    // header 下的弹层截获「页面工具」的点击。
+    await situation.getByRole('button', { name: '在哪' }).click();
     const missingFlow = await page.request.get(
       `${SCENARIO_BASE}/api/entity?rel=${encodeURIComponent('flow:ghost')}`,
     );
@@ -97,10 +100,11 @@ test('canonical flow bridges preserve the declared work line and keep alias fail
     await expect(page.locator('[data-surface]')).toHaveCount(0);
     // Thread desk 的独立投影可能先后呈现不可读或空工作集，不用于判断 alias；
     // 404 API + 零 surface 承担缺失语义，Canvas 仍提供中性恢复入口。
-    await expect(page.getByRole('heading', { level: 1, name: '共同注视' })).toBeVisible();
-    await expect(page.getByRole('button', { name: '重新载入' })).toHaveAttribute(
-      'data-nav',
-      'local:canvas-reload',
-    );
+    // T56 D78:机制标题「共同注视」h1 退场,「重新载入」收进「页面工具」面板——
+    // 打开面板后恢复入口仍可达且 data-nav 保留(缺失语义断言不减)。
+    await page.getByRole('button', { name: '页面工具' }).click();
+    const reload = page.getByRole('button', { name: '重新载入' });
+    await expect(reload).toBeVisible();
+    await expect(reload).toHaveAttribute('data-nav', 'local:canvas-reload');
   });
 });

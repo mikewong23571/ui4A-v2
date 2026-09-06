@@ -52,10 +52,7 @@ test('structured citation click focuses the same Canvas entity and preserves onl
     await expect(citation).toHaveCount(1);
     // G10(T54):JSON Pointer 退审计(title 属性);可见标签为授权实体声明名
     //(本地 fixture 无实体会话时回退 rel 本身)。
-    await expect(citation).toHaveAttribute(
-      'title',
-      /\/properties\/fields\/body/,
-    );
+    await expect(citation).toHaveAttribute('title', /\/properties\/fields\/body/);
     await expect(page.locator('[data-nav="citation:post:ghost"]')).toHaveCount(0);
     await expect(citation).not.toHaveAttribute('aria-current', 'location');
 
@@ -69,6 +66,8 @@ test('structured citation click focuses the same Canvas entity and preserves onl
     await expect(page.getByTestId('situation-focus')).toHaveText('第一篇');
     await expect(citation).toHaveAttribute('aria-current', 'location');
 
+    // T56 D78:canvas 的「查看原始合同」收进「页面工具」面板——先开面板再点。
+    await page.getByRole('button', { name: '页面工具' }).click();
     await page.getByRole('button', { name: '查看原始合同' }).click();
     await expect(page.getByTestId('raw-contract-json')).toContainText('"rel": "post:first-post"');
     await expectRawContractEqualsFreshEntity(page, 'post:first-post');

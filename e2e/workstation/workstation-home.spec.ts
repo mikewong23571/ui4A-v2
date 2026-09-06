@@ -237,6 +237,8 @@ test('workstation home and the real CLI read the same three declared source enti
     const leaked = forbiddenFirstScreenWords.filter((word) => mainText.includes(word));
     expect(leaked, `workstation 首屏泄漏机制词:${leaked.join('、')}`).toEqual([]);
 
+    // T56 D78(P2.3 同类适配):why 抽屉入口收进「页面工具」面板——先开面板。
+    await page.getByRole('button', { name: '页面工具' }).click();
     await page.locator('[data-nav="local:canvas-why"]').click();
     const drawer = page.getByTestId('canvas-why-drawer');
     await expect(drawer).toBeVisible();

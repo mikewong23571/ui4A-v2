@@ -5,8 +5,10 @@ import type { CognitiveSemanticsEmptyMeaning } from '@ui4a/shared';
 import { asRequiredString, type WordProps } from './shared';
 
 const COPY: Readonly<Record<CognitiveSemanticsEmptyMeaning, string>> = {
-  'no-current-responsibility': '当前没有需要你处理的事项。',
-  'nothing-in-motion': '当前没有正在推进的工作。',
+  // D78 决定 3:裁剪与真空在合同上同形,空态文案必须保持「可见」口径,
+  // 不得作「当前没有/无任何」类全称断言。
+  'no-current-responsibility': '当前可见范围没有需要你处理的事项。',
+  'nothing-in-motion': '当前可见范围没有正在推进的工作。',
   'no-results': '没有符合当前条件的结果。',
   'ready-to-start': '这里还没有内容，可以使用本页的主要任务开始。',
 };
