@@ -5,7 +5,8 @@
  * - 对象页壳条:「返回本线」href 保留 thread/scope/focus=thread(US07),
  *   线身份与生命周期常显(FR2);本线概览页不重复叙述;
  * - 「相关材料(n)」入口默认收起(D78:默认无永久材料栏、不自动打开材料);
- *   计数 = context 成员卡 + 仅钉住页(与书桌工作集同口径);
+ *   计数 = 可见 context 成员卡(membership;US06:pin-only 不冒充材料);
+ *   两种语义文案可辨:pin-only 单列固定视图区(P3.1);
  * - 覆盖层:复用 ThreadDesk 目录;Escape/关闭按钮收起且焦点恢复到触发键
  *   (design §1 覆盖层交互下限);条目选中回调主区聚焦并关闭覆盖层;
  * - 线不可读时入口不伪称 0(零发明)。
@@ -128,7 +129,7 @@ describe('ThreadWorkspaceBar(本线壳条)', () => {
     expect(screen.getByRole('button', { name: /相关材料/ })).toBeTruthy();
   });
 
-  it('相关材料入口默认收起;计数 = context 成员 + 仅钉住页(D78 不伪称)', async () => {
+  it('相关材料入口默认收起;计数 = 可见 context 成员(membership),pin-only 不冒充材料(US06)', async () => {
     globalThis.localStorage?.setItem(threadPinsKey('t1'), JSON.stringify(['post:p2']));
     renderBar({});
     const entry = await waitFor(() => {
@@ -136,9 +137,28 @@ describe('ThreadWorkspaceBar(本线壳条)', () => {
       expect(button.getAttribute('aria-expanded')).toBe('false');
       return button;
     });
-    // 1 个 context 成员卡 + 1 个仅钉住 rel = 2。
-    expect(entry.textContent).toBe('相关材料（2）');
+    // 计数只含 1 个 context 成员卡;仅钉住页是固定视图偏好,不计入材料数。
+    expect(entry.textContent).toBe('相关材料（1）');
     expect(screen.queryByTestId('thread-materials-dialog')).toBeNull();
+  });
+
+  it('两种语义文案可辨:覆盖层内 pin-only 单列固定视图区,不混入工作集(US06/P3.1)', async () => {
+    globalThis.localStorage?.setItem(threadPinsKey('t1'), JSON.stringify(['post:p2']));
+    renderBar({});
+    fireEvent.click(materialsEntry());
+    const dialog = await screen.findByTestId('thread-materials-dialog');
+    // 成员在工作集;pin-only 单列固定视图区(标题可辨),不在工作集条目里。
+    await waitFor(() =>
+      expect(dialog.querySelector('[data-testid="desk-working-set-count"]')?.textContent).toBe(
+        '工作集（1）',
+      ),
+    );
+    const pinned = dialog.querySelector('[data-testid="desk-pinned"]');
+    expect(pinned?.textContent).toContain('固定视图');
+    expect(pinned?.textContent).toContain('post:p2');
+    expect(
+      dialog.querySelectorAll('[data-desk-entry="post:p2"], [data-pinned-entry="post:p2"]'),
+    ).toHaveLength(1);
   });
 
   it('展开覆盖层复用书桌目录;Escape 关闭且焦点恢复到触发键(design §1)', async () => {

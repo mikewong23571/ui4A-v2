@@ -26,7 +26,7 @@
  * 关闭,零机制词上首屏。审批证据不在工具面板(责任在声明动作区)。
  */
 import { A2uiSurface } from '@a2ui/react/v0_9';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState, type MouseEvent } from 'react';
 
 import { cn } from '@/lib/utils';
 import type { DerefWarning } from '@/render/deref';
@@ -45,7 +45,7 @@ import { readThreadPins, writeThreadPin } from './desk/thread-desk';
 import { SurfaceErrorBoundary } from './surface-error-boundary';
 import { CanvasPageTools } from './page-tools';
 import { SIDECAR_UNAVAILABLE_PHRASE } from './presentation-sidecar-failure';
-import { uniqueDiagnostics } from './presentation-surface-helpers';
+import { hrefWithThreadContext, uniqueDiagnostics } from './presentation-surface-helpers';
 import {
   usePresentationSurfaceLoad,
   type PresentationSurfaceParameters,
@@ -111,6 +111,28 @@ export function PresentationSurfaceHost({ parameters }: PresentationSurfaceHostP
   const hostReadNavigate = useCallback<CollectionReadNavigation>((read) => {
     collectionQueryNavigation.assign(mergeCollectionReadQueryHref(window.location.href, read));
   }, []);
+
+  // T56 P3.1(F-P2.3-1,E-P2.3):本线语境下 surface 内合同导航(成员卡/
+  // 实体链接等 <a>)在点击捕获阶段补 thread= 声明,落点页因此常显「返回本线」。
+  // 只改写客户端导航出参,不触碰合同数据;修饰键/新窗口/已声明/非画布落点
+  // 诚实不动。
+  const onSurfaceAnchorClickCapture = useCallback(
+    (event: MouseEvent<HTMLElement>): void => {
+      if (threadParam === undefined) return;
+      if (event.defaultPrevented) return;
+      if (event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) {
+        return;
+      }
+      const anchor = (event.target as Element | null)?.closest?.('a[href]') ?? null;
+      if (!(anchor instanceof HTMLAnchorElement)) return;
+      if (anchor.target === '_blank' || anchor.hasAttribute('download')) return;
+      const href = anchor.getAttribute('href');
+      if (href === null || href === '') return;
+      const updated = hrefWithThreadContext(href, threadParam);
+      if (updated !== null) anchor.setAttribute('href', updated);
+    },
+    [threadParam],
+  );
 
   return (
     <CollectionReadNavigationProvider navigate={hostReadNavigate}>
@@ -180,6 +202,7 @@ export function PresentationSurfaceHost({ parameters }: PresentationSurfaceHostP
 
         <section
           aria-label="surfaces"
+          onClickCapture={onSurfaceAnchorClickCapture}
           className={cn(
             'mt-6 gap-6',
             rootsParam === undefined ? 'space-y-8' : 'grid lg:grid-cols-2',
@@ -202,6 +225,9 @@ export function PresentationSurfaceHost({ parameters }: PresentationSurfaceHostP
             >
               {threadParam !== undefined && (
                 <div className="mb-2 flex justify-end">
+                  {/* T56 P3.1(US06/FR5;P2.1 #10 转绿):pin = 固定视图快捷
+                    入口——本机呈现偏好,不写「挂进本线」类成员语义;零业务
+                    事件,不进 references 合同。 */}
                   <button
                     type="button"
                     data-nav={`local:thread-pin:${entry.concern}`}
@@ -216,8 +242,8 @@ export function PresentationSurfaceHost({ parameters }: PresentationSurfaceHostP
                           ? entry.concern.slice('presentation:'.length)
                           : entry.concern,
                       )
-                        ? '取消挂进本线'
-                        : '挂进本线工作集(左侧书桌可见)'
+                        ? '取消固定视图快捷入口'
+                        : '本机固定视图快捷入口；不改变本线材料'
                     }
                     className="rounded-md px-1.5 py-0.5 text-[11px] text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
                     onClick={() => {
@@ -233,8 +259,8 @@ export function PresentationSurfaceHost({ parameters }: PresentationSurfaceHostP
                         ? entry.concern.slice('presentation:'.length)
                         : entry.concern,
                     )
-                      ? '📌 已挂进本线'
-                      : '📌 挂进本线'}
+                      ? '📌 取消固定'
+                      : '📌 固定视图'}
                   </button>
                 </div>
               )}

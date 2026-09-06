@@ -40,3 +40,26 @@ export function uniqueDiagnostics(
     ).values(),
   ];
 }
+
+/**
+ * 本线语境的画布合同导航出参(T56 P3.1 修复 F-P2.3-1,E-P2.3):
+ * thread=T 页面里的 surface 成员卡/实体链接落点补 `thread=` 声明,使落点页
+ * 常显「返回本线」(US07/FR7)。D78:投影 link 保持合同原样,导航上下文由
+ * 客户端链接构建层负责——纯函数只认 /canvas 渲染器落点;已声明 thread、
+ * 非 /canvas 路径、跨源链接诚实返回 null(零改写)。
+ */
+export function hrefWithThreadContext(href: string, threadId: string): string | null {
+  if (threadId === '') return null;
+  let url: URL;
+  try {
+    url = new URL(href, window.location.href);
+  } catch {
+    return null;
+  }
+  if (url.origin !== window.location.origin) return null;
+  if (url.pathname !== '/canvas') return null;
+  const declared = url.searchParams.get('thread');
+  if (declared !== null && declared !== '') return null;
+  url.searchParams.set('thread', threadId);
+  return `${url.pathname}${url.search}${url.hash}`;
+}

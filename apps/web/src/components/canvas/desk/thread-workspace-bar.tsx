@@ -6,9 +6,10 @@
  *   (US01 恢复一件事、FR2 常显);身份/状态只消费投影声明字段,零发明;
  *   本线概览页(surface 自携目标/状态)不重复叙述。
  * - 「相关材料(n)」展开入口(FR4/D78 决定 1):默认收起、无永久材料栏、
- *   不自动打开任何材料;计数 = 可见 context 成员卡 + 仅钉住页(与书桌工作集
- *   同一口径);线不可读时不伪称 0。覆盖层复用 ThreadDesk 目录(叙述+工作集
- *   +添加选择器),选中条目即经客户端导航落对象,关闭覆盖层并聚焦主阅读区。
+ *   不自动打开任何材料;计数 = 可见 context 成员卡(membership;US06:仅钉
+ *   住页是固定视图偏好,不冒充材料);线不可读时不伪称 0。覆盖层复用
+ *   ThreadDesk 目录(叙述+工作集+固定视图+添加选择器),选中条目即经客户端
+ *   导航落对象,关闭覆盖层并聚焦主阅读区。
  * - 覆盖层交互(design §1):明确关闭、Escape 关闭、关闭后焦点恢复到触发键;
  *   控件带可见焦点圈,操作不依赖 hover。
  */
@@ -21,7 +22,7 @@ import type { SirenEntity } from '@ui4a/engine';
 import { Badge } from '@/components/ui/badge';
 
 import { useEntityCache } from '../../entity-cache-provider';
-import { ThreadDesk, readThreadPins } from './thread-desk';
+import { ThreadDesk } from './thread-desk';
 import { THREAD_UPDATED_EVENT, firstString, relOf } from './thread-desk-shared';
 
 export interface ThreadWorkspaceBarProps {
@@ -42,7 +43,6 @@ export function ThreadWorkspaceBar({
   const cache = useEntityCache();
   const threadRel = `thread:${threadId}`;
   const [thread, setThread] = useState<SirenEntity | null>(null);
-  const [pins, setPins] = useState<string[]>(() => readThreadPins(threadId));
   const [open, setOpen] = useState(false);
   const triggerRef = useRef<HTMLButtonElement | null>(null);
 
@@ -60,10 +60,10 @@ export function ThreadWorkspaceBar({
     };
   }, [cache, threadRel]);
 
-  // 钉住变化重读钉住集;合同执行(任意 rel)失效线缓存重读——context 成员
-  // 卡计数随 attach/detach 即时变化(与书桌同口径,正确性优先)。
+  // 合同执行(任意 rel)失效线缓存重读——context 成员卡计数随 attach/detach
+  // 即时变化。pin 不再监听:材料计数 = membership(P3.1 US06),固定视图
+  // 偏好变化不改变材料数。
   useEffect(() => {
-    const syncPins = (): void => setPins(readThreadPins(threadId));
     const syncThread = (): void => {
       cache.invalidate(threadRel);
       cache
@@ -71,27 +71,16 @@ export function ThreadWorkspaceBar({
         .then((entity) => setThread(entity))
         .catch(() => {});
     };
-    window.addEventListener('ui4a:thread-pins-changed', syncPins);
     window.addEventListener(THREAD_UPDATED_EVENT, syncThread);
-    return () => {
-      window.removeEventListener('ui4a:thread-pins-changed', syncPins);
-      window.removeEventListener(THREAD_UPDATED_EVENT, syncThread);
-    };
-  }, [cache, threadId, threadRel]);
+    return () => window.removeEventListener(THREAD_UPDATED_EVENT, syncThread);
+  }, [cache, threadRel]);
 
-  const contextRels = useMemo(() => {
-    const context = thread?.properties.context;
-    return new Set(
-      Array.isArray(context) ? context.filter((v): v is string => typeof v === 'string') : [],
-    );
-  }, [thread]);
-
+  // 相关材料(n) = 可见 context 成员(membership 真相);仅钉住页是固定视图
+  // 偏好,不冒充材料(US06/P3.1)。线不可读时不伪称 0。
   const materialCount = useMemo(() => {
     if (thread === null) return undefined;
-    const members = (thread.entities ?? []).filter((member) => relOf(member) !== '').length;
-    const pinOnly = pins.filter((rel) => rel !== threadRel && !contextRels.has(rel)).length;
-    return members + pinOnly;
-  }, [thread, pins, threadRel, contextRels]);
+    return (thread.entities ?? []).filter((member) => relOf(member) !== '').length;
+  }, [thread]);
 
   const close = useCallback(() => {
     setOpen(false);

@@ -4,7 +4,8 @@
  *
  * - 书桌 = 叙述(目标/状态/停在哪/来源) + 工作集条目;**零整面 surface、零
  *   属性表**(此前 W2 左栏实时渲染整面是塞爆根因,pin=上下文引用);
- * - 工作集 = 线 context 成员(合同 detach 移出) + 钉住页(本地取消)合并去重;
+ * - 工作集 = 线 context 成员(合同 detach 移出;计数只算成员);钉住页 =
+ *   固定视图偏好单列成区,仅本地取消(P3.1 语义分离,US06);
  * - 「＋添加涉及对象」→ 对象选择器(sitemap 集合面成员,机械派生),点击即挂
  *   category=context(F-27② 裸填 rel 退位),已挂对象标记"已在本线";
  * - T56 P2.2(D78):书桌不再是常驻左轨,由 thread-workspace-bar 的
@@ -173,7 +174,7 @@ describe('ThreadDesk(书桌目录)', () => {
     expect(container.textContent).not.toContain('chat 消息');
   });
 
-  it('工作集 = context 成员 + 钉住页合并;context 移出走合同 detach,钉住页仅本地取消', async () => {
+  it('工作集 = context 成员(合同 detach 移出);固定视图仅本地取消,零业务事件', async () => {
     globalThis.localStorage?.setItem(threadPinsKey('t1'), JSON.stringify(['post:p1']));
     const execCalls: Record<string, unknown>[] = [];
     const entity = threadEntity();
@@ -208,7 +209,7 @@ describe('ThreadDesk(书桌目录)', () => {
       ]),
     );
 
-    fireEvent.click(screen.getByTestId('desk-remove:post:p1'));
+    fireEvent.click(screen.getByTestId('desk-unpin:post:p1'));
     await waitFor(() => {
       const raw = globalThis.localStorage?.getItem(threadPinsKey('t1'));
       expect(JSON.parse(raw ?? '[]')).toEqual([]);
