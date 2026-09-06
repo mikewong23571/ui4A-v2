@@ -1,5 +1,7 @@
 # T57 Planning Review
 
+本文件为规划时留档；后续用户并行授权、实施与验收结果以index/DONE/evidence为准。
+
 日期：2026-09-06。范围：T57 规划与架构结论，主 agent 在初稿完成后单独自审。
 无独立 reviewer，不将本报告称为实现后 review。
 

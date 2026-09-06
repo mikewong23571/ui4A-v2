@@ -1,5 +1,7 @@
 # T57 执行证据
 
+状态：已完成。以下按实际执行阶段保留失败与修复履历；当前结论以文末“最终结论与可复验入口”为准。
+
 ## 用户授权与基线
 
 2026-09-06 用户明确授权在独立 worktree 与 T56 并行推进；中间少重度/E2E，合并主仓库后统一验证。
@@ -97,3 +99,59 @@
   已先按D79登记，将Revision默认对齐D43的300s单次上限；不加自动重试，不改provider或短deadline覆盖。
   70s合法返回/300s中止/显式10ms中止的行为Red→Green，parent复跑deadline+parse**5tests通过**。
   延长超时不等于改善实际延迟；本次源修复及首页/模型故事仍需最终复验。
+
+## 最终结论与可复验入口（2026-09-06）
+
+最终生产代码：**3ae4a24c**。此前T57 feature edb35f03；T56交接/集成04a90058、416815dc；
+集成修复19ae4e49、84d3a4c3、0d754c88。后续只补四视口截图、触屏用例和关闭文档。
+所有记录按实际代码/时间分列，不把重叠用例相加，也不把专项目的skip当通过。
+
+| Gate | 实际结果 | 证据与范围 |
+| --- | --- | --- |
+| G1/G2/G5 全仓 | `pnpm check` exit0，593files/4393tests passed；8files/15tests opt-in skipped | 3ae4a24c；typecheck、lint、strict、纯/DB/invariant单测均过。日志 /tmp/t57-release-check.log |
+| G3/G5 完整浏览器 | 100passed/29专项skip，exit0，4.7m | 84d3a4c3；全仓包含invariants、T56用户故事、CLI、审批与replay。无变化的invariants不再另跑重复命令 |
+| G3 最新受影响首页 | 4passed，exit0，24.1s | 3ae4a24c；真实touch上下文＋tap、键盘、四尺寸、丢已接受响应后同键重试、责任卡完整事实、收起责任409不改视图。全量通过后只复测受后续改动影响的故事 |
+| G4 首页真实LLM | 1passed，约3.0m，exit0 | 当前代码、同实际浏览器workspace属主；逐条HTTP验证sources、目标名称、paused区别、原投影/全部thread事件不变、外主与历史不泄露；已人工阅读原文 |
+| G4 generic/Recipe/Sidecar | 1passed，205.463s，exit0 | 三条真实模型提议原样走HTTP：两次200、隐藏责任一次409，原版本保留；事实与core事件不变；跨principal拒绝 |
+| G4 S24语义变体 | 1passed，72.217s，exit0 | 五种真实提问；用真实applyRenderPatch验证合法性、正文可见/阅读祖先spacious、actions已折叠；不以固定叶子ID误拒合法父区 |
+| G4 前序协作回归 | 4个独立standing case已过 | 未定位发现、跨应用工作线、T56三轮共同session、S1/S3应用及Markdown理解；原文/只读结果在此前 /tmp/t57-final-eval.json。新引用/groupRole说明另由最终首页案例验证，不将前序运行冒称相同prompt字节 |
+| 原生200%与实际像素 | 已走查并保存 | 独立Chrome for Testing148，原生toolbar200%；首页/表单可读，长输入换行、Tab循环、Escape焦点回触发、重开保留草稿；已还原100%。非CSS zoom/设备scale替代 |
+| 缓存密度像素 | 已走查并保存 | 相同首页root compact/spacious切换并重载，截图分别为8px/32px留白；3个集成用例钉住版本化root映射 |
+| 构建与格式 | production build exit0；129个改动代码文件Prettier通过 | /tmp/t57-release-build.log、/tmp/t57-format-final.log；构建前移除临时Next根与其自动tsconfig include，未留下配置漂移 |
+| Coverage | 定向9模块97.32% lines、88.05% branches | 21files/141tests；属于19ae4集成阶段的报告 /tmp/t57-coverage，不冒称全仓或其后新增修复的最新覆盖率；后续修复另有Red/Green及全仓验证 |
+| G6 最终复审 | 无范围内阻断项 | creation/governance/action_ui交叉review＋编排亲跑、读模型与看像素；finding闭环见review.md |
+
+### FR / US 对照
+
+| Story | 主要实际验收 |
+| --- | --- |
+| US01/02 | home四viewport、空/历史/current/foreignowner；partial授权runtime/route；空委托不否定open线 |
+| US03/10 | member-posture/row/table/unknown、跨域改名D54；T56第二新应用＋30材料浏览器全过，完整目录仍≤9入口 |
+| US04 | 新首页真实确认与完整decision-info；T56知情决定、过时动作退场、归档仍保留pending、回执、Meta桥；纯human-only不变量 |
+| US05/06 | ActionGroup disclosure与Dialog draft/focus/guard/schema；真实touch与keyboard；不可信回执诚实显示“结果未确认” |
+| US07 | 单输入goal，真实丢响应已接受＋重试一个event；原文回读；CLI/client params、owner冲突、DB失败与重放 |
+| US08 | 共享Home声明及clientView；真实LLM具体目标/状态/有效引用/零业务effects，未把容器标注当待决 |
+| US09 | 首页↔本线保持session/draft；T56X→Y→本线/后退/SSE/停止；关系链接留canvas与上下文；历史消息按当时处境 |
+| US11 | 真实HTTP model patch拒绝隐藏责任；UI409卡片继续可达且版本不变；invalid required binding/新责任/授权/旧view/paging路径有纯及service/route回归；slice成员迁移刷新空兄弟 |
+| US12 | 1440×900/1080×820/768×1024/390×844无body横滚；原生200%；四尺寸像素、Dialog/助手/责任图已看；strict无例外 |
+
+完整FR映射沿acceptance §2，所有FR01–FR10均落在上表故事中。
+
+### 可保留的精简证据
+
+- [浏览器清单](./evidence/browser-manifest.json)：viewport、touch、原生zoom、截图SHA-256与完整浏览器skip名单。
+- [模型原文与实际提议/回执](./evidence/model-evidence.json)：只保存隔离fixture相关事实、回答、sources、版本与结果；不保存凭证。
+- [首页宽屏](./evidence/home-current-1440.png)、[1080](./evidence/home-current-1080.png)、[768](./evidence/home-current-768.png)、[390](./evidence/home-current-390.png)。
+- [完整责任卡](./evidence/home-responsibility-and-summary-1440.png)、[不可信回执输入保留](./evidence/home-create-failure-390.png)、[窄屏助手](./evidence/home-assistant-draft-390.png)。
+- [原生200%首页](./evidence/t57-native-zoom200-home.png)、[原生200%表单](./evidence/t57-native-zoom200-dialog.png)。
+- [compact重载](./evidence/t57-density-compact-reloaded.png)、[spacious重载](./evidence/t57-density-spacious-reloaded.png)。
+
+### 成本变化与不作出的承诺
+
+- 发起必须手填的机器字段：原id/goalSource两个→零；新建入口到目标表单两步，提交依然可直接人工作用，不依赖LLM。
+- 普通行默认管理动作从整组展开→一个“更多操作”；决定卡仍直接显示批准/驳回及完整可得依据。
+- 当前/历史分层，空委托不再冒充没有工作；跨页保持同session与草稿，关系链接不把人推出工作台。
+- 对象/动作的业务友好title若合同未提供，仍展示真实rel/action，不以UI或AI猜译；policy依据仍原文。
+- 真人找目标耗时、厌烦感、两周目标达成率**未测**。真实模型首页回答约3分钟，延长硬上限不等于提速。
+  T58应把模型等待、回答简洁度与真实业务名可读性列入实际使用观察；本次不宣称注意力收益已被真人证明。
+- 生产部署**未执行**，线上UI4A未更新/复验；T58冻结和336h试用**未开始**。T56由原agent关闭，本track不代改其状态。

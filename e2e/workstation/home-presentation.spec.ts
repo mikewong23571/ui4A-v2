@@ -66,12 +66,14 @@ async function capture(page: Page, info: TestInfo, name: string) {
       scenario: name,
       route: page.url(),
       viewport: page.viewportSize(),
+      touchEnabled: await page.evaluate(() => navigator.maxTouchPoints > 0),
       sha: execFileSync('git', ['rev-parse', 'HEAD'], { encoding: 'utf8' }).trim(),
     }),
     contentType: 'application/json',
   });
 }
 
+test.use({ hasTouch: true });
 test.describe.configure({ mode: 'serial' });
 test.beforeEach(() => test.setTimeout(240_000));
 
@@ -127,11 +129,9 @@ test('home shows current work without delegations and separates history under th
         'false',
       );
       await expect(row.locator('[data-action]:visible')).toHaveCount(0);
-      if (width === 1440 || width === 390) {
-        await capture(page, info, `home-current-${width}`);
-      }
+      await capture(page, info, `home-current-${width}`);
     }
-    await page.locator('a[href*="focus=threads-history"]').click();
+    await page.locator('a[href*="focus=threads-history"]').tap();
     await expect(page).toHaveURL(/focus=threads-history/);
     await expect(page.getByText('已经完成的研究', { exact: true })).toBeVisible();
     await expect(page.getByText('归档不代表已经验收', { exact: true })).toBeVisible();
@@ -147,7 +147,7 @@ test('empty home offers goal-only creation; lost accepted response retries once 
     await home(page);
     await expect(page.locator('[data-word="member-row"]')).toHaveCount(0);
     await capture(page, info, 'home-empty-390');
-    await page.getByRole('link', { name: '发起工作', exact: true }).click();
+    await page.getByRole('link', { name: '发起工作', exact: true }).tap();
     await expect(page).toHaveURL(/focus=threads/);
     const trigger = page.getByRole('button', { name: '创建工作线', exact: true });
     await trigger.click();
@@ -245,7 +245,7 @@ test('390px keyboard assistant shares session and unsent draft through work navi
     await page.keyboard.press('Escape');
     await page.goBack();
     await expect(page.locator('main h1')).toHaveText('我的事');
-    await discuss.click();
+    await discuss.tap();
     await expect(input).toHaveValue('先帮我核对目标，暂时不要执行');
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(
       true,

@@ -113,7 +113,7 @@ pnpm eval:llm --project=working-context --project=t16-real-llm
 ```bash
 pnpm check
 CI=true pnpm e2e
-CI=true pnpm e2e invariants
+CI=true pnpm e2e invariants # 独立复验入口；完整e2e已包含且通过时不重复执行
 pnpm --filter @ui4a/web build
 ```
 

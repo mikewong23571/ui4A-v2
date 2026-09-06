@@ -168,6 +168,14 @@ diff、checks、Eval、来源和 replay 全程零 AI。当前 local demo 身份�
 | I6 | 拒绝留痕 | 每个被拒动作在日志中带原因，且可作为下一步决策上下文获取 |
 | I7 | 模型故障安全 | LLM 配置缺失、端点失败或超时时 Assistant 诚实失败且零业务副作用；人工 renderer、审批和合同操作仍可用 |
 
+### 共享首页与低成本发起（T57 / D79）
+
+首页由当前授权责任、open/paused工作线和执行中委托的共享声明组织，历史独立可达，应用发现不抢主位。
+人类直接建线只填目标，原文与工作线同事件可重放；失败重试不重复建线。通用row/card/table与Dialog消费
+相同合同，Recipe/Sidecar不省略或隐藏声明责任，跨页沿用会话与真实处境。
+本地代码、浏览器、真实模型与review验收见[T57 DONE](./conductor/tracks/archive/t57-home-presentation-semantics_20260906/DONE.md)；
+不代表线上发布或两周真人便利性验证，后者仍由T58承接。
+
 ## 约束
 
 - 技术栈严格按 `docs/UI4A-技术选型.md`，不自造轮子（渲染协议用 A2UI、宿主协议用 Temporal、策略用 Cedar、委托链用 Keycloak）；

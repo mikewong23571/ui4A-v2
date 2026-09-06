@@ -91,6 +91,6 @@
 
 - [ ] **Track: T56 工作线工作台重构：目标、责任与共同上下文**（规划完成，未开工；自包含 spec/design/acceptance/plan，P0 三个探针与 P5 实现后 review/fixes/re-review 为必需门禁） *Link: [tracks/t56-work-thread-workspace_20260905/index.md](./tracks/t56-work-thread-workspace_20260905/index.md)*
 
-- [~] **Track: T57 首页工作简报与组件呈现语义**（独立worktree并行实施；用户授权阶段轻量验证、合并后统一全量/E2E/真实模型验收；与T56最终提交集成后关闭） *Link: [tracks/t57-home-presentation-semantics_20260906/index.md](./tracks/t57-home-presentation-semantics_20260906/index.md)*
+- [x] **Track: T57 首页工作简报与组件呈现语义**（2026-09-06完成：独立worktree并行实施并集成T56；my-work v3、语义row/决定卡/表格、goal-only原始输入与幂等、责任保全与缓存/导航闭环；check4393、完整E2E100及最新home4、真实模型/原生200%/构建/review通过；未部署，T58真人试用未开始） *Link: [tracks/archive/t57-home-presentation-semantics_20260906/index.md](./tracks/archive/t57-home-presentation-semantics_20260906/index.md)*
 
 - [ ] **Track: T58 目标工作台：连续两周真实使用与冻结验收**（规划完成，未开工；依赖T56/T57交付及review；准备期允许验证/编码/重构/UIUX redesign，最终固定候选连续≥336h真人试用，M1–M8与review通过才可关闭） *Link: [tracks/t58-two-week-use-validation_20260906/index.md](./tracks/t58-two-week-use-validation_20260906/index.md)*

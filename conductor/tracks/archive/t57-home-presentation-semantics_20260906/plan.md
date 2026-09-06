@@ -5,8 +5,8 @@
 > 中间执行必要 Red/Green 定向测试；阶段重度/E2E/真实模型/全量验证集中在合并主仓库后执行。
 > 合并必须保留 T56 在途修改，先集成其最终提交；未完成统一门禁不标 DONE。
 
-**实施中。** 用户覆盖串行依赖后，P0–P3 已在独立工作树完成定向 Red→Green 与交叉 review。
-已集成 T56 P4.1/P4.2 提交，并将 T57 合并回主仓库；当前统一执行 P4/P5。
+**已完成。** 用户覆盖串行依赖后，P0–P3 已在独立工作树完成定向 Red→Green 与交叉 review。
+已集成 T56 P4.1/P4.2 提交，并将 T57 合并回主仓库；P4/P5统一验收、修复及最终复审已完成。
 按 workflow 做 Red→Green→Gate、阶段 checkpoint 与 git notes。
 任务/子任务状态须同步，不能以“父项完成/子项未做”或 registry 陈旧状态证明通过。
 
@@ -71,36 +71,42 @@
 
 ## P4 全景验证与愿景反例
 
-- [~] Task: P4.1 视觉、跨域与故障故事
-  - [ ] 常驻 home-presentation.spec.ts 覆盖 US01–12 的 UI 部分；指定尺寸/缩放、触屏/键盘均留证据。
-  - [ ] 检查新应用/改名不改 UI、责任不被优化隐藏、模型失败可人工操作、授权裁剪不泄露。
-- [ ] Task: P4.2 真实模型与生成式呈现
-  - [ ] 执行 G4 的首页问答与 Recipe/Sidecar 变体验证，人工读回答并对照事实/副作用；skip不算通过。
-- [ ] Task: P4.3 全量收口与成本对照
-  - [ ] 执行 G5、精确格式/适用覆盖率；对照点击/机器字段/跨页/重解释成本，真人指标未测则明示。
-  - [ ] 实际启动可运行系统，建立 evidence 的 FR/US/G 完整映射；部署单独标未发布。
-- [ ] Task: P4 Phase Verification & Checkpoint
-  - [ ] 核对所有必需证据适用当前代码树，仅标 ready-for-review；记录 checkpoint。
+- [x] Task: P4.1 视觉、跨域与故障故事
+  - [x] 常驻 home-presentation.spec.ts 覆盖 US01–12 的 UI 部分；指定尺寸/缩放、触屏/键盘均留证据。
+  - [x] 检查新应用/改名不改 UI、责任不被优化隐藏、模型失败可人工操作、授权裁剪不泄露。
+- [x] Task: P4.2 真实模型与生成式呈现
+  - [x] 执行 G4 的首页问答与 Recipe/Sidecar 变体验证，人工读回答并对照事实/副作用；skip不算通过。
+- [x] Task: P4.3 全量收口与成本对照
+  - [x] 执行 G5、精确格式/适用覆盖率；对照点击/机器字段/跨页/重解释成本，真人指标未测则明示。
+  - [x] 实际启动可运行系统，建立 evidence 的 FR/US/G 完整映射；部署单独标未发布。
+- [x] Task: P4 Phase Verification & Checkpoint
+  - [x] 核对所有必需证据适用当前代码树，仅标 ready-for-review；记录 checkpoint。
 
 ## P5 实现后 Review、Fixes 与复审
 
-- [~] Task: P5.1 Review 实际最终 diff
-  - [ ] 创建 review.md，记录 reviewer 独立性、base/HEAD、FR/US/G、截图与架构 A1–A6 复核。
-  - [ ] 检查没有新真相/规则助手/每应用分支/业务内视觉DSL/重复session，也未扩大已知执行差异。
-- [~] Task: P5.2 Review Fixes
+- [x] Task: P5.1 Review 实际最终 diff
+  - [x] 创建 review.md，记录 reviewer 独立性、base/HEAD、FR/US/G、截图与架构 A1–A6 复核。
+  - [x] 检查没有新真相/规则助手/每应用分支/业务内视觉DSL/重复session，也未扩大已知执行差异。
+- [x] Task: P5.2 Review Fixes
   - [x] R1–R8：合并前交叉 review 的字段、分组、unknown、上下文、状态、焦点、Escape、回执已修（edb35f03）。
   - [x] R9：合并后精确 review-queue 姿态、委托canonical rel/identity与集合回链已修，首轮全仓通过。
   - [x] R10：空委托覆盖口径与错误子串验收已修（empty-state Red→Green 6项）。
   - [x] R11：canonical集合变更未失效首页read slice缓存，泛型回链修复（2 Red→4files/33 Green），待浏览器同一行更新验证。
   - [x] R12：真实绑定与view折叠覆盖已补纯/服务/route负例修复，第二轮全仓通过。
   - [x] R13：新slice关系回链必须保留工作台/上下文，links mode改Next Link；meta/external/full边界保留，2files/16 Green。
-  - [x] R14：旧E2E书架/CLI参数/banner/portal定位同步新合同，待最终完整浏览器运行。
-  - [ ] 将 finding 逐条追加子任务，补复现后修复，记录 commit/受影响故事；无发现不造修复提交。
-  - [ ] 复跑受影响门禁与必要全量，更新像素/模型/来源证据，不用旧测试绿灯覆盖新代码。
-- [ ] Task: P5.3 Re-review 与关闭
-  - [ ] 复审所有 finding 与必需故事，无范围内缺口和阻断性问题；NOT RUN 必需项保持开放。
-  - [ ] DONE 分列实现/测试/浏览器/模型/真人/部署；GR5 清理/晋升探针、同步正典解释和三处状态。
-- [ ] Task: P5 Phase Verification & Checkpoint
-  - [ ] 记录最终复审/运行/工作树证据，完成后按仓库归档约定处理；不自动 push 或部署。
+  - [x] R14：旧E2E书架/CLI参数/banner/portal定位同步新合同，完整浏览器100通过。
+  - [x] R15：首页确认完整事实、未确认回执与结构化拒绝口径；84d3a4c3/0d754c88与最新home4通过。
+  - [x] R16：真实模型引用/容器语义、身份/分页/S24 oracle和Revision时限；84d3a4c3/3ae4a24c及G4通过。
+  - [x] R17：root密度版本映射；3ae4a24c，3项集成测试与实际重载像素通过。
+  - [x] 将 finding 逐条追加子任务，补复现后修复，记录 commit/受影响故事；无发现不造修复提交。
+  - [x] 复跑受影响门禁与必要全量，更新像素/模型/来源证据，不用旧测试绿灯覆盖新代码。
+- [x] Task: P5.3 Re-review 与关闭
+  - [x] 复审所有 finding 与必需故事，无范围内缺口和阻断性问题；NOT RUN 必需项保持开放。
+  - [x] DONE 分列实现/测试/浏览器/模型/真人/部署；GR5 清理/晋升探针、同步正典解释和三处状态。
+- [x] Task: P5 Phase Verification & Checkpoint
+  - [x] 记录最终复审/运行/工作树证据，完成后按仓库归档约定处理；不自动 push 或部署。
 
-执行注：P0–P3为用户授权的轻量阶段checkpoint，详见evidence.md；最终统一门禁待主仓库合并后，非DONE。
+执行注：P0–P3为用户授权的轻量阶段checkpoint（edb35f03）；P4/P5由主仓库统一验收收口（最终生产代码3ae4a24c），见evidence.md/DONE.md。
+
+最终修复提交：19ae4e49（责任/集成）、84d3a4c3（实际知情面/缓存/Revision时限）、0d754c88（诚实回执与失败）、3ae4a24c（引用/容器说明与密度持久化）。
+所有R1–R17行为发现及fixture校正均在review/evidence登记，无范围内阻断；闭环不包含部署或T58真人试用。

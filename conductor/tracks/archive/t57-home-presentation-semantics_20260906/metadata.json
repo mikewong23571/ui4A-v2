@@ -1,0 +1,32 @@
+{
+  "trackId": "t57-home-presentation-semantics_20260906",
+  "title": "T57 首页工作简报与组件呈现语义",
+  "type": "refactor",
+  "status": "completed",
+  "createdAt": "2026-09-06",
+  "updatedAt": "2026-09-06",
+  "description": "以产品愿景组织首页注意力，按任务语义选择列表/决定卡/表格/输入宿主，复用同一合同与呈现平面，补齐组件层防特判门禁；含架构承载审查与实施后 review 闭环，实现已合并主仓库，统一验证、修复与最终 review 已通过。",
+  "dependsOn": [
+    "t56-work-thread-workspace_20260905"
+  ],
+  "artifacts": [
+    "index.md",
+    "spec.md",
+    "architecture-review.md",
+    "design.md",
+    "acceptance.md",
+    "plan.md",
+    "planning-review.md",
+    "evidence.md",
+    "review.md",
+    "spike-report.md",
+    "DONE.md",
+    "evidence/browser-manifest.json",
+    "evidence/model-evidence.json"
+  ],
+  "dependencyMode": "parallel-implementation-integration-before-closeout",
+  "implementationBase": "bf58603d",
+  "worktree": "/Users/mike/projs/playground/ui4A-t57",
+  "completedAt": "2026-09-06",
+  "sourceCodeSha": "3ae4a24c46a931a5edd149b2d94ba5cab75b857e"
+}

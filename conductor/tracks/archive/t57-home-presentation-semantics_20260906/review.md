@@ -33,4 +33,26 @@ creation 交叉复核呈现责任，action_ui 复核首页与助手共同处境�
 - R12：结构合法Surface可以绑定不存在的label却被认为保全责任；另需验证已存折叠view不能隐藏责任。
   核心与Web所有实际命中/patch/revert/promotion路径正补齐，未关闭前保持阻断。
 
-浏览器像素、真实模型结果和这些修复的最终统一重验尚待记录。
+以上是该轮复审时的待办；最终浏览器、模型和统一重验已完成，结果见下节及evidence。
+
+## 最终复审结论：通过
+
+最终生产代码3ae4a24c；完整测试与后续定向复验逐项见evidence，截图/model原文已亲自读取。
+creation最终交叉复核0d754c88/3ae4a24c及相邻调用链，无范围内阻断性问题；编排器复核实际像素和运行结果。
+
+R12的真实必填绑定与折叠、R11的无回链成员及空兄弟切片、R13关系导航均已有复现→修复→复测→复审。
+R15（知情面/诚实回执）、R16（真实模型与引用语义）、R17（密度持久化）也闭环：inbox摘要不再跳过完整决定面；不可信执行回执显示未确认；409不再出现[object Object]；
+root密度重载保持；首页model fixture身份/分页以及S24固定叶子ID误判按实际合同修正；逐条验证模型引用，
+并补全通用groupRole容器含义，未把管理动作或容器trait当作待审批项。
+
+### A1–A6愿景与架构复核
+
+- A1：原始goal同thread-created事件，所有读切片/source均为可重建投影；无新权威表、writer或业务真相。
+- A2：模型只给binding/semantic operations，运行时当前授权解引用；UI不填造事实，未知前后值明确未提供。
+- A3：caller/client参数装配仍入同一HTTP与engine judgment；human-only审批和D78.4既有边界未改。
+- A4：home selection是注意力事实，共享声明；授权继续credential grants×audience与owner，不从focus/lens取权。
+- A5：不把high翻译成不可逆/服务端全路径确认保证；已知thread specialised差异如实移交。
+- A6：GR1–GR5 strict全绿、无例外；D54扩扫描实际代码；超限Siren投影按职责拆解，无新依赖/模板平台/每应用分支。
+
+可观察的成本变化是零手填机器字段、低频操作收起、真实责任集中、同session跨页；真人收益不由agent代填。
+模型时延、原合同机器名以及非root collapse边界已记录，不以这些已知非目标混淆本轮功能完成。

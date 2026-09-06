@@ -1,0 +1,234 @@
+{
+  "schemaVersion": 1,
+  "sourceCodeSha": "3ae4a24c",
+  "fullE2e": {
+    "stats": {
+      "startTime": "2026-09-06T09:38:52.775Z",
+      "duration": 280614.189,
+      "expected": 100,
+      "skipped": 29,
+      "unexpected": 0,
+      "flaky": 0
+    },
+    "sourceCodeSha": "84d3a4c3",
+    "skipped": [
+      "real Assistant selects the shared CVE Action and the Function result returns through callback",
+      "real Assistant reports a missing Function deployment honestly with zero business mutation",
+      "LLM 探针:reasoning 暴露形态 / tool calling / 每步时延实测",
+      "real Assistant present produces a governed receipt, navigation, and factual canvas",
+      "真实 LLM:B1 明确自然语言写请求经合同完成且仅新增授权文章",
+      "真实 GLM:thinking 帧先于同号 step 帧,reasoning 逐步落库,思考区折叠可见",
+      "natural write stays in scoped business contracts and creates the authorized article",
+      "U18: real Assistant reads the same authorized article projection as the renderer",
+      "U19: real Assistant maps a natural write request onto the shared action contract",
+      "U20: explanation turn receives the complete approved execution audit and stays read-only",
+      "U21: real Assistant keeps user words, contract facts, inference, and decisions distinct",
+      "U23: inline response and assistant provenance use the externally selected model",
+      "T57 G4: real Presentation revisions preserve responsibility through generic, Recipe and Sidecar",
+      "S1/S3: real Chat understands the application and current Markdown layers",
+      "S24: real Presentation Agent produces semantic patches for five human phrasings",
+      "unlocated capability questions start at application discovery",
+      "a workline answers about its explicit cross-application resources",
+      "homepage question uses the visible authorized roots and current work without treating empty delegations as no work",
+      "us12 shared session answers X, Y and thread questions from per-turn facts read-only",
+      "旧 keyless rule-driver 用户故事不再作为产品验收证据",
+      "渲染 spec 解引用后的值与实体快照一致(s5 对拍逻辑精简重跑)",
+      "S3-并发(裁决器即并发控制):两委托并发发布同一标题 → 恰一成功,另一带原因被拒留痕,资源终态不损坏",
+      "S3-续跑(e2e 全链):执行中 SIGKILL worker → Temporal 仍 RUNNING → 重启续跑 completed,步序列无缺口,文章落库",
+      "S3-N 路并行 + 舰队页:发布×2(不同标题)+ 审核全部并发 → 全部 completed 互不串扰;/delegations 行数与状态可见",
+      "S5:聊天\"按分类展示文章\" → 零字面 spec → 画布 chart 与快照逐项一致 → 凝固",
+      "S5 附:展示意图的第二形态——\"展示文章列表\" → table 词条,成员与快照一致",
+      "S5 附:render 回执即达即跳——悬浮聊天发送展示意图 → 自动导航画布并激活(同屏协同)",
+      "c. 授予外访问得到结构化 denied(证据锚点:Phase B vitest)",
+      "d. 他人 sidecar id 得 404(证据锚点:Phase B vitest)"
+    ]
+  },
+  "latestHomeStories": {
+    "stats": {
+      "startTime": "2026-09-06T10:21:21.494Z",
+      "duration": 24127.850000000002,
+      "expected": 4,
+      "skipped": 0,
+      "unexpected": 0,
+      "flaky": 0
+    },
+    "touchEnabled": true,
+    "viewports": [
+      [
+        1440,
+        900
+      ],
+      [
+        1080,
+        820
+      ],
+      [
+        768,
+        1024
+      ],
+      [
+        390,
+        844
+      ]
+    ]
+  },
+  "nativeZoom": {
+    "browser": "Chrome for Testing 148.0.7778.96",
+    "zoomPercent": 200,
+    "verifiedBy": "native toolbar Zoom 200% and accessibility; not CSS or emulation",
+    "scope": "home and goal form, dark mode, keyboard loop, Escape and retained draft",
+    "restoredPercent": 100
+  },
+  "screenshots": [
+    {
+      "file": "home-responsibility-and-summary-1440.png",
+      "sha256": "6bfa6bd9a3c686966b61bc6b9154c5bd609d3d30ccf0c8a3c6ad64248b5a2402",
+      "pixels": [
+        1440,
+        932
+      ],
+      "source": "touch-enabled standing home stories",
+      "codeSha": "3ae4a24c"
+    },
+    {
+      "file": "home-assistant-draft-390.png",
+      "sha256": "7d04880d863dc8e96296d566bbf5a842dbdb89bb5ed8f15fd062ca0c66de2550",
+      "pixels": [
+        390,
+        844
+      ],
+      "source": "touch-enabled standing home stories",
+      "codeSha": "3ae4a24c"
+    },
+    {
+      "file": "home-current-1080.png",
+      "sha256": "f3435418cdd6ed4e9a5981409658a962cffb57c11a346541310af8b16488be22",
+      "pixels": [
+        1080,
+        847
+      ],
+      "source": "touch-enabled standing home stories",
+      "codeSha": "3ae4a24c"
+    },
+    {
+      "file": "home-current-1440.png",
+      "sha256": "66b451ce174e2b13970175138b70135a8fff09ab13f7b2af570ab0850cbf0c80",
+      "pixels": [
+        1440,
+        900
+      ],
+      "source": "touch-enabled standing home stories",
+      "codeSha": "3ae4a24c"
+    },
+    {
+      "file": "home-current-768.png",
+      "sha256": "20b84b80dd0b9ee4f67002f7c0d4439d862bdf5149ef2d69af39c00d29429681",
+      "pixels": [
+        768,
+        1024
+      ],
+      "source": "touch-enabled standing home stories",
+      "codeSha": "3ae4a24c"
+    },
+    {
+      "file": "home-current-390.png",
+      "sha256": "19675bcc2cbc7dc02a0926b8336c9528185e213033cc93c18c75ebad948ab13c",
+      "pixels": [
+        390,
+        886
+      ],
+      "source": "touch-enabled standing home stories",
+      "codeSha": "3ae4a24c"
+    },
+    {
+      "file": "home-history-390.png",
+      "sha256": "6a8770e81aca99f7fd5b0f1ec96f4a512ae9ed96cccdbabec387d5172ebb7c56",
+      "pixels": [
+        390,
+        844
+      ],
+      "source": "touch-enabled standing home stories",
+      "codeSha": "3ae4a24c"
+    },
+    {
+      "file": "home-create-dialog-390.png",
+      "sha256": "955f4297653dd9255189cc99908bea080110088332702f25ca059d700bc3a2f5",
+      "pixels": [
+        390,
+        844
+      ],
+      "source": "touch-enabled standing home stories",
+      "codeSha": "3ae4a24c"
+    },
+    {
+      "file": "home-created-source-390.png",
+      "sha256": "78baaf866ba09d28e884181f819520f9b28ee8dbc8751d6898684561ad0f0c45",
+      "pixels": [
+        390,
+        844
+      ],
+      "source": "touch-enabled standing home stories",
+      "codeSha": "3ae4a24c"
+    },
+    {
+      "file": "home-create-failure-390.png",
+      "sha256": "f49486fe5140c6fff7c86a5705594633bd0b44d0482b06222b2f0242e2b01db4",
+      "pixels": [
+        390,
+        844
+      ],
+      "source": "touch-enabled standing home stories",
+      "codeSha": "3ae4a24c"
+    },
+    {
+      "file": "home-empty-390.png",
+      "sha256": "da2824ab22e15c95c4eb49947b25d5eb69b600442d2ed8ef241f3db2ba1270e5",
+      "pixels": [
+        390,
+        844
+      ],
+      "source": "touch-enabled standing home stories",
+      "codeSha": "3ae4a24c"
+    },
+    {
+      "file": "t57-native-zoom200-home.png",
+      "sha256": "941ebb0b4d62869b52de7ce1955edcd6b82ff22ef4bda67cbf3c331aaf2b62eb",
+      "pixels": [
+        4718592,
+        4292935744
+      ],
+      "source": "CUA native/browser walkthrough on localhost:3120",
+      "codeSha": "3ae4a24c"
+    },
+    {
+      "file": "t57-native-zoom200-dialog.png",
+      "sha256": "6b953689e413a76543c432396ad349de1a92e1ea5a8221a59b936e7b47dbeb3e",
+      "pixels": [
+        4718592,
+        4292935744
+      ],
+      "source": "CUA native/browser walkthrough on localhost:3120",
+      "codeSha": "3ae4a24c"
+    },
+    {
+      "file": "t57-density-compact-reloaded.png",
+      "sha256": "7d4d76919c842ca3985d57928fdc08ce83378f74590b53ca0d7b765c78e7a926",
+      "pixels": [
+        65536,
+        4293001768
+      ],
+      "source": "CUA native/browser walkthrough on localhost:3120",
+      "codeSha": "3ae4a24c"
+    },
+    {
+      "file": "t57-density-spacious-reloaded.png",
+      "sha256": "ae19b1ca7765a7d2ffedd4a5641609a5e39f1c2b1402af1bf4e3895499510c69",
+      "pixels": [
+        65536,
+        4293001768
+      ],
+      "source": "CUA native/browser walkthrough on localhost:3120",
+      "codeSha": "3ae4a24c"
+    }
+  ]
+}

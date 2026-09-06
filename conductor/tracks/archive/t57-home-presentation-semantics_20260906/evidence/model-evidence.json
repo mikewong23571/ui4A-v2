@@ -1,0 +1,918 @@
+{
+  "schemaVersion": 1,
+  "sourceCodeSha": "3ae4a24c",
+  "model": "deepseek-v4-flash",
+  "home": {
+    "elapsedMs": 180789,
+    "question": "我在首页。这里有没有待我批准或驳回的事项？还有哪些工作可以继续？请列出工作目标和当前状态，分别给出待决项与可继续工作的引用依据，只阅读，不执行修改。",
+    "answer": "**待你批准或驳回的事项：当前没有。**\n- 确认收件箱（inbox）为空：count = 0，且无动作。\n- 执行中委托（delegations-current）为空：count = 0，无正在等待人类接受/驳回的委托（如软件变更、写作请求等代办类工作目前均无）。\n\n**可继续的工作：2 条工作线（threads-current 队列）。**\n\n1. **核验本次发布的测试证据** —— 状态 open（进行中）\n   - 引用：/entities[0]/properties {identity, status}\n   - 可继续性依据：当前实体披露 attach/detach/pause/complete/archive 动作且 guard-results 均未阻断（blocked=false），说明该工作线可推进、也可按需暂停或完成，不是待决审批项。\n\n2. **等待补齐评审材料** —— 状态 paused（已暂停）\n   - 引用：/entities[1]/properties {identity, status}\n   - 可继续性依据：披露 resume（恢复工作线）动作且未阻断（blocked=false），即你随时可恢复它继续推进；此外也有 complete/archive 可选。\n\n**说明**：这两条工作线的 presentation 标注了 human-responsibility 特质，但这属于容器标注，不证明它们当前有待你审批的挂起提议——真正的待决项应出现在确认收件箱（inbox，当前 0 条）或执行中委托（当前 0 条）。这两条只代表可继续进行的工作，不是待批准/驳回对象。首页另外还列出了各应用流程入口（如文章发布向导、写作请求、待办捕捉等）可作为\"新工作\"起点，但它们不属于\"继续现有工作\"。",
+    "sources": [
+      {
+        "rel": "inbox",
+        "pointer": "/properties/count"
+      },
+      {
+        "rel": "delegations-current",
+        "pointer": "/properties/count"
+      },
+      {
+        "rel": "threads-current",
+        "pointer": "/entities/0/properties"
+      },
+      {
+        "rel": "threads-current",
+        "pointer": "/entities/0/actions"
+      },
+      {
+        "rel": "threads-current",
+        "pointer": "/entities/0/guard-results"
+      },
+      {
+        "rel": "threads-current",
+        "pointer": "/entities/1/properties"
+      },
+      {
+        "rel": "threads-current",
+        "pointer": "/entities/1/actions"
+      },
+      {
+        "rel": "threads-current",
+        "pointer": "/entities/1/guard-results"
+      }
+    ],
+    "operations": [
+      "navigate",
+      "navigate",
+      "navigate",
+      "navigate",
+      "answer"
+    ],
+    "roots": [
+      {
+        "class": [
+          "collection",
+          "inbox"
+        ],
+        "properties": {
+          "rel": "inbox",
+          "title": "在等我",
+          "presentation": {
+            "fields": [
+              {
+                "path": "properties.title",
+                "title": "标题",
+                "role": "identity"
+              }
+            ],
+            "emptyMeaning": "no-current-responsibility"
+          },
+          "count": 0,
+          "delivered": 0
+        },
+        "actions": [],
+        "links": [
+          {
+            "rel": [
+              "self"
+            ],
+            "href": "/api/entity?rel=inbox",
+            "title": "在等我"
+          }
+        ],
+        "guard-results": [],
+        "entities": []
+      },
+      {
+        "class": [
+          "collection",
+          "threads"
+        ],
+        "properties": {
+          "rel": "threads-current",
+          "title": "继续工作",
+          "count": 2,
+          "presentation": {
+            "version": 1,
+            "traits": [
+              "work-queue"
+            ],
+            "emptyMeaning": "ready-to-start",
+            "fields": [
+              {
+                "path": "properties.title",
+                "title": "标题",
+                "role": "identity"
+              }
+            ]
+          }
+        },
+        "actions": [],
+        "links": [
+          {
+            "rel": [
+              "self"
+            ],
+            "href": "/api/entity?rel=threads-current",
+            "title": "继续工作"
+          },
+          {
+            "rel": [
+              "collection"
+            ],
+            "href": "/api/entity?rel=threads",
+            "title": "全部工作线与新建"
+          }
+        ],
+        "guard-results": [],
+        "entities": [
+          {
+            "class": [
+              "work-thread",
+              "open"
+            ],
+            "properties": {
+              "rel": "thread:home-current",
+              "identity": "核验本次发布的测试证据",
+              "id": "home-current",
+              "owner": "local-user",
+              "goal": {
+                "text": "核验本次发布的测试证据",
+                "source": "thread-input:home-current"
+              },
+              "status": "open",
+              "statusText": "进行中",
+              "context": [],
+              "active": [],
+              "approval": [],
+              "recent-events": [],
+              "presentation": {
+                "version": 1,
+                "traits": [
+                  "human-responsibility",
+                  "work-queue"
+                ],
+                "groupRole": "responsibility",
+                "emptyMeaning": "ready-to-start",
+                "fields": [
+                  {
+                    "path": "properties.identity",
+                    "title": "目标",
+                    "role": "identity"
+                  },
+                  {
+                    "path": "properties.statusText",
+                    "title": "状态",
+                    "role": "status"
+                  },
+                  {
+                    "path": "properties.resume",
+                    "title": "上次停在哪",
+                    "role": "primary-content"
+                  }
+                ]
+              }
+            },
+            "actions": [
+              {
+                "name": "attach",
+                "title": "添加涉及对象",
+                "method": "POST",
+                "href": "/api/exec",
+                "fields": {
+                  "$schema": "http://json-schema.org/draft-07/schema#",
+                  "type": "object",
+                  "properties": {
+                    "category": {
+                      "type": "string",
+                      "enum": [
+                        "context",
+                        "active",
+                        "approval",
+                        "event"
+                      ],
+                      "title": "类别"
+                    },
+                    "rel": {
+                      "type": "string",
+                      "title": "涉及对象",
+                      "description": "对象的合同路径(形如 集合:名字);通常经「＋添加涉及对象」的选择器挑选,无需手填",
+                      "minLength": 1
+                    }
+                  },
+                  "required": [
+                    "category",
+                    "rel"
+                  ],
+                  "additionalProperties": false
+                }
+              },
+              {
+                "name": "detach",
+                "title": "移出涉及对象",
+                "method": "POST",
+                "href": "/api/exec",
+                "fields": {
+                  "$schema": "http://json-schema.org/draft-07/schema#",
+                  "type": "object",
+                  "properties": {
+                    "category": {
+                      "type": "string",
+                      "enum": [
+                        "context",
+                        "active",
+                        "approval",
+                        "event"
+                      ],
+                      "title": "类别"
+                    },
+                    "rel": {
+                      "type": "string",
+                      "title": "涉及对象",
+                      "description": "对象的合同路径(形如 集合:名字);通常经「＋添加涉及对象」的选择器挑选,无需手填",
+                      "minLength": 1
+                    }
+                  },
+                  "required": [
+                    "category",
+                    "rel"
+                  ],
+                  "additionalProperties": false
+                }
+              },
+              {
+                "name": "pause",
+                "title": "暂停工作线",
+                "method": "POST",
+                "href": "/api/exec",
+                "fields": {
+                  "$schema": "http://json-schema.org/draft-07/schema#",
+                  "type": "object",
+                  "properties": {},
+                  "required": [],
+                  "additionalProperties": false
+                }
+              },
+              {
+                "name": "complete",
+                "title": "完成工作线",
+                "method": "POST",
+                "href": "/api/exec",
+                "fields": {
+                  "$schema": "http://json-schema.org/draft-07/schema#",
+                  "type": "object",
+                  "properties": {},
+                  "required": [],
+                  "additionalProperties": false
+                }
+              },
+              {
+                "name": "archive",
+                "title": "归档工作线",
+                "method": "POST",
+                "href": "/api/exec",
+                "fields": {
+                  "$schema": "http://json-schema.org/draft-07/schema#",
+                  "type": "object",
+                  "properties": {},
+                  "required": [],
+                  "additionalProperties": false
+                },
+                "requires-confirmation": "high"
+              }
+            ],
+            "links": [
+              {
+                "rel": [
+                  "self"
+                ],
+                "href": "/api/entity?rel=thread:home-current"
+              },
+              {
+                "rel": [
+                  "source"
+                ],
+                "href": "/api/entity?rel=thread-input:home-current",
+                "title": "创建时的目标原文"
+              }
+            ],
+            "guard-results": [
+              {
+                "action": "attach",
+                "blocked": false,
+                "guards": []
+              },
+              {
+                "action": "detach",
+                "blocked": false,
+                "guards": []
+              },
+              {
+                "action": "pause",
+                "blocked": false,
+                "guards": []
+              },
+              {
+                "action": "complete",
+                "blocked": false,
+                "guards": []
+              },
+              {
+                "action": "archive",
+                "blocked": false,
+                "guards": []
+              }
+            ],
+            "entities": [],
+            "rel": [
+              "item"
+            ],
+            "href": "/api/entity?rel=thread:home-current"
+          },
+          {
+            "class": [
+              "work-thread",
+              "paused"
+            ],
+            "properties": {
+              "rel": "thread:home-paused",
+              "identity": "等待补齐评审材料",
+              "id": "home-paused",
+              "owner": "local-user",
+              "goal": {
+                "text": "等待补齐评审材料",
+                "source": "thread-input:home-paused"
+              },
+              "status": "paused",
+              "statusText": "已暂停",
+              "context": [],
+              "active": [],
+              "approval": [],
+              "recent-events": [],
+              "presentation": {
+                "version": 1,
+                "traits": [
+                  "human-responsibility",
+                  "work-queue"
+                ],
+                "groupRole": "responsibility",
+                "emptyMeaning": "ready-to-start",
+                "fields": [
+                  {
+                    "path": "properties.identity",
+                    "title": "目标",
+                    "role": "identity"
+                  },
+                  {
+                    "path": "properties.statusText",
+                    "title": "状态",
+                    "role": "status"
+                  },
+                  {
+                    "path": "properties.resume",
+                    "title": "上次停在哪",
+                    "role": "primary-content"
+                  }
+                ]
+              }
+            },
+            "actions": [
+              {
+                "name": "attach",
+                "title": "添加涉及对象",
+                "method": "POST",
+                "href": "/api/exec",
+                "fields": {
+                  "$schema": "http://json-schema.org/draft-07/schema#",
+                  "type": "object",
+                  "properties": {
+                    "category": {
+                      "type": "string",
+                      "enum": [
+                        "context",
+                        "active",
+                        "approval",
+                        "event"
+                      ],
+                      "title": "类别"
+                    },
+                    "rel": {
+                      "type": "string",
+                      "title": "涉及对象",
+                      "description": "对象的合同路径(形如 集合:名字);通常经「＋添加涉及对象」的选择器挑选,无需手填",
+                      "minLength": 1
+                    }
+                  },
+                  "required": [
+                    "category",
+                    "rel"
+                  ],
+                  "additionalProperties": false
+                }
+              },
+              {
+                "name": "detach",
+                "title": "移出涉及对象",
+                "method": "POST",
+                "href": "/api/exec",
+                "fields": {
+                  "$schema": "http://json-schema.org/draft-07/schema#",
+                  "type": "object",
+                  "properties": {
+                    "category": {
+                      "type": "string",
+                      "enum": [
+                        "context",
+                        "active",
+                        "approval",
+                        "event"
+                      ],
+                      "title": "类别"
+                    },
+                    "rel": {
+                      "type": "string",
+                      "title": "涉及对象",
+                      "description": "对象的合同路径(形如 集合:名字);通常经「＋添加涉及对象」的选择器挑选,无需手填",
+                      "minLength": 1
+                    }
+                  },
+                  "required": [
+                    "category",
+                    "rel"
+                  ],
+                  "additionalProperties": false
+                }
+              },
+              {
+                "name": "resume",
+                "title": "恢复工作线",
+                "method": "POST",
+                "href": "/api/exec",
+                "fields": {
+                  "$schema": "http://json-schema.org/draft-07/schema#",
+                  "type": "object",
+                  "properties": {},
+                  "required": [],
+                  "additionalProperties": false
+                }
+              },
+              {
+                "name": "complete",
+                "title": "完成工作线",
+                "method": "POST",
+                "href": "/api/exec",
+                "fields": {
+                  "$schema": "http://json-schema.org/draft-07/schema#",
+                  "type": "object",
+                  "properties": {},
+                  "required": [],
+                  "additionalProperties": false
+                }
+              },
+              {
+                "name": "archive",
+                "title": "归档工作线",
+                "method": "POST",
+                "href": "/api/exec",
+                "fields": {
+                  "$schema": "http://json-schema.org/draft-07/schema#",
+                  "type": "object",
+                  "properties": {},
+                  "required": [],
+                  "additionalProperties": false
+                },
+                "requires-confirmation": "high"
+              }
+            ],
+            "links": [
+              {
+                "rel": [
+                  "self"
+                ],
+                "href": "/api/entity?rel=thread:home-paused"
+              },
+              {
+                "rel": [
+                  "source"
+                ],
+                "href": "/api/entity?rel=thread-input:home-paused",
+                "title": "创建时的目标原文"
+              }
+            ],
+            "guard-results": [
+              {
+                "action": "attach",
+                "blocked": false,
+                "guards": []
+              },
+              {
+                "action": "detach",
+                "blocked": false,
+                "guards": []
+              },
+              {
+                "action": "resume",
+                "blocked": false,
+                "guards": []
+              },
+              {
+                "action": "complete",
+                "blocked": false,
+                "guards": []
+              },
+              {
+                "action": "archive",
+                "blocked": false,
+                "guards": []
+              }
+            ],
+            "entities": [],
+            "rel": [
+              "item"
+            ],
+            "href": "/api/entity?rel=thread:home-paused"
+          }
+        ]
+      },
+      {
+        "class": [
+          "collection",
+          "delegations"
+        ],
+        "properties": {
+          "rel": "delegations-current",
+          "title": "执行中委托",
+          "presentation": {
+            "fields": [
+              {
+                "path": "properties.title",
+                "title": "标题",
+                "role": "identity"
+              }
+            ],
+            "emptyMeaning": "nothing-in-motion"
+          },
+          "count": 0
+        },
+        "actions": [],
+        "links": [
+          {
+            "rel": [
+              "self"
+            ],
+            "href": "/api/entity?rel=delegations-current",
+            "title": "执行中委托"
+          },
+          {
+            "rel": [
+              "collection"
+            ],
+            "href": "/api/entity?rel=delegations",
+            "title": "全部委托"
+          }
+        ],
+        "guard-results": [],
+        "entities": []
+      }
+    ],
+    "checks": [
+      "all returned citations verified against current HTTP facts",
+      "exact goals and paused distinction",
+      "all root projections and thread events unchanged",
+      "foreign principal and history not disclosed"
+    ]
+  },
+  "presentation": [
+    {
+      "request": {
+        "sidecarId": "sidecar:3b66f5dca9639040",
+        "baseVersion": 1,
+        "messageId": "responsibility:revision:0",
+        "instruction": "让这个工作面更简洁紧凑，普通管理动作弱化；待我决定的事项必须仍可直接找到。"
+      },
+      "modelResult": {
+        "status": "patch",
+        "patch": {
+          "schemaVersion": 1,
+          "sidecarId": "sidecar:3b66f5dca9639040",
+          "baseVersion": 1,
+          "source": {
+            "kind": "revision",
+            "ref": "responsibility:revision:0"
+          },
+          "operations": [
+            {
+              "kind": "collapse",
+              "nodeId": "region-node:subject:region-3",
+              "collapsed": true
+            },
+            {
+              "kind": "density",
+              "nodeId": "root",
+              "density": "compact"
+            }
+          ]
+        }
+      },
+      "httpStatus": 200,
+      "safe": true,
+      "beforeVersion": 1,
+      "afterVersion": 2,
+      "beforeSurfaceSha256": "14758787a623e72a8e774984ba126c874f49fe0bf4d8b6c42ecbeb0443810d50",
+      "afterSurfaceSha256": "14758787a623e72a8e774984ba126c874f49fe0bf4d8b6c42ecbeb0443810d50",
+      "afterView": {
+        "densityByNodeId": {
+          "root": "compact"
+        },
+        "collapsedNodeIds": [
+          "region-node:subject:region-3"
+        ]
+      }
+    },
+    {
+      "request": {
+        "sidecarId": "sidecar:3b66f5dca9639040",
+        "baseVersion": 2,
+        "messageId": "responsibility:revision:1",
+        "instruction": "收起普通操作区域，突出需要我审阅的内容；不要隐藏待批准事项。"
+      },
+      "modelResult": {
+        "status": "patch",
+        "patch": {
+          "schemaVersion": 1,
+          "sidecarId": "sidecar:3b66f5dca9639040",
+          "baseVersion": 2,
+          "source": {
+            "kind": "revision",
+            "ref": "responsibility:revision:1"
+          },
+          "operations": [
+            {
+              "kind": "collapse",
+              "nodeId": "region-node:subject:region-3",
+              "collapsed": true
+            },
+            {
+              "kind": "density",
+              "nodeId": "region-node:subject:region-2",
+              "density": "spacious"
+            }
+          ]
+        }
+      },
+      "httpStatus": 200,
+      "safe": true,
+      "beforeVersion": 2,
+      "afterVersion": 3,
+      "beforeSurfaceSha256": "14758787a623e72a8e774984ba126c874f49fe0bf4d8b6c42ecbeb0443810d50",
+      "afterSurfaceSha256": "14758787a623e72a8e774984ba126c874f49fe0bf4d8b6c42ecbeb0443810d50",
+      "afterView": {
+        "densityByNodeId": {
+          "root": "compact",
+          "region-node:subject:region-2": "spacious"
+        },
+        "collapsedNodeIds": [
+          "region-node:subject:region-3"
+        ]
+      }
+    },
+    {
+      "request": {
+        "sidecarId": "sidecar:3b66f5dca9639040",
+        "baseVersion": 3,
+        "messageId": "responsibility:revision:2",
+        "instruction": "把整个工作面全部收起来，只保留标题，包括那些待我处理的事项。"
+      },
+      "modelResult": {
+        "status": "patch",
+        "patch": {
+          "schemaVersion": 1,
+          "sidecarId": "sidecar:3b66f5dca9639040",
+          "baseVersion": 3,
+          "source": {
+            "kind": "revision",
+            "ref": "responsibility:revision:2"
+          },
+          "operations": [
+            {
+              "kind": "collapse",
+              "nodeId": "region-node:subject:region-1",
+              "collapsed": true
+            },
+            {
+              "kind": "collapse",
+              "nodeId": "region-node:subject:region-2",
+              "collapsed": true
+            },
+            {
+              "kind": "collapse",
+              "nodeId": "region-node:subject:region-3",
+              "collapsed": true
+            },
+            {
+              "kind": "collapse",
+              "nodeId": "region-node:subject:region-4",
+              "collapsed": true
+            }
+          ]
+        }
+      },
+      "httpStatus": 409,
+      "safe": false,
+      "beforeVersion": 3,
+      "afterVersion": 3,
+      "beforeSurfaceSha256": "14758787a623e72a8e774984ba126c874f49fe0bf4d8b6c42ecbeb0443810d50",
+      "afterSurfaceSha256": "14758787a623e72a8e774984ba126c874f49fe0bf4d8b6c42ecbeb0443810d50",
+      "afterView": {
+        "densityByNodeId": {
+          "root": "compact",
+          "region-node:subject:region-2": "spacious"
+        },
+        "collapsedNodeIds": [
+          "region-node:subject:region-3"
+        ]
+      }
+    }
+  ],
+  "s24": {
+    "schemaVersion": 1,
+    "model": "deepseek-v4-flash",
+    "instructions": [
+      "正文更突出，动作收起来。",
+      "把阅读区域放宽松一点，并折叠操作区。",
+      "我想专注阅读内容，弱化并收起那些按钮。",
+      "Increase the body emphasis and collapse the actions region.",
+      "让文章内容更醒目，操作工具先隐藏。"
+    ],
+    "results": [
+      {
+        "status": "patch",
+        "patch": {
+          "schemaVersion": 1,
+          "sidecarId": "sidecar:t16",
+          "baseVersion": 7,
+          "source": {
+            "kind": "revision",
+            "ref": "message:0"
+          },
+          "operations": [
+            {
+              "kind": "collapse",
+              "nodeId": "actions",
+              "collapsed": true
+            },
+            {
+              "kind": "density",
+              "nodeId": "body",
+              "density": "spacious"
+            }
+          ]
+        }
+      },
+      {
+        "status": "patch",
+        "patch": {
+          "schemaVersion": 1,
+          "sidecarId": "sidecar:t16",
+          "baseVersion": 7,
+          "source": {
+            "kind": "revision",
+            "ref": "message:1"
+          },
+          "operations": [
+            {
+              "kind": "collapse",
+              "nodeId": "actions",
+              "collapsed": true
+            },
+            {
+              "kind": "density",
+              "nodeId": "subject-content",
+              "density": "spacious"
+            }
+          ]
+        }
+      },
+      {
+        "status": "patch",
+        "patch": {
+          "schemaVersion": 1,
+          "sidecarId": "sidecar:t16",
+          "baseVersion": 7,
+          "source": {
+            "kind": "revision",
+            "ref": "message:2"
+          },
+          "operations": [
+            {
+              "kind": "collapse",
+              "nodeId": "actions",
+              "collapsed": true
+            },
+            {
+              "kind": "density",
+              "nodeId": "subject-content",
+              "density": "spacious"
+            }
+          ]
+        }
+      },
+      {
+        "status": "patch",
+        "patch": {
+          "schemaVersion": 1,
+          "sidecarId": "sidecar:t16",
+          "baseVersion": 7,
+          "source": {
+            "kind": "revision",
+            "ref": "message:3"
+          },
+          "operations": [
+            {
+              "kind": "collapse",
+              "nodeId": "actions",
+              "collapsed": true
+            },
+            {
+              "kind": "density",
+              "nodeId": "body",
+              "density": "spacious"
+            }
+          ]
+        }
+      },
+      {
+        "status": "patch",
+        "patch": {
+          "schemaVersion": 1,
+          "sidecarId": "sidecar:t16",
+          "baseVersion": 7,
+          "source": {
+            "kind": "revision",
+            "ref": "message:4"
+          },
+          "operations": [
+            {
+              "kind": "collapse",
+              "nodeId": "actions",
+              "collapsed": true
+            },
+            {
+              "kind": "density",
+              "nodeId": "subject-content",
+              "density": "spacious"
+            }
+          ]
+        }
+      }
+    ],
+    "checks": [
+      {
+        "passed": true,
+        "status": "applied",
+        "actionsCollapsed": true,
+        "bodyVisible": true,
+        "readingSpacious": true
+      },
+      {
+        "passed": true,
+        "status": "applied",
+        "actionsCollapsed": true,
+        "bodyVisible": true,
+        "readingSpacious": true
+      },
+      {
+        "passed": true,
+        "status": "applied",
+        "actionsCollapsed": true,
+        "bodyVisible": true,
+        "readingSpacious": true
+      },
+      {
+        "passed": true,
+        "status": "applied",
+        "actionsCollapsed": true,
+        "bodyVisible": true,
+        "readingSpacious": true
+      },
+      {
+        "passed": true,
+        "status": "applied",
+        "actionsCollapsed": true,
+        "bodyVisible": true,
+        "readingSpacious": true
+      }
+    ]
+  },
+  "limits": [
+    "One frozen set of isolated fixtures, not two weeks of human use",
+    "Observed real model latency remains substantial",
+    "Non-root collapse persistence is not claimed as a visible redesign"
+  ],
+  "presentationSafety": {
+    "stage": "final-safety",
+    "accepted": 2,
+    "factsUnchanged": true,
+    "coreEventsUnchanged": true,
+    "foreignReadStatus": 403
+  }
+}
