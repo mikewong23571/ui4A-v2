@@ -120,11 +120,11 @@ test.describe('work-thread history', () => {
         rel: `chat:${sessionId}`,
         detail: {
           sessionId,
-          turnId: 't56-legacy-turn',
-          goal: { verb: '旧版回合(无当时观察)' },
+          turnId: 't56-early-turn',
+          goal: { verb: '早期回合(无当时观察)' },
           outcome: 'done',
-          summary: '旧版回答。',
-          messages: [{ role: 'assistant', text: '旧版回答。' }],
+          summary: '早期回答。',
+          messages: [{ role: 'assistant', text: '早期回答。' }],
           steps: [],
           driver: 'llm',
         },
@@ -135,10 +135,10 @@ test.describe('work-thread history', () => {
         .getByTestId('turn-context-notice')
         .locator('[data-testid="turn-context-row"]');
       await expect(rowsAfter).toHaveCount(3, { timeout: 15_000 });
-      const legacy = rowsAfter.nth(2);
-      await expect(legacy).toHaveAttribute('data-known', 'false');
-      await expect(legacy).toContainText('当时上下文未知');
-      await expect(legacy).not.toContainText(`线 ${lineB}`);
+      const noCtx = rowsAfter.nth(2);
+      await expect(noCtx).toHaveAttribute('data-known', 'false');
+      await expect(noCtx).toContainText('当时上下文未知');
+      await expect(noCtx).not.toContainText(`线 ${lineB}`);
     }, NO_LLM_ENV);
   });
 
