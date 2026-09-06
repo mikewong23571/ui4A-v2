@@ -400,3 +400,37 @@ engine/presentation 3707)与本次实测**逐一吻合**。本次跑的是默认
   - **Note**:停靠形态跨客户端导航回到 float(FAB),草稿保留;属「尊重当次选择」的呈现语义,不判缺陷。
 - **NOT RUN**:US04 归档回顾浏览器走查(G3 无归档线用例,P3/P4);pin-only 区分(P3.1);
   US12 真实 LLM(G4);200% 真实缩放交互(E2E 以 960 CSS 等效);读屏/真人五秒测试(G6,未测)。
+
+---
+
+## E-P3 P3 Phase Verification(材料/决定/历史/引用闭环 + 亲走全链路)
+
+- **Story/Gate**:US02/04/06/08/09/10;G1/G2/G3 受影响范围;FR5/6/7/8。
+- **Version**:被测 HEAD = `62149a3b` 工作树(P3.1 `4adb676`、P3.3 `f388bf4`、P3.4 `bb52a83`、
+  P3.2 `bc90066`、GR2 措辞修复 `d2bd486d`);编排 agent 亲测。
+- **Environment**:①vitest:unit(jsdom)+ db(ui4a_s1/s2/s3_test);②G3:CI=true Playwright
+  自管 3100 server(ui4a_test);③浏览器走查:3110 + ui4a_s3_test 本地 profile + 真实 LLM 配置
+  (.env.local,一次短问答消耗),走查后 browser/server 均已关闭、端口已释放。
+- **Reproduction**:
+  G1 三组与 G2 两组命令同前(P2.3 条目);G3 同 P2.3 条目命令。
+  走查:3110 重建走查线(DB 当日被 server 重启重置,重建 `thread:t56-p3-walk` 并按 t26 口径
+  attach context/active/approval; FR9 诚实失败态「内容不存在或不可见+返回首页」被 live 验证)→
+  概览四类角色卡→点责任卡→引用链→助手问答→历史恢复。
+- **Result**:PASS。
+- **Evidence**:
+  - G1:projection/fold/shared 76/76;service thread+confirmation+meta 22/22(s3)+work-thread 19/19;
+    engine 全包 840/840。
+  - G2:canvas+actions 113/113(含 P3.2 approval-decision 9 例、P3.1 pin/nav 11 例);
+    chat 全域 44 files 335/335;render/words 71/71。
+  - G3:21 passed/1 skipped(两次运行一致,exit 0)。
+  - 浏览器亲走(截图 /tmp/t56-p3-*.png,7 张):概览四类角色卡(archived idea 状态诚实、
+    c1 回执行「deprecate · 由 human 提议/approved」);固定视图文案生效;责任卡点击落
+    confirmation 实体页(「已由 human 批准」H1 回执+meta 目标无内联审批,F-P2.3-1 修复后
+    返回本线在位);输入范围条与 URL 同源(P3.3);真实 LLM 回答依据 5 条 chip 全部带
+    「(当前名称)」时点标注+pointer 路径(P3.4);引用点击落点 URL 保留 thread;
+    历史面板显示会话/回合,刷新恢复路径重建回答与 citations(P3.3 join)。
+  - 走查口径说明:pending 确认的两步批准点击未在浏览器实测(内置确认策略 human high 直通,
+    挂起需 Cedar strict fixture——即 e2e 隔离 harness 口径),由 jsdom approval-decision 9 例
+    + P4.1 e2e 覆盖;c1 已决回执与 Meta 边界为浏览器实测。
+- **NOT RUN**:pending 批准浏览器点击(上述口径说明)、US04 归档线浏览器走查(P4)、
+  集合型引用浏览器重排演示(jsdom 覆盖)、US12 正式三轮协作(G4/P4.2)、真人五秒测试(G6)。
