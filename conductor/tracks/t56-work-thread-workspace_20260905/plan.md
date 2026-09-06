@@ -44,7 +44,7 @@
 - [x] Task: P1 Phase Verification & Checkpoint (f2f469d)
   - [ ] 执行 G1 与相关 G5 子门禁，实际查看本线 Surface/HTTP 输出并核对来源，附 checkpoint。
 
-## P2 主工作面与响应式壳（US01/03/05/07）
+## P2 主工作面与响应式壳（US01/03/05/07） [checkpoint: 6a89b8e]
 
 - [x] Task: P2.1 Red：页面目标与空间契约 (acfc70c)
   - [ ] 写本线深链/无 focus/对象直链、唯一业务标题、返回与保留参数的行为测试。
@@ -53,9 +53,9 @@
   - [ ] 去掉线程 noGaze/说明书/应用书架旁路，移除默认材料常驻栏；内容消费 P1 呈现。
   - [ ] 实现剩余宽度优先的助手并排/覆盖（`vw−48−助手宽≥640`：384px→阈值 1072、320px→1008，200% 缩放必覆盖），尊重用户选择并保留 dockedThread 记忆；复用稳定 session（根布局唯一拥有者），保留 float/popout。
   - [ ] 对象身份成为主要标题，合并次要工具入口；保留 raw/why/恢复/显式 Meta 桥。
-- [ ] Task: P2.3 Gate：浏览器交互与视觉
+- [x] Task: P2.3 Gate：浏览器交互与视觉 (12397a0)
   - [ ] 跑 G2/G3 对应故事；逐尺寸截图检查正文、关键按钮、滚动、层级、焦点与触屏操作。
-- [ ] Task: P2 Phase Verification & Checkpoint
+- [x] Task: P2 Phase Verification & Checkpoint (6a89b8e)
   - [ ] 实际操作 US01/05/07，与几何和截图交叉核对；更新 evidence 与 checkpoint。
 
 ## P3 材料、责任与聊天依据闭环（US02/04/06–10/12）
@@ -64,6 +64,8 @@
   - [ ] 先钉材料/pin-only/两者都有、重复添加、detach 被拒、archived 无动作、权限变化负例。
   - [ ] 复用 ObjectSelectorPanel 与 action submit，membership 同源；pin 改为固定视图语义。
   - [ ] 成功才更新关联及相关缓存，失败不清材料或 pin；零多余业务事件。
+  - [ ] 修复 F-P2.3-1（evidence.md E-P2.3）：surface 成员卡与内容区实体链接导航丢
+        `thread=` 参数、落点页无「返回本线」；导航出参保留线身份（desk 已正确），补 Red 断言。
 - [ ] Task: P3.2 Red→Green：知情决定与回执
   - [ ] 钉完整决定信息、未知前值、过期/重复提交、human/agent 权限、决定后回读和归档异常责任。
   - [ ] 复用现有确认/决定词汇与稳定回执宿主，补到达/绑定缺口；Meta 仍进入可信治理宿主。
