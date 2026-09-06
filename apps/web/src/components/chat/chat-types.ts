@@ -7,8 +7,9 @@ import type { ThreadMessageLike, useExternalStoreRuntime } from '@assistant-ui/r
 import type { FactRef } from '@ui4a/agent';
 import type { PresentationReceipt } from '@ui4a/shared';
 
-import type { ChatSessionSummary } from '@/chat/history';
+import type { ChatSessionSummary, ChatTurn } from '@/chat/history';
 import { citationsOrEmpty } from '@/chat/citations';
+import type { TurnContextRow } from '@/chat/history/turn-context';
 import type { ChatFailureReason, ChatStartNotice, ChatStepActivity } from '@/chat/sse';
 
 import { PRESENTATION_PENDING_WORD, presentationFailureText } from './presentation-words';
@@ -140,6 +141,28 @@ export function withCitationsOnLastAssistant(
 }
 
 /**
+ * history 回合 → 面板消息的重放映射(B3;引用只挂回合末条 assistant——F-12:
+ * done 回合的持久化引用同样随重放恢复)。thinking 是流内可见性而非
+ * chat-turn 持久化内容:刷新只恢复用户/Assistant 消息,不推测旧 reasoning。
+ */
+export function replayTurnsToMessages(turns: readonly ChatTurn[]): ChatUiMessage[] {
+  const replayed: ChatUiMessage[] = [];
+  for (const turn of turns) {
+    replayed.push({ role: 'user', content: turn.goal.verb });
+    const citations = citationsOrEmpty(turn.citations);
+    for (const [index, entry] of turn.messages.entries()) {
+      const isCitedFinal = index === turn.messages.length - 1;
+      replayed.push({
+        role: 'assistant',
+        content: entry.text,
+        ...(isCitedFinal && citations.length > 0 ? { citations } : {}),
+      });
+    }
+  }
+  return replayed;
+}
+
+/**
  * 呈现回执应用(纯函数;终局帧必达,不允许占位悬挂):pending 追加「正在准备
  * 呈现」占位(同 requestId 条目已存在则不重复),failed 替换同 requestId
  * 占位为失败条目(无占位则追加),ready/fallback 移除同 requestId 占位。
@@ -197,6 +220,8 @@ export interface ChatSession {
   lastPresentation: { canvasUrl: string } | undefined;
   /** agent 当前查看的实体引用（临时共享处境，不是凝固布局）。 */
   lastFocus: { rel: string; canvasUrl: string } | undefined;
+  /** 历史回合「当时上下文」行(重放投影;空数组=无历史,未知回合显式未知)。 */
+  turnContexts: TurnContextRow[];
   toggleDelegated: () => void;
   startNewSession: () => void;
   runtime: ReturnType<typeof useExternalStoreRuntime>;

@@ -39,6 +39,17 @@ export interface ChatTurn extends Omit<ChatTurnDetail, 'outcome'> {
   outcome: AgentOutcome | 'running';
   /** Response-only projection joined from canonical chat-message-appended by exact turnId. */
   citations?: FactRef[];
+  /**
+   * 本回合 user 原话事件当时的客户端观察(T56 P3.3 / D78 决定 5:history 读侧
+   * 按 principal×sessionId×turnId 精确 join 同 rel 下 user 角色的
+   * chat-message-appended;零写侧变化、存量回合不回填、缺省缺席)。
+   */
+  clientView?: ClientViewReport;
+  /**
+   * 是否找到该回合的 user 原话事件:区分「事件存在但无 clientView(旧版)」
+   * 与「user 事件整体缺失」;两者 UI 都按「当时上下文未知」显式呈现。
+   */
+  userContextKnown: boolean;
 }
 
 export interface ChatTurnStartedDetail {

@@ -22,6 +22,7 @@ import { openChat, ResizeObserverStub, sendGoal, sseResponse } from './floating-
 const { routerPushMock } = vi.hoisted(() => ({ routerPushMock: vi.fn() }));
 vi.mock('next/navigation', () => ({
   usePathname: () => '/',
+  useSearchParams: () => new URLSearchParams(window.location.search),
   useRouter: () => ({ push: routerPushMock }),
 }));
 

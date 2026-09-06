@@ -85,6 +85,25 @@ describe('chat history production authentication', () => {
     );
   });
 
+  it('history 读取按 {rel, principal} 过滤取界且不引入默认页 limit(T56 P3.3 / D78 决定 5)', async () => {
+    const response = await getHistory(
+      new Request('https://ui4a.internal/api/chat/history?sessionId=session-a'),
+    );
+
+    expect(response.status).toBe(200);
+    expect(mocks.listEvents).toHaveBeenCalledTimes(1);
+    const [, afterSeq, options] = mocks.listEvents.mock.calls[0] as unknown as [
+      unknown,
+      number,
+      Record<string, unknown>,
+    ];
+    expect(afterSeq).toBe(0);
+    // 精确到参数对象全体:有界性来自按会话过滤,不是按页截断(limit 会把
+    // 页外回合与 citations 静默截没,S2 实测 limit 硬顶 101)。
+    expect(options).toEqual({ rel: 'chat:session-a', principal: 'human-alice' });
+    expect(options).not.toHaveProperty('limit');
+  });
+
   // ---- T49 Phase 4(D68.3/D68.5):principal 收窄后的投影级锚定(FR4/FR6)-----------
   // mock listEvents 直接扮演「已按 principal='human-alice' 过滤后的日志切片」,
   // 断言落在两读端点的分组/聚合/空态投影上;跨 principal 的收窄本身由上组断言

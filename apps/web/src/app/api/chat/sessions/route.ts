@@ -3,7 +3,7 @@ import type {
   ChatTurnDetail,
   ChatTurnStartedDetail,
 } from '../../../../chat/history';
-import { chatHistoryPrincipal, chatHistoryReadError } from '../../../../chat/history-access';
+import { chatHistoryPrincipal, chatHistoryReadError } from '../../../../chat/history/access';
 import { listEvents } from '@ui4a/db/events';
 import { getDb } from '../../../../engine/service';
 

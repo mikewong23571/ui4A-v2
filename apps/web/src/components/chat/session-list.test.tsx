@@ -26,6 +26,7 @@ function sessionStub(
     lastRender: undefined,
     lastPresentation: undefined,
     lastFocus: undefined,
+    turnContexts: [],
     toggleDelegated: () => undefined,
     startNewSession: () => undefined,
     runtime: {} as ChatSession['runtime'],

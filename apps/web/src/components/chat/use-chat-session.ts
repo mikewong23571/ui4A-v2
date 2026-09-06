@@ -34,6 +34,7 @@ import { useExternalStoreRuntime, type AppendMessage } from '@assistant-ui/react
 import type { ChatSessionSummary, ChatTurn } from '@/chat/history';
 import { citationsOrEmpty, finalTurnCitations } from '@/chat/citations';
 import { clientViewReportForLocation, type ActivePresentationView } from '@/chat/client-view';
+import { turnContextRows, type TurnContextRow } from '@/chat/history/turn-context';
 import type { ChatFailureReason, ChatRenderPayload, ChatStepActivity } from '@/chat/sse';
 import type { ChatStartNotice } from '@/chat/sse';
 import { anySignal, createIdleTimeout, readChatSseStream, type ChatFinalPayload } from '@/chat/sse';
@@ -43,6 +44,7 @@ import {
   convertMessage,
   loadSessionId,
   PENDING_SESSION_STORAGE_KEY,
+  replayTurnsToMessages,
   SESSION_STORAGE_KEY,
   STREAM_IDLE_TIMEOUT_MS,
   withCitationsOnLastAssistant,
@@ -82,6 +84,9 @@ export function useChatSession(): ChatSession {
   const [view, setView] = useState<'chat' | 'sessions'>('chat');
   const [sessions, setSessions] = useState<ChatSessionSummary[] | null>(null);
   const [sessionsError, setSessionsError] = useState<string | null>(null);
+  // 历史回合「当时上下文」行(US08/D78 决定 5):随历史重放由 ChatTurn 投影
+  // 字段映射;未知回合显式未知,不用当前 presence 补造。
+  const [turnContexts, setTurnContexts] = useState<TurnContextRow[]>([]);
 
   const persistSession = useCallback((next: string) => {
     if (next === '' || next === sessionRef.current) return;
@@ -118,24 +123,9 @@ export function useChatSession(): ChatSession {
           .then((body) => {
             if (cancelled) return;
             const turns = body.turns ?? [];
-            // thinking 是流内可见性而非 chat-turn 持久化内容：刷新明确只恢复
-            // 用户/Assistant 消息，不推测或把旧 reasoning 挂到任一回合。
-            const replayed: ChatUiMessage[] = [];
-            for (const turn of turns) {
-              replayed.push({ role: 'user', content: turn.goal.verb });
-              const citations = citationsOrEmpty(turn.citations);
-              for (const [index, entry] of turn.messages.entries()) {
-                // F-12:citations 不再仅属 answered——done 回合的轨迹派生引用
-                // 同样持久化并随重放恢复(挂在回合末条 assistant 消息)。
-                const isCitedFinal = index === turn.messages.length - 1;
-                replayed.push({
-                  role: 'assistant',
-                  content: entry.text,
-                  ...(isCitedFinal && citations.length > 0 ? { citations } : {}),
-                });
-              }
-            }
+            const replayed = replayTurnsToMessages(turns);
             setMessages(replayed);
+            setTurnContexts(turnContextRows(turns));
             const running = turns.some((turn) => turn.status === 'running');
             setIsRunning(running);
             // 已保存 session 但日志尚空也可能是刷新撞在 POST 首写之前，继续追投影。
@@ -539,6 +529,7 @@ export function useChatSession(): ChatSession {
     sessionRef.current = '';
     setSessionId('');
     setMessages([]);
+    setTurnContexts([]);
     setLastRender(undefined);
     setLastFocus(undefined);
     setLastPresentation(undefined);
@@ -591,6 +582,7 @@ export function useChatSession(): ChatSession {
         // 隐私模式退化为内存态
       }
       setMessages([]);
+      setTurnContexts([]);
       setLastRender(undefined);
       setLastFocus(undefined);
       restoreSession(next);
@@ -615,6 +607,7 @@ export function useChatSession(): ChatSession {
     lastRender,
     lastFocus,
     lastPresentation,
+    turnContexts,
     toggleDelegated,
     startNewSession,
     runtime,

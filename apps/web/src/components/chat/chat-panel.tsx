@@ -32,6 +32,8 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 
 import type { ChatSession } from './chat-types';
+import { InputScopeStrip } from './history/input-scope-strip';
+import { TurnContextNotice } from './history/turn-context-notice';
 import { SessionList } from './session-list';
 
 interface ChatPanelProps {
@@ -88,6 +90,8 @@ export function ChatPanel({
 
   return (
     <div className="flex h-full min-h-0 flex-col bg-background">
+      {/* 历史回合当时上下文(US08):逐回合显式「当时」线/注视;缺失显式未知。 */}
+      <TurnContextNotice rows={session.turnContexts} />
       <div className="flex items-center justify-between border-b border-border px-3 py-2">
         <div className="text-sm font-semibold text-foreground">
           UI4A 助手
@@ -195,6 +199,8 @@ export function ChatPanel({
           </AssistantRuntimeProvider>
         )}
       </div>
+      {/* 当前输入范围提示(US08):与发送侧 clientView 同一 URL observation 单源。 */}
+      <InputScopeStrip />
       {/* render 回执入口(S5):点击在画布打开该 surface(Link 客户端导航——
           layout 不重挂载,聊天面板保持打开,与画布同屏协同)。 */}
       {session.lastRender !== undefined && (

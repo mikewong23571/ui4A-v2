@@ -21,6 +21,7 @@ import { jsonResponse, openChat, ResizeObserverStub, sendGoal } from './floating
 
 vi.mock('next/navigation', () => ({
   usePathname: () => '/',
+  useSearchParams: () => new URLSearchParams(window.location.search),
   useRouter: () => ({ push: () => undefined }),
 }));
 

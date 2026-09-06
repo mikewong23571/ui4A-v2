@@ -2,8 +2,8 @@ import {
   authenticationErrorResponse,
   requestIdentityProfile,
   resolveTrustedRequestIdentity,
-} from '../auth/request-identity';
-import { getDb, getEngine } from '../engine/service';
+} from '../../auth/request-identity';
+import { getDb, getEngine } from '../../engine/service';
 
 /** Production chat history is private to the credential principal; local demo keeps its open view. */
 export async function chatHistoryPrincipal(request: Request): Promise<string | undefined> {

@@ -1,13 +1,15 @@
 // @vitest-environment jsdom
 /**
- * T56 P0.3 / S2 探针(临时):刷新重放与迟到响应 —— 组件层实证。
+ * 刷新历史重放与迟到响应护栏(T56 P3.3 正式测试;自 P0.3/S2 探针种子转正,
+ * 断言随 D78 决定 5 反转)。
  *
- * 覆盖探针步骤 1(UI 腿)/5:
- * - 预置 sessionId + 与路由输出同构(ChatTurn 无 clientView)的 history 响应 →
- *   FloatingChat 重放,记录 ChatTurn → ChatUiMessage → 可见消息的映射与丢失;
- * - 同 session 连发两问的现状行为:running 时 UI 单飞门禁(发送禁用)、
- *   停止后旧流晚到帧是否渲染、引用挂「最后一条 assistant」的回合无感知性。
- * 结论回填 probes/s2-history-citations.md;P3 定案后删除或改写为正式测试。
+ * 覆盖:
+ * - 历史重放:各回合携带「当时」clientView/userContextKnown,面板显式呈现
+ *   每回合当时上下文;未知回合显式「当时上下文未知」,且不用当前 URL
+ *   presence 补造(US08;原探针「无任何标注」的缺口断言已反转);
+ * - 原 S2 步骤 5 护栏保持:running 单飞门禁、停止后旧流晚到帧不渲染、
+ *   引用挂「最后一条 assistant」的已知缺口钉住(citations 归属按 turnId
+ *   是后续演进,单飞门禁存续前提不变)。
  */
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -18,9 +20,9 @@ vi.mock('next/navigation', () => ({
   useRouter: () => ({ push: vi.fn() }),
 }));
 
-import { FloatingChat } from './floating-chat';
-import { withCitationsOnLastAssistant } from './chat-types';
-import { jsonResponse, openChat, ResizeObserverStub, sendGoal } from './floating-chat-test-stubs';
+import { FloatingChat } from '../floating-chat';
+import { withCitationsOnLastAssistant } from '../chat-types';
+import { jsonResponse, openChat, ResizeObserverStub, sendGoal } from '../floating-chat-test-stubs';
 
 beforeEach(() => {
   vi.stubGlobal('ResizeObserver', ResizeObserverStub);
@@ -35,16 +37,30 @@ afterEach(() => {
   vi.restoreAllMocks();
 });
 
-const RUN = 't56s2-probe3';
+const RUN = 't56p33-replay';
+const SESSION = `${RUN}-sess`;
 
-/** history 响应 shape 与路由输出逐字段同构(clientView 字段在 ChatTurn 上不存在)。 */
+function view(thread: string, focus: string): unknown {
+  return {
+    schemaVersion: 2,
+    presence: {
+      clientInstanceId: `${RUN}-client`,
+      site: 'workstation',
+      scope: 'publishing',
+      thread,
+      focus,
+    },
+  };
+}
+
+/** history 响应 shape 与路由输出同构:各回合携带当时的 clientView/userContextKnown。 */
 function historyResponse(): Response {
   return jsonResponse({
     turns: [
       {
         seq: 11,
         ts: '2026-09-06T00:00:00.000Z',
-        sessionId: `${RUN}-sess`,
+        sessionId: SESSION,
         turnId: `${RUN}-turn-a`,
         goal: { verb: `在 A 线问 ${RUN}-idea-a 的进展` },
         outcome: 'done',
@@ -54,12 +70,13 @@ function historyResponse(): Response {
         steps: [],
         driver: 'llm',
         citations: [{ rel: `idea:${RUN}-idea-a`, pointer: '/properties/status' }],
-        // 真实路由输出不含 clientView —— 此处刻意省略以同构。
+        clientView: view(`thread:${RUN}-thread-a`, `idea:${RUN}-idea-a`),
+        userContextKnown: true,
       },
       {
         seq: 14,
         ts: '2026-09-06T00:01:00.000Z',
-        sessionId: `${RUN}-sess`,
+        sessionId: SESSION,
         turnId: `${RUN}-turn-b`,
         goal: { verb: `在 B 线问 ${RUN}-idea-b 的进展` },
         outcome: 'done',
@@ -69,25 +86,44 @@ function historyResponse(): Response {
         steps: [],
         driver: 'llm',
         citations: [{ rel: `idea:${RUN}-idea-b`, pointer: '/properties/status' }],
+        clientView: view(`thread:${RUN}-thread-b`, `idea:${RUN}-idea-b`),
+        userContextKnown: true,
+      },
+      {
+        seq: 17,
+        ts: '2026-09-06T00:02:00.000Z',
+        sessionId: SESSION,
+        turnId: `${RUN}-turn-old`,
+        goal: { verb: '旧版提问' },
+        outcome: 'done',
+        status: 'final',
+        summary: '旧版回答。',
+        messages: [{ role: 'assistant', text: '旧版回答。' }],
+        steps: [],
+        driver: 'llm',
+        userContextKnown: false,
       },
     ],
   });
 }
 
-describe('S2 步骤1(UI 腿):刷新后历史重放的可见信息', () => {
-  it('重放 user 消息=goal.verb,回合无当时 thread/focus 标注,引用 chip 落当前对象', async () => {
-    window.localStorage.setItem('ui4a.chat.sessionId', `${RUN}-sess`);
+describe('刷新历史重放:各回合显式呈现当时上下文(US08 / D78 决定 5)', () => {
+  it('重放 user 消息=goal.verb,各回合标注各自当时的线/对象,未知回合显式未知且不被当前 presence 补造', async () => {
+    window.localStorage.setItem('ui4a.chat.sessionId', SESSION);
+    // 当前 URL 在「另一条线」上:历史回合不得被改标成当前线/当前对象。
+    window.history.replaceState(
+      {},
+      '',
+      `/canvas?scope=publishing&thread=thread:${RUN}-thread-now&focus=idea:${RUN}-now`,
+    );
     const fetchMock = vi.fn(async (url: string | URL | RequestInfo) => {
       const target = String(url);
       if (target.includes('/api/chat/history')) return historyResponse();
       if (target.includes('/api/entity')) {
-        const isIdeaB = target.includes(encodeURIComponent(`idea:${RUN}-idea-b`));
+        const rel = decodeURIComponent(target.split('rel=')[1] ?? '');
         return jsonResponse({
           class: ['entity'],
-          properties: {
-            rel: isIdeaB ? `idea:${RUN}-idea-b` : `idea:${RUN}-idea-a`,
-            identity: isIdeaB ? '想法 B(当前名)' : '想法 A(当前名)',
-          },
+          properties: { rel, identity: `${rel}(当前名)` },
           links: [],
           actions: [],
         });
@@ -99,27 +135,46 @@ describe('S2 步骤1(UI 腿):刷新后历史重放的可见信息', () => {
     render(<FloatingChat />);
     openChat();
 
-    // 刷新重放:user 消息逐字 = goal.verb;两回合顺序还原;答案逐条 assistant。
+    // 刷新重放:user 消息逐字 = goal.verb,顺序还原。
     await waitFor(() => expect(screen.getByText(`${RUN}-idea-b 已归档。`)).toBeTruthy());
     expect(screen.getByText(`在 A 线问 ${RUN}-idea-a 的进展`)).toBeTruthy();
     expect(screen.getByText(`在 B 线问 ${RUN}-idea-b 的进展`)).toBeTruthy();
-    // 没有任何「本回合发生于 A 线/B 线」的处境标注(FR7 缺口的用户可见面)。
-    expect(screen.queryByText(/本回合工作线/)).toBeNull();
-    expect(screen.queryByText(/当时:/)).toBeNull();
-    // 引用 chip 存在且按当前名渲染(经 /api/entity 懒取)。
-    await waitFor(() => expect(screen.getByText('想法 A(当前名)')).toBeTruthy());
-    await waitFor(() => expect(screen.getByText('想法 B(当前名)')).toBeTruthy());
+    expect(screen.getByText('旧版回答。')).toBeTruthy();
+
+    // 当时上下文显式呈现:A/B 回合各带各自的线/对象(不都标成当前线)。
+    const notice = screen.getByTestId('turn-context-notice');
+    expect(notice.textContent).toContain(
+      `第 1 问 · 当时:线 thread:${RUN}-thread-a · 注视 idea:${RUN}-idea-a`,
+    );
+    expect(notice.textContent).toContain(
+      `第 2 问 · 当时:线 thread:${RUN}-thread-b · 注视 idea:${RUN}-idea-b`,
+    );
+    // 未知回合显式「当时上下文未知」,且不出现当前 URL 的线/对象(不补造)。
+    const rows = screen.getAllByTestId('turn-context-row');
+    expect(rows).toHaveLength(3);
+    expect(rows[2]!.getAttribute('data-known')).toBe('false');
+    expect(rows[2]!.textContent).toBe(`第 3 问 · 当时上下文未知`);
+    expect(notice.textContent).not.toContain(`thread-${RUN}-thread-now`);
+    expect(notice.textContent).not.toContain(`idea:${RUN}-now`);
+
+    // 输入区当前范围提示与 URL observation 同源(当前线=thread-now),与历史
+    // 回合的「当时」标注形成显式时点边界。
+    const strip = screen.getByTestId('input-scope-strip');
+    expect(strip.getAttribute('data-thread')).toBe(`thread:${RUN}-thread-now`);
+
+    // 引用 chip 仍在各自回合末条 assistant 上(结构断言;标签措辞归 P3.4)。
+    await waitFor(() => expect(screen.getAllByTestId('turn-context-row')).toHaveLength(3));
     const citationLinks = screen
       .getAllByRole('link')
       .filter((link) => link.getAttribute('data-nav')?.startsWith('citation:'));
-    expect(citationLinks).toHaveLength(2);
-    expect(citationLinks[0]!.getAttribute('data-rel')).toBe(`idea:${RUN}-idea-a`);
-    // 两条引用 chip 外观一致,无法区分「A 线回合的引用」与「B 线回合的引用」。
-    expect(citationLinks[1]!.getAttribute('data-rel')).toBe(`idea:${RUN}-idea-b`);
+    expect(citationLinks.map((link) => link.getAttribute('data-rel'))).toEqual([
+      `idea:${RUN}-idea-a`,
+      `idea:${RUN}-idea-b`,
+    ]);
   });
 });
 
-describe('S2 步骤5:同 session 连发两问与迟到响应的现状行为', () => {
+describe('同 session 连发与迟到响应护栏(原 S2 步骤 5 钉住)', () => {
   it('running 时发送被禁用(UI 单飞);停止后旧流晚到帧不渲染;新回合照常', async () => {
     window.localStorage.removeItem('ui4a.chat.sessionId');
     const encoder = new TextEncoder();
@@ -246,7 +301,7 @@ describe('S2 步骤5:同 session 连发两问与迟到响应的现状行为', ()
     expect(screen.getByText('第一问进行中…')).toBeTruthy(); // 停止留痕仍在
   });
 
-  it('纯函数层:引用挂「最后一条 assistant」与回合无关 —— 若并发存在将跨回合错挂', () => {
+  it('纯函数层:引用挂「最后一条 assistant」与回合无关 —— 若并发存在将跨回合错挂(已知缺口,单飞门禁兜底)', () => {
     const interleaved = [
       { role: 'user' as const, content: '第一问' },
       { role: 'assistant' as const, content: '第一问回答(慢)' },
