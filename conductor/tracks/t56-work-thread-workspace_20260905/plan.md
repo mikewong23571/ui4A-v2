@@ -81,7 +81,7 @@
 
 ## P4 全景验收与证据（US01–US12）
 
-- [ ] Task: P4.1 常驻用户故事覆盖
+- [x] Task: P4.1 常驻用户故事覆盖 (88d3ce0)
   - [ ] 在 e2e/workstation/work-thread-workspace.spec.ts 等常驻套件补齐 US01–US11，更新本文档的最终命令。
   - [ ] 跑全部指定 viewport/缩放、授权、空/错/大工作集、两应用与未知语义 fixtures；审阅截图。
 - [ ] Task: P4.2 真实协作与注意力走查
