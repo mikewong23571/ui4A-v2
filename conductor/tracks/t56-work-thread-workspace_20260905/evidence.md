@@ -434,3 +434,33 @@ engine/presentation 3707)与本次实测**逐一吻合**。本次跑的是默认
     + P4.1 e2e 覆盖;c1 已决回执与 Meta 边界为浏览器实测。
 - **NOT RUN**:pending 批准浏览器点击(上述口径说明)、US04 归档线浏览器走查(P4)、
   集合型引用浏览器重排演示(jsdom 覆盖)、US12 正式三轮协作(G4/P4.2)、真人五秒测试(G6)。
+
+---
+
+## E-P4.2 G4 真实 LLM(US12)与 G6 注意力走查
+
+- **Story/Gate**:US12;G4;G6;FR7/FR9。
+- **Version**:G4 被测 HEAD = `88d3ce0`+eval spec 工作树;G6 综合本轮 P2.3/P3 浏览器走查与
+  P4.1 常驻截图(编排亲看)。
+- **Environment**:G4 = 隔离库 5433/ui4a_test + 隔离 Temporal 7235 + 真实 LLM 凭证
+  (来源 .env.local 装配,值未入任何输出);G6 = 本机浏览器实际操作记录。
+- **Reproduction(G4)**:`set -a; source .env.local; set +a; RUN_LLM_EVAL=1 DATABASE_URL=
+  …ui4a_test TEST_DATABASE_URL=…ui4a_test pnpm eval:llm --project=working-context`。
+- **Result**:G4 = PASS(3 用例含 US12 三轮全过,1 例 retry 吸收,exit 0);G6 = 完成(方法见下)。
+- **Evidence**:
+  - US12 三轮(X→Y→本线同 session):每轮起步 rel=当轮 clientView(X→post:post-welcome、
+    Y→post:first-post、本线→thread),B 线内容零渗入;回答人工复核谈对对象(摘录存
+    P4.2 subagent 报告与 eval 证据);引用 (rel,pointer) 全部回读可验证;领域副作用事件=0
+    (18 条事件全为 chat/presence/决策审计类);owned-thread attach 按精确谓词核对
+    (eval 无凭证环境按设计 skip,0 条,非笼统放行)。
+  - 模型行为观察:Y 轮 2/5 次协议封装失败被诚实折算 failed 并由场景重试吸收(US12 协作
+    本身正确);引用指针惯用服务端观察前缀,spec 按呈现形态等价展开,未降级为关键词判定。
+  - **G6 记录(编排 agent 实际操作,US01/02/04/05/08 顺序)**:找到目标=进线即首屏 H1
+    (0 额外点击);责任在概览成员卡直接可见(0 点击),决定面板 1 点击可达,普通知情决定
+    不跨业务页面(US02;P3 走查+P4.1 e2e 双证);US04 归档线浏览器证据=P4.1 截图亲看
+    (零写控件+当前可见口径+固定视图分离);US05 无需缩字号(五视口 e2e+390 走查);
+    US08 历史误读防护=turn-context-notice+引用「(当前名称)」标注+恢复路径实测;
+    关键来源/raw 两步可达(页面工具 1+1);材料/助手一处入口开关、不依赖 hover。
+  - **真人五秒注意力指标:未测**(无真人被试;不宣称用户厌烦感下降)。
+- **NOT RUN**:G6 真人计时测试(未测);G4 FR9 模型不可用分支本轮未触发(模型可用;
+  诚实失败行为由用例机械覆盖)。

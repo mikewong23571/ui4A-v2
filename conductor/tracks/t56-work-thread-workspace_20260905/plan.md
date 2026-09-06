@@ -84,10 +84,10 @@
 - [x] Task: P4.1 常驻用户故事覆盖 (88d3ce0)
   - [ ] 在 e2e/workstation/work-thread-workspace.spec.ts 等常驻套件补齐 US01–US11，更新本文档的最终命令。
   - [ ] 跑全部指定 viewport/缩放、授权、空/错/大工作集、两应用与未知语义 fixtures；审阅截图。
-- [~] Task: P4.2 真实协作与注意力走查
+- [x] Task: P4.2 真实协作与注意力走查 (1d2e047)
   - [ ] 运行 US12/G4 的真实 LLM X→Y→本线，逐条对照引用、披露与只读事件证据；skip 不算通过。
   - [ ] 执行 G6 的实际操作记录；真人五秒指标有测则记录方法，未测明确写未测。
-- [ ] Task: P4.3 最终集成门禁
+- [~] Task: P4.3 最终集成门禁
   - [ ] 执行 G5 的 check/full E2E/invariants/build，以及精确格式与适用覆盖率；记录退出码和运行数。
   - [ ] 核对每项 US/FR 的证据行，补齐未执行项；不使用历史测试数量或线上样例冒充结果。
 - [ ] Task: P4 Phase Verification & Checkpoint
