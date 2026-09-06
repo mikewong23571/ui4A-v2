@@ -242,7 +242,10 @@ describe('T38 集合读面贯通(hydrate 携带声明读面参数)', () => {
       </EntityCacheProvider>,
     );
 
-    expect(await screen.findByRole('button', { name: '为什么这样展示' })).toBeTruthy();
+    // T56 D78(P2.2):why 抽屉入口收进「页面工具」面板——先开面板再断言入口可达。
+    expect(await screen.findByRole('button', { name: '页面工具' })).toBeTruthy();
+    fireEvent.click(screen.getByRole('button', { name: '页面工具' }));
+    expect(screen.getByRole('button', { name: '为什么这样展示' })).toBeTruthy();
     const fetches = fetchesOf(fetchMock, '/api/entity?rel=inbox');
     expect(fetches.length).toBeGreaterThan(0);
     for (const url of fetches) {
