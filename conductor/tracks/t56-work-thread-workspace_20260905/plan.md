@@ -69,11 +69,11 @@
 - [ ] Task: P3.2 Red→Green：知情决定与回执
   - [ ] 钉完整决定信息、未知前值、过期/重复提交、human/agent 权限、决定后回读和归档异常责任。
   - [ ] 复用现有确认/决定词汇与稳定回执宿主，补到达/绑定缺口；Meta 仍进入可信治理宿主。
-- [~] Task: P3.3 Red→Green：历史与当前范围
+- [x] Task: P3.3 Red→Green：历史与当前范围 (f388bf4)
   - [ ] 钉 principal/session/turn 精确 join、缺失上下文、刷新、同 session 跨线、旧 SSE 与跨 principal 负例。
   - [ ] 钉超过默认历史页边界的重建，读路径按 `{rel,principal}` 过滤取界、不引入默认页 limit；保留既有消息挂线与日志语义。
   - [ ] ChatTurn 投影增 `clientView?`/`userContextKnown`（principal×sessionId×turnId 精确 join，不回填），历史未知显式接到 UI；当前输入范围取同源 observation。
-- [~] Task: P3.4 Red→Green：可辨引用
+- [x] Task: P3.4 Red→Green：可辨引用 (bb52a83)
   - [ ] 钉同对象多字段、集合重排、缺历史 identity、改名、权限撤回/读取失败及导航参数保留。
   - [ ] 实现精确型/集合型两型引用 chip 与时点边界（无全局标签缓存），保留原 FactRef；不从当前索引猜历史实体。
 - [ ] Task: P3 Phase Verification & Checkpoint
