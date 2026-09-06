@@ -175,7 +175,10 @@ test('empty home offers goal-only creation; lost accepted response retries once 
       } else await route.continue();
     });
     await dialog.getByRole('button', { name: '创建工作线', exact: true }).click();
-    await expect(dialog.getByRole('alert')).toBeVisible();
+    await expect(dialog.getByRole('alert')).toHaveText(
+      '尚未收到执行回执，结果未确认。输入已保留。',
+    );
+    await expect(dialog.getByRole('alert')).not.toContainText('拒绝');
     await capture(page, info, 'home-create-failure-390');
     await dialog.getByRole('button', { name: '关闭', exact: true }).click();
     await expect(trigger).toBeFocused();
@@ -285,6 +288,33 @@ test('current responsibility stays expanded beside ordinary summary rows and rem
       'false',
     );
     await capture(page, info, 'home-responsibility-and-summary-1440');
+    await page.getByRole('button', { name: '页面工具', exact: true }).click();
+    await page.locator('[data-nav="local:canvas-why"]').click();
+    const beforeSurfaceId = await page.locator('[data-surface]').getAttribute('data-surface');
+    const collapseResponse = page.waitForResponse(
+      (response) =>
+        new URL(response.url()).pathname === '/api/presentation/sidecar' &&
+        response.request().method() === 'POST' &&
+        response.request().postDataJSON().action === 'patch',
+    );
+    await page.getByRole('button', { name: '收起视图', exact: true }).click();
+    expect((await collapseResponse).status()).toBe(409);
+    await expect(
+      page.getByText(
+        '本次视图更改未保存：待处理事项必须保持清楚可见。请保留当前视图或选择其他调整。',
+        { exact: true },
+      ),
+    ).toBeVisible();
+    await expect(card.getByTestId('decision-info')).toBeVisible();
+    await expect(card.getByRole('button', { name: '批准', exact: true })).toBeVisible();
+    await expect(page.getByRole('button', { name: '收起视图', exact: true })).toBeVisible();
+    await expect(page.getByRole('button', { name: '收起视图', exact: true })).toHaveAttribute(
+      'aria-pressed',
+      'false',
+    );
+    await expect(page.locator('[data-surface]')).toHaveAttribute('data-surface', beforeSurfaceId!);
+    await page.getByRole('button', { name: '页面工具', exact: true }).click();
+
     await card.getByRole('button', { name: '批准', exact: true }).click();
     await expect(card.getByText('已请求“批准”，尚未执行。')).toBeVisible();
     await card.locator('button[data-action="approve"]').click();

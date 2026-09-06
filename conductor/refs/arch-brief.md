@@ -351,3 +351,16 @@ GOAL 的自动化不变量:I1 真实 LLM 的 U1–U23 Story Eval 达标且生产
 - 选型:`/Users/mike/projs/playground/ui4A-v2/docs/UI4A-技术选型.md`(§1.1 工具投影、§3 自写增量五项、§6 渲染词汇表与 A2UI 接线、§7 检索来源)
 - 验收:`/Users/mike/projs/playground/ui4A-v2/GOAL.md`(B1–B4/S1–S5/I1–I7 + T15 U1–U23)
 - 决策:`/Users/mike/projs/playground/ui4A-v2/DECISIONS.md`(D1 Next.js API 层、D2 PG 从第一天、D3 pnpm workspaces 布局、D4 temporal start-dev、D5 端口 3100、D6 docker 代理异常注记)
+
+
+### T57 共享首页与呈现责任边界（D79）
+
+`HOME_WORKSPACE_DECLARATION` 是首页my-work v3与实际首页clientView selection的唯一根声明：
+inbox→threads-current→delegations-current。current/history是canonical集合的只读投影，不是新的业务库。
+`threads#create` caller goal＋client-owned commandId在同一thread-created事件原子保留目标原文，
+thread-input为同owner只读来源；重复key/goal重放不重复创建，冲突拒绝。
+
+Surface member-row消费逐成员认知与overview绑定；声明责任保持决定卡，显式review-queue保留卡片，
+compare/table不依赖动作存在。纯责任覆盖校验检查当前已授权事实、实际可读绑定及折叠view，
+Web在generic/Recipe/Sidecar与生命周期候选提交边界复用；旧责任覆盖失效经409触发一次重规划。
+页面缓存按已观测身份、集合回链、成员关系失效相关切片，客户端导航不创建第二份事实或聊天状态。

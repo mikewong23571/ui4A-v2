@@ -171,6 +171,11 @@ export function ActionRunner({
         setInteraction('pending');
         return;
       }
+      // Losing an accepted response is not evidence that the server refused the command.
+      if (result.status === 0 || (result.status >= 200 && result.status < 300)) {
+        setFailure('尚未收到执行回执，结果未确认。输入已保留。');
+        return;
+      }
       const detail = result.detail !== undefined ? ` · ${JSON.stringify(result.detail)}` : '';
       setFailure(`[${result.layer}] ${result.reason}${detail}`);
     } catch (error) {

@@ -1,6 +1,12 @@
 import { expect, test } from '@playwright/test';
 import { createPresentationRevisionAgent } from '@ui4a/agent';
-import type { SurfaceTree } from '../../packages/engine/src/index';
+import {
+  applyRenderPatch,
+  createRenderPatchTarget,
+  validateSurfaceTree,
+  type SurfaceNode,
+  type SurfaceTree,
+} from '../../packages/engine/src/index';
 import { runPresentationResponsibilityStory } from './presentation-responsibility-story';
 
 import {
@@ -121,7 +127,15 @@ test('S24: real Presentation Agent produces semantic patches for five human phra
                     path: 'properties.fields.body',
                   },
                 },
-                dependencies: [],
+                dependencies: [
+                  { kind: 'catalog', subject: 'catalog:t16', version: '1' },
+                  {
+                    kind: 'entity',
+                    subject: 'post:first-post',
+                    version: 'fixture',
+                    paths: ['properties.fields.body'],
+                  },
+                ],
                 provenance: [{ kind: 'generic-fallback' as const, ref: 'fixture' }],
               },
               {
@@ -132,7 +146,15 @@ test('S24: real Presentation Agent produces semantic patches for five human phra
                 bindings: {
                   actions: { kind: 'actions' as const, subject: 'post:first-post' },
                 },
-                dependencies: [],
+                dependencies: [
+                  { kind: 'catalog', subject: 'catalog:t16', version: '1' },
+                  {
+                    kind: 'entity',
+                    subject: 'post:first-post',
+                    version: 'fixture',
+                    paths: ['$actions'],
+                  },
+                ],
                 provenance: [{ kind: 'generic-fallback' as const, ref: 'fixture' }],
               },
             ],
@@ -155,6 +177,9 @@ test('S24: real Presentation Agent produces semantic patches for five human phra
       },
     },
   };
+  expect(validateSurfaceTree(surface, catalog).valid, 'S24 fixture must be a valid Surface').toBe(
+    true,
+  );
   const results = [];
   for (const [index, instruction] of instructions.entries()) {
     results.push(
@@ -170,17 +195,55 @@ test('S24: real Presentation Agent produces semantic patches for five human phra
       }),
     );
   }
-  const passed = results.filter(
-    (result) =>
-      result.status === 'patch' &&
-      result.patch.operations.length > 0 &&
-      result.patch.operations.every(
-        (operation) => operation.kind === 'pin' || ['body', 'actions'].includes(operation.nodeId),
-      ),
-  );
+  function pathTo(node: SurfaceNode, id: string): SurfaceNode[] | undefined {
+    if (node.id === id) return [node];
+    const children =
+      node.kind === 'layout'
+        ? node.children
+        : node.kind === 'slot'
+          ? [node.child]
+          : node.kind === 'repeat'
+            ? [node.item]
+            : [];
+    for (const child of children) {
+      const path = pathTo(child, id);
+      if (path !== undefined) return [node, ...path];
+    }
+    return undefined;
+  }
+  const checks = results.map((result) => {
+    if (result.status !== 'patch') return { passed: false, status: result.status };
+    const applied = applyRenderPatch(createRenderPatchTarget(surface), result.patch, catalog, 7);
+    if (!applied.ok) return { passed: false, status: 'invalid-patch', reason: applied.reason };
+    const bodyPath = pathTo(applied.target.surface.root, 'body');
+    const actionsPath = pathTo(applied.target.surface.root, 'actions');
+    const collapsed = new Set(applied.target.collapsedNodeIds);
+    const bodyVisible = bodyPath !== undefined && bodyPath.every((node) => !collapsed.has(node.id));
+    const actionsCollapsed = actionsPath !== undefined && collapsed.has(actionsPath.at(-1)!.id);
+    // Density on the actual reading region is equivalent to density on its body leaf.
+    // A closer explicit override wins; a collapsed reading ancestor never counts as emphasis.
+    const readingDensity = bodyPath
+      ?.filter((node) => node.role === 'primary-content')
+      .map((node) => applied.target.densityByNodeId[node.id])
+      .filter((density) => density !== undefined)
+      .at(-1);
+    const readingSpacious = readingDensity === 'spacious';
+    return {
+      passed: actionsCollapsed && bodyVisible && readingSpacious,
+      status: 'applied',
+      actionsCollapsed,
+      bodyVisible,
+      readingSpacious,
+    };
+  });
+  const passed = checks.filter((check) => check.passed);
   await testInfo.attach('t16-s24-real-llm-evidence.json', {
     body: Buffer.from(
-      JSON.stringify({ schemaVersion: 1, model: profile.model, instructions, results }, null, 2),
+      JSON.stringify(
+        { schemaVersion: 1, model: profile.model, instructions, results, checks },
+        null,
+        2,
+      ),
     ),
     contentType: 'application/json',
   });

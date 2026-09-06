@@ -143,7 +143,9 @@ test('a workline answers about its explicit cross-application resources', async 
 test('homepage question uses the visible authorized roots and current work without treating empty delegations as no work', async ({}, info) => {
   await withIsolatedStoryServer(loadLlmEvalProfile(), async (base) => {
     const sessionId = 'home-context';
-    const principal = `user:${sessionId}`;
+    // D68 local demo has separate chat ownership and workspace read identities.
+    // The browser and Presentation/HTTP reads use local-user, just like the workline stories.
+    const principal = 'local-user';
     await exec(
       base,
       'threads',
@@ -221,6 +223,10 @@ test('homepage question uses the visible authorized roots and current work witho
     expect(turn.outcome, JSON.stringify(turn)).toBe('answered');
     expect(turn.driver).toBe('llm');
     const trail = await decisions(base, sessionId);
+    await info.attach('home-context.json', {
+      body: JSON.stringify({ before, homeView, turn, trail }),
+      contentType: 'application/json',
+    });
     expect(trail.length).toBeGreaterThan(0);
     for (const root of roots) expect(trail[0].prompt.user).toContain(root);
     const sources = trail.flatMap((step) => step.op.sources ?? []);
@@ -241,10 +247,6 @@ test('homepage question uses the visible authorized roots and current work witho
     expect(trail.every((step) => !step.prompt.user.includes('其他用户的保密目标'))).toBe(true);
     expect(await Promise.all(roots.map(readAsOwner))).toEqual(before);
     expect(await threadEvents()).toEqual(beforeEvents);
-    await info.attach('home-context.json', {
-      body: JSON.stringify({ before, homeView, turn, trail }),
-      contentType: 'application/json',
-    });
   });
 });
 

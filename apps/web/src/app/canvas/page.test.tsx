@@ -9,6 +9,7 @@ import { renderCatalogJson } from '@/render/registry';
 import CanvasPage from './page';
 
 vi.mock('next/navigation', () => ({
+  usePathname: () => window.location.pathname,
   useSearchParams: () => new URLSearchParams(window.location.search),
 }));
 

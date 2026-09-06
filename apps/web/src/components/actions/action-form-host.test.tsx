@@ -122,3 +122,42 @@ it('Escape cancels a fieldless confirmation request inside a disclosure even whe
   expect(screen.getByRole('status').textContent).toContain('尚未执行');
   expect(submit).not.toHaveBeenCalled();
 });
+
+it.each([0, 200])(
+  'keeps an unacknowledged result (%s) distinct from a server rejection and retains its draft',
+  async (status) => {
+    const submit: ActionSubmit = vi.fn(async () => ({
+      ok: false as const,
+      status,
+      layer: 'exec-refused',
+      reason: 'Failed to fetch',
+    }));
+    const onExecuted = vi.fn();
+    render(
+      <ActionRunner
+        action={action}
+        rel="opaque:one"
+        submit={submit}
+        formHost="dialog"
+        onExecuted={onExecuted}
+      />,
+    );
+    const trigger = screen.getByRole('button', { name: '独立任务' });
+    fireEvent.click(trigger);
+    const dialog = await screen.findByRole('dialog');
+    fireEvent.change(within(dialog).getByRole('textbox'), { target: { value: '不要重复创建' } });
+    fireEvent.submit(dialog.querySelector('form')!);
+    await waitFor(() =>
+      expect(within(dialog).getByRole('alert').textContent).toBe(
+        '尚未收到执行回执，结果未确认。输入已保留。',
+      ),
+    );
+    expect(onExecuted).not.toHaveBeenCalled();
+    expect(submit).toHaveBeenCalledTimes(1);
+    fireEvent.click(within(dialog).getByRole('button', { name: '关闭' }));
+    fireEvent.click(trigger);
+    expect(
+      (within(await screen.findByRole('dialog')).getByRole('textbox') as HTMLInputElement).value,
+    ).toBe('不要重复创建');
+  },
+);

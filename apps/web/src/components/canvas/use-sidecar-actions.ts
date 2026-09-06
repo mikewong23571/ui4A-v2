@@ -11,6 +11,7 @@
 import { useCallback, useState, type Dispatch, type SetStateAction } from 'react';
 
 import { withPolicyScope } from '../exec-client';
+import { sidecarFailureMessage } from './sidecar/action-error';
 
 /** 画布侧记录的 Sidecar 元信息(个人呈现横幅与视图操作的状态源)。 */
 export interface SidecarMeta {
@@ -81,10 +82,10 @@ export function useSidecarActions(deps: {
       });
       const body = (await response.json()) as {
         sidecar?: { id: string; version: number; retention: 'cache' | 'pinned' };
-        error?: string;
+        error?: unknown;
       };
       if (!response.ok || body.sidecar === undefined) {
-        notify(`Sidecar ${action} 失败:${body.error ?? `HTTP ${response.status}`}`);
+        notify(sidecarFailureMessage(`Sidecar ${action} 失败`, body.error, response.status));
         return;
       }
       setSidecarMeta((current) =>
@@ -131,10 +132,10 @@ export function useSidecarActions(deps: {
       });
       const body = (await response.json()) as {
         sidecar?: SidecarMeta;
-        error?: string;
+        error?: unknown;
       };
       if (!response.ok || body.sidecar === undefined) {
-        notify(`视图调整失败:${body.error ?? `HTTP ${response.status}`}`);
+        notify(sidecarFailureMessage('视图调整失败', body.error, response.status));
         return;
       }
       setSidecarMeta(body.sidecar);
@@ -157,10 +158,10 @@ export function useSidecarActions(deps: {
         dependencyIds?: string[];
         composition?: SidecarExplanation['composition'];
       };
-      error?: string;
+      error?: unknown;
     };
     if (!response.ok || body.explanation === undefined) {
-      notify(`无法解释当前呈现:${body.error ?? `HTTP ${response.status}`}`);
+      notify(sidecarFailureMessage('无法解释当前呈现', body.error, response.status));
       return;
     }
     // T24:结构化结果进状态(抽屉内结构化展示);下方 notify 告示不变。
@@ -196,10 +197,10 @@ export function useSidecarActions(deps: {
       const body = (await response.json()) as {
         diff?: { fromSidecarVersion?: number };
         recipe?: { id?: string; version?: number };
-        error?: string;
+        error?: unknown;
       };
       if (!response.ok) {
-        notify(`团队默认处理失败:${body.error ?? `HTTP ${response.status}`}`);
+        notify(sidecarFailureMessage('团队默认处理失败', body.error, response.status));
         return;
       }
       if (!confirm) {

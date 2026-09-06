@@ -39,6 +39,12 @@ principal-owned 的纯投影。它不属于单一 Application、不绑定 sessio
 `create/attach/detach/lifecycle` 产生的显式 core 事件，presence 只选择当前线，不能隐式扩张成员。
 因此删除 Chat 后，CLI 仍可完整建线、挂载、查态、审计并从事件日志重放。
 
+T57/D79 的直接创建只需目标原话；client-owned commandId 提供同次提交的安全重试，原文与工作线
+在同一创建事件中保存，`thread-input:<id>` 可回读，仍无需 Chat 或模型代造来源。首页与助手共用
+my-work 声明的 `inbox / threads-current / delegations-current`，已结束工作经 `threads-history` 到达。
+普通工作按摘要行呈现，管理动作按需展开；声明的人类责任保持完整知情决定面，Recipe/Sidecar
+不能以省略、无效绑定或折叠隐藏责任。应用发现退到轻入口，完整目录仍承接所有授权应用。
+
 参考 Assistant 固定工作线合同引用，每个新决策重读目标及有限的显式关联对象，
 跨应用读取不依赖切换应用视角。未定位时从只读业务 `applications` 集合发现；应用
 选择、工作线和当前观察分别保留。内嵌摘要和后台恢复不保存另一份事实或扩大授权。

@@ -20,6 +20,7 @@ import { renderCatalogJson } from '@/render/registry';
 import { collectionQueryNavigation } from './collection-query';
 
 vi.mock('next/navigation', () => ({
+  usePathname: () => window.location.pathname,
   useSearchParams: () => new URLSearchParams(window.location.search),
 }));
 
