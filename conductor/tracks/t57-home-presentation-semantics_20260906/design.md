@@ -1,5 +1,11 @@
 # T57 Design
 
+> 2026-09-06 执行修订：用户明确授权在独立 worktree 与 T56 并行实现，覆盖此前等待 T56 完成的串行限制。
+> 基线 bf58603d（T56 P3 已提交），worktree `/Users/mike/projs/playground/ui4A-t57`，分支 `codex/t57-home-presentation`。
+> 中间执行必要 Red/Green 定向测试；阶段重度/E2E/真实模型/全量验证集中在合并主仓库后执行。
+> 合并必须保留 T56 在途修改，先集成其最终提交；未完成统一门禁不标 DONE。
+
+
 ## 1. 设计边界与默认形态
 
 ```text

@@ -1,12 +1,18 @@
 # T57 Plan
 
+> 2026-09-06 执行修订：用户明确授权在独立 worktree 与 T56 并行实现，覆盖此前等待 T56 完成的串行限制。
+> 基线 bf58603d（T56 P3 已提交），worktree `/Users/mike/projs/playground/ui4A-t57`，分支 `codex/t57-home-presentation`。
+> 中间执行必要 Red/Green 定向测试；阶段重度/E2E/真实模型/全量验证集中在合并主仓库后执行。
+> 合并必须保留 T56 在途修改，先集成其最终提交；未完成统一门禁不标 DONE。
+
+
 **仅规划，全部实施任务未开始。** P0 只读复核可与 T56 并行；代码实施须等待 T56 完成并通过 review，
 记录交接 SHA 后继续。按 workflow 做 Red→Green→Gate、阶段 checkpoint 与 git notes。
 任务/子任务状态须同步，不能以“父项完成/子项未做”或 registry 陈旧状态证明通过。
 
 ## P0 交接、探针与决定
 
-- [ ] Task: P0.1 复核 T56 与架构基线
+- [~] Task: P0.1 复核 T56 与架构基线
   - [ ] 读取本目录与正典，核查 T56 实际 plan/commit/review/dirty，登记共用模块交接 SHA。
   - [ ] 执行 strict/目录余量与扫描集检查，复核 A1–A6；其他任务脏文件不修改、不提交。
 - [ ] Task: P0.2 执行 S1 组件姿态与责任保全探针
