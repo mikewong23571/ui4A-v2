@@ -1722,3 +1722,13 @@
   `apps/web/src/components/chat/citation-list.s2-probe.test.tsx` 与
   `history-replay.s2-probe.test.tsx`(S2,P3 种子)、`probes/scripts/*.mjs`(S3,
   P2 Red 母本)。T35 归档文件零改动。
+
+## D79 T57 任务语义呈现与目标原始输入（2026-09-06）
+
+- 用户授权在独立 worktree 基于 T56 P3（bf58603d）并行实施，阶段轻量 Red/Green，合并后统一完整验证。
+- 局部替代 D50/D78.2 的“成员有动作即决定卡”：同一通用成员词消费逐成员/集合认知声明，普通对象以摘要和可展开操作呈现；真实 human-responsibility 保留知情决定卡；声明 table/compare 不依赖是否有动作。角色/字段/来源均绑定合同，零应用名判断。D78 其余事实/布局/授权边界不变。
+- 创建合同改为 caller goal 与 client-owned commandId；复用已有 JSON schema x-ui4a-input-owner 注解，不扩大 FieldDefinition。commandId 固定逻辑提交重试，目标变更或成功后新请求使用新键。纯命令以该键形成合法 thread id，原始 goal 随同一 thread-created 事件原子保存；新只读 thread-input:<id> 引用该不可变创建输入，使用同一 owner 授权，零新事件种类/状态库。此原子来源不要求先独立写一条 chat 消息，替代规划期“来源必须预先单独存在”的假设；接受时来源与对象同时真实存在。相同 owner/key/goal 重试不追加事件，冲突或越权诚实拒绝。CLI/agent 同一 schema，历史不增加双实现。
+- 首页复用 my-work 的授权来源和既有呈现链，当前/历史按线程生命周期语义形成可发现读切片，不在 React 聚合业务事实。普通空态轻量显示且限当前可见范围，工作线独立于 delegation 数量。
+- 操作姿态与表单宿主是呈现选项：ActionGroup 可展开低频操作，ActionRunner 复用同一 RJSF/submit 与可访问 Dialog；默认保留 inline 和已声明动作。high 只表达需确认，不推断 destructive/不可逆。实际安装 primitives 为 radix-ui，复用它而非新增 Base UI 依赖；此为技术栈文档陈旧名称的实况纠正，不更换库。
+- 责任不可因 Recipe/Sidecar 调整而丢失：在既有呈现校验/复用边界校验必需授权引用与动作可达，不另造业务责任清单。catalog/策略改变提升版本使旧结构失效。
+- 不修订 D78.4 的 thread specialised 确认门现状，不新增 provider、worker、存储权威或规则智能。
