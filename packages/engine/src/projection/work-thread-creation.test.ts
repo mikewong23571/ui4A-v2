@@ -39,7 +39,11 @@ describe('goal-only work creation', () => {
       const replay = applyThreadEvent(empty, { ...first.event, seq: 1 });
       expect(replay).toEqual(first.snapshot);
       expect(project(replay, 'thread-input:one-goal', deps)).toMatchObject({
-        properties: { text: request.params.goal, owner: request.principal },
+        properties: {
+          text: request.params.goal,
+          owner: request.principal,
+          title: '创建时的目标原文',
+        },
         actions: [],
       });
       expect(project(replay, 'thread:one-goal', deps)?.links).toContainEqual({

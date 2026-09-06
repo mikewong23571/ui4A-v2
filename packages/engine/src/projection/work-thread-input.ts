@@ -20,10 +20,14 @@ export function projectThreadInput(
     class: ['work-thread-input'],
     properties: {
       rel,
+      title: '创建时的目标原文',
       owner: thread.owner,
       text: thread.goal.text,
       presentation: {
-        fields: [{ path: 'properties.text', title: '创建时的目标原文', role: 'primary-content' }],
+        fields: [
+          { path: 'properties.title', title: '标题', role: 'identity' },
+          { path: 'properties.text', title: '创建时的目标原文', role: 'primary-content' },
+        ],
       },
     },
     actions: [],
