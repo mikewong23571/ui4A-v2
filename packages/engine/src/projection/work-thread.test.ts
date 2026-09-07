@@ -290,16 +290,16 @@ describe('Work Thread Siren projection', () => {
   it('declares task-language titles for every action and field (T33:人话归合同数据)', () => {
     expect(THREAD_CREATE_ACTION.title).toBe('创建工作线');
     expect(THREAD_CREATE_ACTION.fields?.map((field) => field.title)).toEqual(['提交标识', '目标']);
-    // T35 F-27(用户反馈):机制动词换任务语——"挂载/卸载引用"不可理解。
-    expect(THREAD_ATTACH_ACTION.title).toBe('添加涉及对象');
-    expect(THREAD_DETACH_ACTION.title).toBe('移出涉及对象');
+    // T35 F-27/T60 UX 评审:机制动词换任务语,实体面上的动作不复述实体名。
+    expect(THREAD_ATTACH_ACTION.title).toBe('添加关联');
+    expect(THREAD_DETACH_ACTION.title).toBe('移出关联');
     expect(
       THREAD_ATTACH_ACTION.fields?.find((field) => field.name === 'rel')?.description,
     ).toContain('合同路径');
-    expect(THREAD_PAUSE_ACTION.title).toBe('暂停工作线');
-    expect(THREAD_RESUME_ACTION.title).toBe('恢复工作线');
-    expect(THREAD_COMPLETE_ACTION.title).toBe('完成工作线');
-    expect(THREAD_ARCHIVE_ACTION.title).toBe('归档工作线');
+    expect(THREAD_PAUSE_ACTION.title).toBe('暂停');
+    expect(THREAD_RESUME_ACTION.title).toBe('恢复');
+    expect(THREAD_COMPLETE_ACTION.title).toBe('完成');
+    expect(THREAD_ARCHIVE_ACTION.title).toBe('归档');
   });
 
   it('projects a task-language resume line from the first active status pointer (T33)', () => {

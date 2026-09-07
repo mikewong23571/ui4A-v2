@@ -21,7 +21,7 @@ const declaration: SirenEntity = {
   actions: [
     {
       name: 'archive',
-      title: '归档工作线',
+      title: '归档',
       method: 'POST',
       href: '/api/exec',
       'requires-confirmation': 'high',
@@ -58,7 +58,7 @@ it('carries the authorized declared target from generic action binding into the 
       <DetailWord entity={actionSlice(plan)} mode="actions" />
     </ActionSubmitProvider>,
   );
-  fireEvent.click(screen.getByRole('button', { name: '归档工作线' }));
+  fireEvent.click(screen.getByRole('button', { name: '归档' }));
   expect(screen.getByText(`操作对象：${declaration.properties.identity as string}`)).toBeTruthy();
   expect(screen.queryByText(`操作对象：${subject}`)).toBeNull();
   expect(screen.getByText(declaration.actions[0]!.fields.description as string)).toBeTruthy();

@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 /**
- * G07 材料入口收敛:非书桌宿主(首页工作线区/实体页)的「添加涉及对象」。
+ * G07 材料入口收敛:非书桌宿主(首页工作线区/实体页)的「添加关联」。
  *
  * - 主路径 = 授权发现选择器(与书桌同一 ObjectSelectorPanel):点击候选经
  *   宿主 submit 适配器提交 attach(category 缺省 context),成功后失效线缓存
@@ -11,7 +11,7 @@
  *   本身(合同 detach 语义由既有入口承担);
  * - guard blocked 投影为 disabled + 原因 status。
  */
-import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import type { SirenAction, SirenEntity } from '@ui4a/engine';
@@ -23,7 +23,7 @@ import { EntityCacheProvider } from '../entity-cache-provider';
 
 const attachAction: SirenAction = {
   name: 'attach',
-  title: '添加涉及对象',
+  title: '添加关联',
   method: 'POST',
   href: '/api/exec',
   fields: {
@@ -31,7 +31,7 @@ const attachAction: SirenAction = {
     type: 'object',
     properties: {
       category: { type: 'string', enum: ['context', 'active', 'approval', 'event'], title: '类别' },
-      rel: { type: 'string', title: '涉及对象', minLength: 1 },
+      rel: { type: 'string', title: '关联对象', minLength: 1 },
     },
     required: ['category', 'rel'],
     additionalProperties: false,
@@ -155,7 +155,7 @@ describe('ThreadMaterialAdd(材料入口收敛)', () => {
 
     renderMaterialAdd(store, submit, { onExecuted });
     // 默认无裸 rel 输入(主路径不是手填表单)。
-    expect(screen.queryByLabelText(/涉及对象/)).toBeNull();
+    expect(screen.queryByLabelText(/关联对象/)).toBeNull();
     fireEvent.click(screen.getByTestId('thread-add-material'));
     fireEvent.click(await screen.findByTestId('desk-selector-pick:todo:buy'));
 
@@ -201,18 +201,23 @@ describe('ThreadMaterialAdd(材料入口收敛)', () => {
       ok: true as const,
       entity: threadEntity([]),
     })) as unknown as ActionSubmit;
-    const { container } = renderMaterialAdd(store, submit);
+    renderMaterialAdd(store, submit);
 
-    // 高级未展开:无裸 rel 文本框。
-    expect(screen.queryByLabelText(/涉及对象/)).toBeNull();
-    fireEvent.click(screen.getByTestId('thread-add-material-advanced'));
-    // 原始通用表单(ActionRunner)原样呈现:触发键 → RJSF 字段。
-    fireEvent.click(screen.getByRole('button', { name: '添加涉及对象' }));
-    const relInput = (await screen.findByLabelText(/涉及对象/)) as HTMLInputElement;
+    // 高级未展开:无裸 rel 文本框;入口收在选择器面板底部。
+    expect(screen.queryByLabelText(/关联对象/)).toBeNull();
+    expect(screen.queryByTestId('thread-add-material-advanced')).toBeNull();
+    fireEvent.click(screen.getByTestId('thread-add-material'));
+    fireEvent.click(await screen.findByTestId('thread-add-material-advanced'));
+    // 原始通用表单(ActionRunner)原样呈现:触发键 → RJSF 字段(高级区域内唯一)。
+    const advancedForm = await screen.findByTestId('thread-add-material-advanced-form');
+    fireEvent.click(within(advancedForm).getByRole('button', { name: '添加关联' }));
+    const relInput = (await within(advancedForm).findByLabelText(/关联对象/)) as HTMLInputElement;
     fireEvent.change(relInput, { target: { value: 'idea:ux0905' } });
     // RJSF v6 enum select 的 DOM value 是选项下标(indexed),变更后解码回真值。
-    fireEvent.change(screen.getByLabelText(/类别/), { target: { value: '0' } });
-    fireEvent.click(container.querySelector('button[type="submit"][data-action="attach"]')!);
+    fireEvent.change(within(advancedForm).getByLabelText(/类别/), { target: { value: '0' } });
+    fireEvent.click(
+      advancedForm.querySelector('button[type="submit"][data-action="attach"]')!,
+    );
 
     await waitFor(() =>
       expect(submit).toHaveBeenCalledWith({

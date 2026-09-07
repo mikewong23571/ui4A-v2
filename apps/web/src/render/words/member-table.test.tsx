@@ -13,7 +13,6 @@ import {
   ActionSubmitProvider,
   createDirectActionSubmit,
 } from '../../components/actions/action-submit';
-import { ACTION_CONTRACT_LEGEND } from '../../components/actions/action-group';
 import { MemberTableWord } from './member-table';
 
 const approveAction: SirenAction = {
@@ -93,7 +92,7 @@ describe('member-table 词条', () => {
     expect(screen.getByRole('button', { name: '驳回' })).toBeTruthy();
 
     // compact 密度:合同图例保留在详情面,行内零图例;条目不套全宽边框盒子。
-    expect(screen.queryByText(ACTION_CONTRACT_LEGEND)).toBeNull();
+    expect(screen.queryByText('操作规则')).toBeNull();
     for (const item of container.querySelectorAll('[data-action-group-item]')) {
       expect(item.className).not.toContain('border');
       expect(item.className).not.toContain('rounded-md');
@@ -105,7 +104,7 @@ describe('member-table 词条', () => {
 
     expect(screen.getByRole('link', { name: '情报收集' })).toBeTruthy();
     expect(screen.queryByRole('button')).toBeNull();
-    expect(screen.queryByText(ACTION_CONTRACT_LEGEND)).toBeNull();
+    expect(screen.queryByText('操作规则')).toBeNull();
     expect(screen.getAllByRole('cell')).toHaveLength(4);
   });
 

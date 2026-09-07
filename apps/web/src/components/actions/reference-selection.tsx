@@ -1,5 +1,6 @@
 'use client';
 
+import { Minus } from 'lucide-react';
 import { useId, useRef, useState } from 'react';
 import type { SirenAction, SirenEntity } from '@ui4a/engine';
 import { notifyThreadUpdated } from '../canvas/desk/thread-desk-shared';
@@ -164,6 +165,8 @@ export function ReferenceSelection({
         }}
       >
         {action.title}
+        {/* T60 UX 评审:与「添加关联」的 ＋ 图标对称,补移出方向的 − 。 */}
+        <Minus aria-hidden />
       </Button>
       {open && (
         <section id={id} aria-label={action.title} className="space-y-2 rounded-md border p-3">

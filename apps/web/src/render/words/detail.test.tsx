@@ -162,6 +162,6 @@ it('keeps named sources visible and moves unlabeled contract references into a c
   expect(disclosure).not.toBeNull();
   expect(disclosure.open).toBe(false);
   expect(disclosure.contains(screen.getByText('message:long-id'))).toBe(true);
-  fireEvent.click(screen.getByText('合同引用（1）'));
+  fireEvent.click(screen.getByText('引用（1）'));
   expect(disclosure.open).toBe(true);
 });

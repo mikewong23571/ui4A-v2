@@ -169,7 +169,7 @@ function WorkspaceLinks({ entity }: { entity: SirenEntity }) {
       {renderLinks(named)}
       {raw.length > 0 && (
         <details>
-          <summary>合同引用（{raw.length}）</summary>
+          <summary>引用（{raw.length}）</summary>
           <div className="pt-2">{renderLinks(raw)}</div>
         </details>
       )}

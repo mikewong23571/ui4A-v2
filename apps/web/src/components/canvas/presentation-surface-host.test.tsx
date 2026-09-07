@@ -199,7 +199,7 @@ describe('PresentationSurfaceHost 共享单树宿主', () => {
         <CanvasBody />
       </EntityCacheProvider>,
     );
-    expect(await screen.findByText('你和助手使用同一合同，由同一规则裁决')).toBeTruthy();
+    expect(await screen.findByRole('button', { name: '完成' })).toBeTruthy();
     const before = fixture.fetchMock.mock.calls.filter(([request]) =>
       String(request).startsWith('/api/entity?rel=post%3Acanvas'),
     ).length;
@@ -254,7 +254,7 @@ describe('PresentationSurfaceHost 共享单树宿主', () => {
         <CanvasBody />
       </EntityCacheProvider>,
     );
-    expect(await screen.findByText('你和助手使用同一合同，由同一规则裁决')).toBeTruthy();
+    expect(await screen.findByRole('button', { name: '完成' })).toBeTruthy();
 
     fireEvent.click(screen.getByRole('button', { name: '完成' }));
 

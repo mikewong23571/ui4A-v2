@@ -4,7 +4,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import type { SirenAction, SirenEntity } from '@ui4a/engine';
 
-import { ACTION_CONTRACT_LEGEND, ActionGroup } from './action-group';
+import { ActionGroup } from './action-group';
 import type { ActionSubmit } from './action-submit';
 import { EntityCacheProvider } from '../entity-cache-provider';
 
@@ -64,9 +64,8 @@ describe('contract-driven ActionGroup', () => {
       const submit = acceptedSubmit();
       const { container } = render(<ActionGroup entity={entityOf(classes)} submit={submit} />);
 
-      expect(screen.getByText(ACTION_CONTRACT_LEGEND).textContent).toBe(
-        '你和助手使用同一合同，由同一规则裁决',
-      );
+      // T60 UX 评审:「操作规则」图例已删除——动作区不承载架构口号。
+      expect(screen.queryByText('操作规则')).toBeNull();
       expect(screen.getByRole('button', { name: '完成' })).toBeTruthy();
       // D50:带参数动作(修订)默认收起为一行触发键
       expect(screen.getByRole('button', { name: '修订' })).toBeTruthy();
@@ -141,8 +140,8 @@ describe('ActionGroup compact density (member-table 行内动作)', () => {
       <ActionGroup entity={dangerEntity()} submit={submit} density="compact" />,
     );
 
-    // 图例保留在详情面:compact 模式零图例。
-    expect(screen.queryByText(ACTION_CONTRACT_LEGEND)).toBeNull();
+    // 图例已删除:compact 模式与详情面一样零图例。
+    expect(screen.queryByText('操作规则')).toBeNull();
     expect(screen.queryByTestId('action-contract-legend')).toBeNull();
 
     // 钩子零变化:每个动作条目仍带 data-action-group-item。
@@ -172,11 +171,11 @@ describe('ActionGroup compact density (member-table 行内动作)', () => {
     expect(screen.getByRole('status').textContent).toBe('guard 不满足: item-ready=false');
   });
 
-  it('default:图例保留,条目扁平(零边框盒子;确认分组不宣称危险)', () => {
+  it('default:零图例,条目扁平(零边框盒子;确认分组不宣称危险)', () => {
     const submit = acceptedSubmit();
     const { container } = render(<ActionGroup entity={dangerEntity()} submit={submit} />);
 
-    expect(screen.getByText(ACTION_CONTRACT_LEGEND)).toBeTruthy();
+    expect(screen.queryByText('操作规则')).toBeNull();
     const items = [...container.querySelectorAll('[data-action-group-item]')];
     expect(items).toHaveLength(3);
     for (const item of items) expect(item.className).not.toContain('border');
@@ -212,7 +211,7 @@ describe('G07 材料入口收敛(线 attach 动作 → 选择器主路径)', () 
     type: 'object',
     properties: {
       category: { type: 'string', enum: ['context', 'active', 'approval', 'event'], title: '类别' },
-      rel: { type: 'string', title: '涉及对象', minLength: 1 },
+      rel: { type: 'string', title: '关联对象', minLength: 1 },
     },
     required: ['category', 'rel'],
     additionalProperties: false,
@@ -244,7 +243,7 @@ describe('G07 材料入口收敛(线 attach 动作 → 选择器主路径)', () 
     const { container } = renderGroup(
       threadEntity({
         name: 'attach',
-        title: '添加涉及对象',
+        title: '添加关联',
         method: 'POST',
         href: '/api/exec',
         fields: referenceFields,
@@ -252,8 +251,10 @@ describe('G07 材料入口收敛(线 attach 动作 → 选择器主路径)', () 
       submit,
     );
     expect(screen.getByTestId('thread-add-material')).toBeTruthy();
+    // T60 UX 评审:线实体上的 attach/detach 入「关联」关系组,先行披露。
+    expect(screen.getByTestId('action-reference-group')).toBeTruthy();
     // 裸 rel 输入不出现在主路径(仅为高级回退)。
-    expect(screen.queryByLabelText(/涉及对象/)).toBeNull();
+    expect(screen.queryByLabelText(/关联对象/)).toBeNull();
     expect(container.querySelector('[data-action-group-item="attach"]')).not.toBeNull();
   });
 
@@ -263,7 +264,7 @@ describe('G07 材料入口收敛(线 attach 动作 → 选择器主路径)', () 
     renderGroup(
       threadEntity({
         name: 'detach',
-        title: '移出涉及对象',
+        title: '移出关联',
         method: 'POST',
         href: '/api/exec',
         fields: referenceFields,
@@ -271,7 +272,7 @@ describe('G07 材料入口收敛(线 attach 动作 → 选择器主路径)', () 
       submit,
     );
     expect(screen.queryByTestId('thread-add-material')).toBeNull();
-    expect(screen.getByRole('button', { name: '移出涉及对象' })).toBeTruthy();
+    expect(screen.getByRole('button', { name: '移出关联' })).toBeTruthy();
     cleanup();
     // 非线实体的同名 attach 动作:通用表单(识别键 = 线 rel,零误伤)。
     const todo: SirenEntity = {
@@ -280,7 +281,7 @@ describe('G07 材料入口收敛(线 attach 动作 → 选择器主路径)', () 
       actions: [
         {
           name: 'attach',
-          title: '添加涉及对象',
+          title: '添加关联',
           method: 'POST',
           href: '/api/exec',
           fields: referenceFields,
@@ -291,7 +292,8 @@ describe('G07 材料入口收敛(线 attach 动作 → 选择器主路径)', () 
     };
     renderGroup(todo, submit);
     expect(screen.queryByTestId('thread-add-material')).toBeNull();
-    expect(screen.getByRole('button', { name: '添加涉及对象' })).toBeTruthy();
+    expect(screen.queryByTestId('action-reference-group')).toBeNull();
+    expect(screen.getByRole('button', { name: '添加关联' })).toBeTruthy();
   });
 });
 

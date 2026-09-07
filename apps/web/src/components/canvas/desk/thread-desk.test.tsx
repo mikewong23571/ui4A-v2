@@ -6,7 +6,7 @@
  *   属性表**(此前 W2 左栏实时渲染整面是塞爆根因,pin=上下文引用);
  * - 工作集 = 线 context 成员(合同 detach 移出;计数只算成员);钉住页 =
  *   固定视图偏好单列成区,仅本地取消(P3.1 语义分离,US06);
- * - 「＋添加涉及对象」→ 对象选择器(sitemap 集合面成员,机械派生),点击即挂
+ * - 「添加关联」→ 对象选择器(sitemap 集合面成员,机械派生),点击即挂
  *   category=context(F-27② 裸填 rel 退位),已挂对象标记"已在本线";
  * - T56 P2.2(D78):书桌不再是常驻左轨,由 thread-workspace-bar 的
  *   「相关材料」入口按需展开;线生命周期动作由本线 surface 的声明动作区
@@ -25,7 +25,7 @@ const referenceFields = {
   type: 'object',
   properties: {
     category: { type: 'string', enum: ['context', 'active', 'approval', 'event'], title: '类别' },
-    rel: { type: 'string', title: '涉及对象', minLength: 1 },
+    rel: { type: 'string', title: '关联对象', minLength: 1 },
   },
   required: ['category', 'rel'],
   additionalProperties: false,
@@ -45,14 +45,14 @@ function plainAction(name: string, title: string): SirenAction {
 
 const attachAction: SirenAction = {
   name: 'attach',
-  title: '添加涉及对象',
+  title: '添加关联',
   method: 'POST',
   href: '/api/exec',
   fields: referenceFields,
 };
-const detachAction: SirenAction = { ...attachAction, name: 'detach', title: '移出涉及对象' };
+const detachAction: SirenAction = { ...attachAction, name: 'detach', title: '移出关联' };
 const archiveAction: SirenAction = {
-  ...plainAction('archive', '归档工作线'),
+  ...plainAction('archive', '归档'),
   'requires-confirmation': 'high',
 };
 
@@ -77,8 +77,8 @@ function threadEntity(): SirenEntity {
     actions: [
       attachAction,
       detachAction,
-      plainAction('pause', '暂停工作线'),
-      plainAction('complete', '完成工作线'),
+      plainAction('pause', '暂停'),
+      plainAction('complete', '完成'),
       archiveAction,
     ],
     links: [{ rel: ['self'], href: '/api/entity?rel=thread:t1' }],
@@ -217,7 +217,7 @@ describe('ThreadDesk(书桌目录)', () => {
     expect(execCalls).toHaveLength(1);
   });
 
-  it('「＋添加涉及对象」打开选择器(sitemap 集合面成员),点击即挂 context;已挂对象标记不可再选', async () => {
+  it('「添加关联」打开选择器(sitemap 集合面成员),点击即挂 context;已挂对象标记不可再选', async () => {
     const execCalls: Record<string, unknown>[] = [];
     let context: string[] = [];
     const store: Record<string, SirenEntity> = {

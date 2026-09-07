@@ -184,7 +184,7 @@ test.describe('work-thread extensibility', () => {
 
       await page.getByRole('button', { name: /相关材料/ }).click();
       const dialog = page.getByTestId('thread-materials-dialog');
-      await expect(page.getByTestId('desk-working-set-count')).toHaveText('工作集（30）');
+      await expect(page.getByTestId('desk-working-set-count')).toHaveText('关联（30）');
       expect(dialog.locator('[data-desk-entry]')).toHaveCount(MATERIAL_COUNT);
       await saveShot(page, 'p4-us11-ext-app-bigset');
 

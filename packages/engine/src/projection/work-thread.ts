@@ -78,50 +78,52 @@ const referenceFields: ActionDefinition['fields'] = [
   {
     name: 'rel',
     type: 'text',
-    title: '涉及对象',
+    title: '关联对象',
     required: true,
     minLength: 1,
     // 示例用抽象形状而非真实 rel(T56 C7:文档示例不得与任何被授权裁剪的
     // 对象字面量相撞,静态说明文本不披露成员存在性)。
-    description: '对象的合同路径(形如 集合:名字);通常经「＋添加涉及对象」的选择器挑选,无需手填',
+    description: '对象的合同路径(形如 集合:名字);通常经「添加关联」选择器挑选,无需手填',
   },
 ];
 
+// T60 UX 评审:动作在实体自身面上渲染,标题不再复述实体名;attach/detach 是
+// 引用(边)操作,与生命周期(节点)操作在渲染层分组,任务语统一「关联」词表。
 export const THREAD_ATTACH_ACTION: ActionDefinition = {
   name: 'attach',
-  title: '添加涉及对象',
+  title: '添加关联',
   ...noNodeFields,
   fields: referenceFields,
 };
 
 export const THREAD_DETACH_ACTION: ActionDefinition = {
   name: 'detach',
-  title: '移出涉及对象',
+  title: '移出关联',
   ...noNodeFields,
   fields: referenceFields,
 };
 
 export const THREAD_PAUSE_ACTION: ActionDefinition = {
   name: 'pause',
-  title: '暂停工作线',
+  title: '暂停',
   ...noNodeFields,
 };
 
 export const THREAD_RESUME_ACTION: ActionDefinition = {
   name: 'resume',
-  title: '恢复工作线',
+  title: '恢复',
   ...noNodeFields,
 };
 
 export const THREAD_COMPLETE_ACTION: ActionDefinition = {
   name: 'complete',
-  title: '完成工作线',
+  title: '完成',
   ...noNodeFields,
 };
 
 export const THREAD_ARCHIVE_ACTION: ActionDefinition = {
   name: 'archive',
-  title: '归档工作线',
+  title: '归档',
   'requires-confirmation': 'high' as const,
   ...noNodeFields,
 };

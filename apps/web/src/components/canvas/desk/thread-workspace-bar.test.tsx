@@ -150,7 +150,7 @@ describe('ThreadWorkspaceBar(本线壳条)', () => {
     // 成员在工作集;pin-only 单列固定视图区(标题可辨),不在工作集条目里。
     await waitFor(() =>
       expect(dialog.querySelector('[data-testid="desk-working-set-count"]')?.textContent).toBe(
-        '工作集（1）',
+        '关联（1）',
       ),
     );
     const pinned = dialog.querySelector('[data-testid="desk-pinned"]');

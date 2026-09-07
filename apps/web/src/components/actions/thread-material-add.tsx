@@ -1,7 +1,7 @@
 'use client';
 /**
  * G07 材料入口收敛:非书桌宿主(首页工作线区成员卡 / 工作线实体页)上的
- * 「添加涉及对象」——与书桌(thread-desk)同一扇门。
+ * 「添加关联」——与书桌(thread-desk)同一扇门。
  *
  * - 主路径 = 授权发现选择器 ObjectSelectorPanel(与书桌共用同一组件):候选
  *   来自 sitemap 集合面 + 页面缓存授权读,点击即挂 category=context;裸 rel
@@ -13,6 +13,7 @@
  *   移出不删除对象本身(合同 detach 语义不变,由各宿主既有入口承担);
  * - 「已添加」集合读线程实体的授权投影(properties.context),不自造清单。
  */
+import { Plus } from 'lucide-react';
 import { useCallback, useEffect, useState } from 'react';
 
 import type { SirenAction, SirenEntity } from '@ui4a/engine';
@@ -137,19 +138,9 @@ export function ThreadMaterialAdd({
           disabled={blocked || busy}
           onClick={openSelector}
         >
-          ＋ {action.title}
+          <Plus aria-hidden />
+          {action.title}
         </Button>
-        <button
-          type="button"
-          data-testid="thread-add-material-advanced"
-          data-nav="local:thread-add-material-advanced"
-          aria-expanded={advancedOpen}
-          disabled={busy}
-          onClick={() => setAdvancedOpen((open) => !open)}
-          className="text-xs text-muted-foreground underline-offset-2 hover:underline disabled:opacity-60"
-        >
-          高级:手动填写
-        </button>
       </div>
       {blocked && blockReason !== undefined ? (
         <p role="status" className="text-xs text-muted-foreground">
@@ -157,23 +148,42 @@ export function ThreadMaterialAdd({
         </p>
       ) : null}
       {selectorOpen && (
-        <ObjectSelectorPanel
-          attachedRels={attachedRels}
-          busy={busy}
-          onPick={attach}
-          onClose={() => setSelectorOpen(false)}
-        />
+        <>
+          <ObjectSelectorPanel
+            attachedRels={attachedRels}
+            busy={busy}
+            onPick={attach}
+            onClose={() => {
+              setSelectorOpen(false);
+              setAdvancedOpen(false);
+            }}
+          />
+          {/* 高级回退入口收进选择器面板底部:裸 rel 表单不再与主路径并列常驻。 */}
+          <button
+            type="button"
+            data-testid="thread-add-material-advanced"
+            data-nav="local:thread-add-material-advanced"
+            aria-expanded={advancedOpen}
+            disabled={busy}
+            onClick={() => setAdvancedOpen((open) => !open)}
+            className="text-xs text-muted-foreground underline-offset-2 hover:underline disabled:opacity-60"
+          >
+            高级:手动填写
+          </button>
+        </>
       )}
       {/* 高级回退:合同声明的原始表单(类别 + 裸 rel)原样可达,零行为改动。 */}
       {advancedOpen && (
-        <ActionRunner
-          rel={rel}
-          action={action}
-          submit={threadSubmit}
-          onExecuted={onExecuted}
-          blocked={blocked}
-          blockReason={blockReason}
-        />
+        <div data-testid="thread-add-material-advanced-form">
+          <ActionRunner
+            rel={rel}
+            action={action}
+            submit={threadSubmit}
+            onExecuted={onExecuted}
+            blocked={blocked}
+            blockReason={blockReason}
+          />
+        </div>
       )}
       {failure !== null && (
         <p

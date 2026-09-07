@@ -109,7 +109,7 @@ describe('member-card 词条', () => {
     const audit = screen.getByText('合同详情').closest('details')!;
     expect(audit.open).toBe(false);
     expect(audit.textContent).toContain('confirmation:c1');
-    expect(screen.queryByText('你和助手使用同一合同，由同一规则裁决')).toBeNull();
+    expect(screen.queryByText('操作规则')).toBeNull();
     fireEvent.click(screen.getByRole('button', { name: '批准' }));
     expect(screen.getByRole('button', { name: '确认并执行批准' })).toBeTruthy();
   });
@@ -132,14 +132,14 @@ describe('member-card 词条', () => {
     expect(approve.dataset.action).toBe('approve');
     expect(approve.disabled).toBe(false);
     expect(screen.getByRole('button', { name: '驳回' })).toBeTruthy();
-    expect(screen.queryByText('你和助手使用同一合同，由同一规则裁决')).toBeNull();
+    expect(screen.queryByText('操作规则')).toBeNull();
   });
 
   it('成员无动作 → 只有身份行,无动作区(渲染器零分支)', () => {
     renderCard({ label: '情报收集', rel: 'delegation:d1', actions: [] });
 
     expect(screen.getByText('情报收集')).toBeTruthy();
-    expect(screen.queryByText('你和助手使用同一合同，由同一规则裁决')).toBeNull();
+    expect(screen.queryByText('操作规则')).toBeNull();
     expect(screen.queryByRole('button')).toBeNull();
   });
 

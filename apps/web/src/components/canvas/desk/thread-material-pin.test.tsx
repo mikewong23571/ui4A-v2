@@ -39,7 +39,7 @@ const referenceFields = {
   type: 'object',
   properties: {
     category: { type: 'string', enum: ['context', 'active', 'approval', 'event'], title: '类别' },
-    rel: { type: 'string', title: '涉及对象', minLength: 1 },
+    rel: { type: 'string', title: '关联对象', minLength: 1 },
   },
   required: ['category', 'rel'],
   additionalProperties: false,
@@ -47,12 +47,12 @@ const referenceFields = {
 
 const attachAction: SirenAction = {
   name: 'attach',
-  title: '添加涉及对象',
+  title: '添加关联',
   method: 'POST',
   href: '/api/exec',
   fields: referenceFields,
 };
-const detachAction: SirenAction = { ...attachAction, name: 'detach', title: '移出涉及对象' };
+const detachAction: SirenAction = { ...attachAction, name: 'detach', title: '移出关联' };
 
 interface MemberFacts {
   identity: string;
@@ -274,7 +274,7 @@ describe('材料/pin 语义分离(US06/FR5;T56 P3.1)', () => {
     await screen.findByText('完成 T35 全轨道验收');
 
     // 工作集计数只算 membership(context 成员),pin-only 不冒充材料。
-    expect(screen.getByTestId('desk-working-set-count').textContent).toBe('工作集（1）');
+    expect(screen.getByTestId('desk-working-set-count').textContent).toBe('关联（1）');
     // 工作集条目只有成员;pin-only 单列固定视图区。
     const entries = [...container.querySelectorAll('[data-desk-entry]')].map((element) =>
       element.getAttribute('data-desk-entry'),
@@ -412,13 +412,13 @@ it('membership mutations refresh the same-page Surface as well as the drawer', a
   await waitFor(() => expect(mainMembers()).toEqual(['完成 T35 全轨道验收']));
   fireEvent.click(screen.getByTestId('desk-remove:todo:t35'));
   await waitFor(() =>
-    expect(screen.getByTestId('desk-working-set-count').textContent).toBe('工作集（0）'),
+    expect(screen.getByTestId('desk-working-set-count').textContent).toBe('关联（0）'),
   );
   await waitFor(() => expect(mainMembers()).toEqual([]));
   fireEvent.click(screen.getByTestId('desk-add-material'));
   fireEvent.click(await screen.findByTestId('desk-selector-pick:todo:buy'));
   await waitFor(() => expect(mainMembers()).toEqual(['买牛奶']));
-  expect(screen.getByTestId('desk-working-set-count').textContent).toBe('工作集（1）');
+  expect(screen.getByTestId('desk-working-set-count').textContent).toBe('关联（1）');
   expect(state.events).toEqual(['thread-reference-detached', 'thread-reference-attached']);
 });
 
@@ -441,7 +441,7 @@ it('a rejected membership change retains material in both the Surface and drawer
   expect(main.querySelector('[data-nav="presentation:member"]')?.textContent).toBe(
     '完成 T35 全轨道验收',
   );
-  expect(screen.getByTestId('desk-working-set-count').textContent).toBe('工作集（1）');
+  expect(screen.getByTestId('desk-working-set-count').textContent).toBe('关联（1）');
   expect(presentationReads()).toBe(readsBefore);
   expect(state.events).toEqual([]);
 });

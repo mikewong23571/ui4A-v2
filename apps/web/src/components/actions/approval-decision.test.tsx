@@ -572,7 +572,7 @@ describe('本线责任卡决定流(P3.2 集成面;US02/US04)', () => {
     await screen.findByText(THREAD_IDENTITY);
 
     // 归档线自身无生命周期动作;责任卡不因归档消失。
-    expect(screen.queryByRole('button', { name: '归档工作线' })).toBeNull();
+    expect(screen.queryByRole('button', { name: '归档' })).toBeNull();
     const business = await waitFor(() => {
       const card = cardOf('confirmation:c1');
       expect(within(card).getByRole('button', { name: '批准' })).toBeTruthy();

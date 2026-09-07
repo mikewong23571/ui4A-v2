@@ -387,7 +387,7 @@ test('waiting-for-me 成员决策卡:批准两段确认零导航零参数,同一
         new URL(response.url()).pathname === '/api/exec' &&
         response.request().postDataJSON().action === 'pause',
     );
-    await threadRow.getByRole('button', { name: '暂停工作线', exact: true }).click();
+    await threadRow.getByRole('button', { name: '暂停', exact: true }).click();
     const paused = await pauseResponse;
     expect(paused.ok()).toBe(true);
     expect(paused.request().postDataJSON()).toMatchObject({

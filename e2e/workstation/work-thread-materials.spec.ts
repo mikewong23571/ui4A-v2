@@ -54,12 +54,12 @@ test.describe('work-thread materials', () => {
       const materials = page.getByRole('button', { name: /相关材料/ });
       await materials.click();
       const dialog = page.getByTestId('thread-materials-dialog');
-      await expect(page.getByTestId('desk-working-set-count')).toHaveText('工作集（1）');
+      await expect(page.getByTestId('desk-working-set-count')).toHaveText('关联（1）');
 
       // 添加(comment:c1,community 集合成员)后:覆盖层条目、壳条计数与 HTTP 同源。
       await page.getByTestId('desk-add-material').click();
       await page.getByTestId('desk-selector-pick:comment:c1').click();
-      await expect(page.getByTestId('desk-working-set-count')).toHaveText('工作集（2）');
+      await expect(page.getByTestId('desk-working-set-count')).toHaveText('关联（2）');
       await expect(dialog.locator('[data-desk-entry="comment:c1"]')).toBeVisible();
       expect(await threadContext(page, thread)).toEqual(['articles', 'comment:c1']);
       await expect(materials).toHaveText(/相关材料（2）/, { timeout: 15_000 });
@@ -110,7 +110,7 @@ test.describe('work-thread materials', () => {
       // 解除注入后移出成功:comment:c1 只剩固定视图偏好 → pin-only 单列固定视图区,
       // 明确不冒充材料(计数只算成员);HTTP references.context 不含 pin-only。
       await dialog.getByTestId('desk-remove:comment:c1').click();
-      await expect(page.getByTestId('desk-working-set-count')).toHaveText('工作集（1）');
+      await expect(page.getByTestId('desk-working-set-count')).toHaveText('关联（1）');
       await expect(dialog.locator('[data-desk-entry="comment:c1"]')).toHaveCount(0);
       const pinOnly = dialog.locator('[data-pinned-entry="comment:c1"]');
       await expect(pinOnly).toBeVisible();

@@ -1,6 +1,6 @@
 'use client';
 /**
- * F-27② 对象选择器:「＋添加涉及对象」的候选面板。
+ * F-27② 对象选择器:「添加关联」的候选面板。
  *
  * - 候选 = sitemap 集合面(collection:true)成员——§二 同一扇门:人与 agent
  *   共用的发现面,机械派生零特判;flow 面不是集合,不入候选;
@@ -126,7 +126,7 @@ export function ObjectSelectorPanel({
       data-testid="desk-selector"
       className="mt-2 rounded-md border bg-background p-2"
       role="group"
-      aria-label="选择涉及对象"
+      aria-label="选择关联对象"
     >
       <div className="flex items-center gap-2">
         <input

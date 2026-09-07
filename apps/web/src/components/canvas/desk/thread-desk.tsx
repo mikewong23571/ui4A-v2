@@ -11,16 +11,17 @@
  *   明确不属材料——「钉住过 ≠ 已关联」(design §2 pin 行禁止的推断);
  * - 条目不渲染整面 surface——实时展示是舞台(注视)的职责,书桌只列条目
  *   (标题+状态),点击唤起注视;
- * - **写动作只随合同声明出现(US04/US06)**:「＋添加涉及对象」「移出」
+ * - **写动作只随合同声明出现(US04/US06)**:「添加关联」「移出」
  *   仅当线实体声明 attach/detach 且 guard 投影未 blocked 时可用;archived
  *   线(无声明动作)与权限收回后的移除控件不显示,固定视图取消不依赖
  *   合同动作,照常可用;
- * - 「＋添加涉及对象」点开对象选择器(thread-desk-selector),候选 =
+ * - 「添加关联」点开对象选择器(thread-desk-selector),候选 =
  *   sitemap 集合面成员,点击即挂 category=context——F-27② 裸填 rel 退位;
  * - 线动作跨书桌/舞台协调走 ui4a:thread-updated 事件(thread-desk-shared),
  *   与 ui4a:thread-pins-changed 同规:跨渲染边界不假设同一 React 子树;
  * - 零每实体特判:身份/状态一律读实体声明字段(identity/title/statusText)。
  */
+import { Plus } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useState, type JSX } from 'react';
 
 import Link from 'next/link';
@@ -350,7 +351,7 @@ export function ThreadDesk({ threadId, scope, onEntryNavigate }: ThreadDeskProps
             className="text-xs font-medium text-muted-foreground"
             data-testid="desk-working-set-count"
           >
-            工作集（{memberEntries.length}）
+            关联（{memberEntries.length}）
           </p>
           {canAttach && (
             <button
@@ -360,16 +361,17 @@ export function ThreadDesk({ threadId, scope, onEntryNavigate }: ThreadDeskProps
               aria-expanded={selectorOpen}
               disabled={busy}
               onClick={() => setSelectorOpen((open) => !open)}
-              className="rounded-md border border-dashed px-2 py-0.5 text-xs text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+              className="inline-flex items-center gap-1 rounded-md border border-dashed px-2 py-0.5 text-xs text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
             >
-              ＋ 添加涉及对象
+              <Plus aria-hidden />
+              添加关联
             </button>
           )}
         </div>
         {memberEntries.length === 0 ? (
           <p className="mt-2 text-xs text-muted-foreground">
             {canAttach
-              ? '还没有涉及对象。点「＋ 添加涉及对象」把相关材料挂进本线，助手在线内工作时就能看到。'
+              ? '还没有关联。点「添加关联」把相关材料挂进本线，助手在线内工作时就能看到。'
               : '当前可见的关联对象为空。'}
           </p>
         ) : (
