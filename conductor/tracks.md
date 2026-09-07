@@ -4,7 +4,7 @@
 
 ## 活跃 Tracks
 
-- [~] **Track: T61 工作现场优先与简洁材料交互** *Link: [tracks/t61-work-context-presentation_20260908/index.md](./tracks/t61-work-context-presentation_20260908/index.md)*
+- [x] **Track: T61 工作现场优先与简洁材料交互**（fcd96402 已部署；check4494、work-thread E2E18、invariants20 与公网复验通过） *Link: [tracks/archive/t61-work-context-presentation_20260908/index.md](./tracks/archive/t61-work-context-presentation_20260908/index.md)*
 
 - [x] **Track: T60 聊天执行连续性：重复创建与跨轮审计缺口**（2026-09-07：D82，同 run 命令身份复用、thread receipt 审计、session 关联、local 读写身份一致；check 4464、chat E2E 7、真实模型创建后追问与原始事故重放通过；本地提交 0cf8df10，未部署） *Link: [tracks/archive/t60-chat-execution-continuity_20260907/index.md](./tracks/archive/t60-chat-execution-continuity_20260907/index.md)*
 
