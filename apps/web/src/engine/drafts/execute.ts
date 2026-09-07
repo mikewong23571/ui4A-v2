@@ -42,7 +42,7 @@ import {
 } from './application-bundle';
 import { planAgentDefinitionActivation } from './activate-agent';
 import { planApplicationBundleActivation } from './activate-application';
-import { planFlowDefinitionActivation } from './activate-flow';
+import { DraftActivationPreconditionError, planFlowDefinitionActivation } from './activate-flow';
 import { executeDraftCreate } from './create';
 export async function executeDraftMeta(
   db: ConnectableDb,
@@ -180,6 +180,11 @@ export async function executeDraftMeta(
         ),
       );
     } catch (error) {
+      if (error instanceof DraftActivationPreconditionError) {
+        const outcome = rejected('guard-failed', error.message);
+        await rejectionEvent(db, request, outcome);
+        return outcome;
+      }
       const message = error instanceof Error ? error.message : String(error);
       const conflict = await concurrentDecisionRejection(db, request, error);
       if (conflict !== undefined) return conflict;

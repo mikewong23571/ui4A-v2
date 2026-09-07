@@ -13,6 +13,7 @@
  * 两路均由 acceptDraftWithCoreEvent 与 draft-accepted 原子落库(统一数组合同)。
  */
 import {
+  applyDefinitionCandidate,
   contentVersion,
   flowSeedEvent,
   fold,
@@ -27,6 +28,9 @@ import type { AtomicCoreMutationPlan } from '@ui4a/db/drafts';
 import type { DefinitionEntry, DraftAggregate, EngineSnapshot } from '@ui4a/shared';
 
 import { registries } from './helpers';
+
+/** A planned candidate must pass the same pure rules as replay before any accepted event is written. */
+export class DraftActivationPreconditionError extends Error {}
 
 /** Revalidated flow candidate application; runs inside the accept transaction and Draft locks. */
 export async function planFlowDefinitionActivation(input: {
@@ -78,6 +82,13 @@ export async function planFlowDefinitionActivation(input: {
     },
     decidedBy: { actor: 'human', principal: request.principal },
   };
+  try {
+    applyDefinitionCandidate(core, detail);
+  } catch (error) {
+    throw new DraftActivationPreconditionError(
+      error instanceof Error ? error.message : String(error),
+    );
+  }
   return {
     events: [
       {

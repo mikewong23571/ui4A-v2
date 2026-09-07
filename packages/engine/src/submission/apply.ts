@@ -7,7 +7,7 @@ import type {
   FlowDefinition,
 } from '@ui4a/shared';
 
-import { contentVersion } from '../contract/sitemap';
+import { canonicalJson, contentVersion } from '../contract/sitemap';
 
 export interface DefinitionCandidateAppliedDetail {
   schemaVersion: 1;
@@ -52,7 +52,19 @@ export function applyDefinitionCandidate(
   }
   if (detail.checks.some((check) => !check.pass)) throw new Error('candidate checks did not pass');
   const lifecycle = snapshot.instances[metaFlowRel(detail.name)];
-  if (lifecycle === undefined || lifecycle.node !== 'active') {
+  // D81: a revision with no content changes may hand off to the separately approved Draft.
+  // Equality is exact canonical JSON, not the non-cryptographic presentation fingerprint.
+  const base = snapshot.definitionVersions?.[detail.name]?.[detail.baseVersion];
+  const uneditedHandoff =
+    lifecycle?.node === 'draft' &&
+    entry.status === 'draft' &&
+    entry.bornBy === detail.baseVersion &&
+    base !== undefined &&
+    canonicalJson(entry.definition) === canonicalJson(base) &&
+    !Object.values(snapshot.activations ?? {}).some(
+      (activation) => activation.flow === detail.name && activation.status === 'pending-approval',
+    );
+  if (lifecycle === undefined || (lifecycle.node !== 'active' && !uneditedHandoff)) {
     throw new Error('candidate target lifecycle is not active');
   }
   if (snapshot.definitionVersions?.[detail.name]?.[detail.version] !== undefined) {
@@ -75,6 +87,10 @@ export function applyDefinitionCandidate(
   };
   return {
     ...snapshot,
+    instances: {
+      ...snapshot.instances,
+      [metaFlowRel(detail.name)]: { ...lifecycle, node: 'active' },
+    },
     definitions: {
       ...snapshot.definitions,
       [detail.name]: {
