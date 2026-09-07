@@ -18,7 +18,7 @@ import {
 } from './confirmation';
 import { applyEffects, type EngineEvent } from './effects';
 import { judge, type DefinitionVersionTable, type ExecRequest, type JudgeLayer } from './judge';
-import type { ExecutionJudgmentDetail } from './execution-audit';
+import type { ExecutionJudgmentDetail } from './audit/execution-audit';
 import type { FlowDefinition } from '../core/types';
 
 /** 编排依赖:flow 注册表 + guard 注册表 + 确认策略(缺省内置,Phase B 注入 Cedar)。 */

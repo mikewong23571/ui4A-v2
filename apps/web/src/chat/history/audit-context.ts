@@ -10,12 +10,34 @@ export function executionAuditContext(
   events: readonly LogEvent[],
   principal: string,
   maxExecutions = DEFAULT_MAX_EXECUTIONS,
+  sessionId?: string,
 ): ExecutionAuditRecord[] {
   const requested = Number.isFinite(maxExecutions)
     ? Math.max(0, Math.floor(maxExecutions))
     : DEFAULT_MAX_EXECUTIONS;
   if (requested === 0) return [];
+  const sourceMessages = new Set(
+    events.flatMap((event) => {
+      if (
+        event.principal !== principal ||
+        event.rel !== `chat:${sessionId}` ||
+        event.kind !== 'chat-message-appended'
+      )
+        return [];
+      const detail = event.detail as Record<string, unknown> | undefined;
+      return detail?.sessionId === sessionId &&
+        detail?.role === 'user' &&
+        typeof detail.messageId === 'string'
+        ? [detail.messageId]
+        : [];
+    }),
+  );
   return projectExecutionAudit(events)
     .filter((record) => record.principal === principal)
+    .filter(
+      (record) =>
+        sessionId === undefined ||
+        (record.authorization !== null && sourceMessages.has(record.authorization.sourceMessageId)),
+    )
     .slice(-requested);
 }

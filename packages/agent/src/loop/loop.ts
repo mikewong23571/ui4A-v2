@@ -18,7 +18,7 @@ import { observedApplication, sliceSitemapDisclosure } from '../contract/disclos
 import { loadWorkingContext } from '../context/working-context';
 import { authorizeEffects, type ProposedEffect } from './authorization';
 import { createNoProgressGuard, createRepeatedRejectionGuard } from './fail-guard';
-import { withObservedClientParams } from './client-action-params';
+import { createClientActionParams } from './client-action-params';
 import type {
   AgentDriver,
   AgentGoal,
@@ -172,6 +172,7 @@ export async function runAgent(
   let currentRel = options.startRel ?? DEFAULT_START_REL;
   const trail: TrailStep[] = [];
   const successes: ExecSuccess[] = [];
+  const clientActionParams = createClientActionParams();
   const observations: ContractObservation[] = [];
   let lastRejection: RejectionRecord | undefined;
   // 同一合同处境第三次出现且期间没有成功 exec，说明 driver 正在机械绕圈。
@@ -481,7 +482,7 @@ export async function runAgent(
     const wireParams =
       declaredAction === undefined
         ? (op.params ?? {})
-        : withObservedClientParams(declaredAction, fetched.entity, op.params ?? {});
+        : clientActionParams(declaredAction, fetched.entity, op.params ?? {}, op.authorization);
     const execPayload = {
       rel: currentRel,
       action: op.action,
@@ -494,7 +495,17 @@ export async function runAgent(
     let call = await client.exec(execPayload);
     if (call.status === 0) call = await client.exec(execPayload);
     if (call.ok) {
-      successes.push({ rel: currentRel, action: op.action, params: op.params });
+      successes.push({
+        rel: currentRel,
+        action: op.action,
+        params: op.params,
+        ...(typeof call.entity?.properties.rel === 'string'
+          ? { resultRel: call.entity.properties.rel }
+          : {}),
+        ...(op.authorization === undefined
+          ? {}
+          : { sourceMessageId: op.authorization.sourceMessageId }),
+      });
       await pushStep({
         step,
         rel: currentRel,

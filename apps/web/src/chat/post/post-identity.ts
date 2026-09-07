@@ -3,7 +3,7 @@
 //   浏览器会话 → 凭证身份解析,返回身份束;本地 demo(非生产)返回 undefined;
 // - buildTurnFetch:inline 回合的 delegated credential 交换(D51 收窄口径:
 //   human granted ∩ agentScopes 的 policy scopes 全量携带;canonical 身份校验)
-//   与 bounded bearer fetch 构造;本地 demo 直接透传 ambient fetch。
+//   与 bounded bearer fetch 构造;本地 demo 透传同一 turn principal。
 // 深生产链路的端到端语义由 route.production-auth/route.delegated 测试覆盖。
 import { createBoundedBearerFetch, type FetchLike } from '@ui4a/agent';
 
@@ -142,11 +142,16 @@ export async function resolveProductionIdentity(
 export async function buildTurnFetch(args: {
   request: Request;
   mode: 'inline' | 'delegated';
+  principal: string;
   production?: ProductionIdentityBundle;
 }): Promise<FetchLike | Response> {
   const { request, mode, production } = args;
   if (production === undefined) {
-    return (url, init) => fetch(url, init);
+    return (url, init) => {
+      const headers = new Headers(init?.headers);
+      headers.set('x-ui4a-principal', args.principal);
+      return fetch(url, { ...init, headers });
+    };
   }
   const { identity, subjectToken, origin, agentScopes, config } = production;
   let authorizationHeader: string;

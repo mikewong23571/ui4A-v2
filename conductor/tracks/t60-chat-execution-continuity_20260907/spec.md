@@ -24,3 +24,6 @@
    回答执行问题以机械回执为依据，允许纠正此前错误回答。
 6. 覆盖重复创建、下一轮追问、同 principal 两 session、跨 principal 碰撞、重试和新请求；
    focused tests、pnpm check 及真实模型验证分别记录边界。
+7. 真实模型复验发现本地 demo 读写 principal 不一致，纳入同一次修复：只在 local
+   profile 的 turn transport 传递既有自报 principal，生产 delegated credential 不变。
+   以同一 principal 回读集合及所有回答引用；审计字段不能伪装成实体 JSON Pointer。

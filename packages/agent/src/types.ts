@@ -168,6 +168,9 @@ export interface ExecSuccess {
   rel: string;
   action: string;
   params?: Record<string, unknown>;
+  /** The returned entity reference, which may differ from the collection acted upon. */
+  resultRel?: string;
+  sourceMessageId?: string;
 }
 
 /** 实体快照摘要(轨迹断言用:rel/class/node/count/动作清单)。 */

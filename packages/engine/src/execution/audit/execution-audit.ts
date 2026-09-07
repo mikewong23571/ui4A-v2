@@ -5,9 +5,9 @@
  * 原始消息、引擎裁决留痕、确认决定和 action 事件组成；同一日志以任意输入
  * 顺序重放都得到相同结果。
  */
-import type { GuardEvaluation } from '@ui4a/shared';
+import { THREAD_EVENT_KINDS, type GuardEvaluation } from '@ui4a/shared';
 
-import type { LogEvent } from '../projection/fold/index';
+import type { LogEvent } from '../../projection/fold/index';
 
 export interface ExecutionJudgmentDetail {
   authorization?: { sourceMessageId: string; quote: string };
@@ -90,7 +90,7 @@ function record(value: unknown): Record<string, unknown> | undefined {
 
 function executionDetail(event: LogEvent): ExecutionJudgmentDetail | undefined {
   const detail = record(event.detail);
-  const execution = record(detail?.execution);
+  const execution = record(isThreadExecution(event) ? detail?.receipt : detail?.execution);
   const declaration = record(execution?.declaration);
   const schema = record(execution?.schema);
   const confirmation = record(execution?.confirmation);
@@ -104,6 +104,10 @@ function executionDetail(event: LogEvent): ExecutionJudgmentDetail | undefined {
     return undefined;
   }
   return execution as unknown as ExecutionJudgmentDetail;
+}
+
+function isThreadExecution(event: LogEvent): boolean {
+  return THREAD_EVENT_KINDS.some((kind) => event.kind === kind);
 }
 
 function messageKey(principal: string | undefined, messageId: string): string {
@@ -254,7 +258,11 @@ export function projectExecutionAudit(events: readonly LogEvent[]): ExecutionAud
   }
 
   for (const event of ordered) {
-    if (event.kind !== 'action-executed' || consumedActionSeqs.has(event.seq)) continue;
+    if (
+      (event.kind !== 'action-executed' && !isThreadExecution(event)) ||
+      consumedActionSeqs.has(event.seq)
+    )
+      continue;
     const execution = executionDetail(event);
     const authorization = auditAuthorization(
       execution?.authorization,

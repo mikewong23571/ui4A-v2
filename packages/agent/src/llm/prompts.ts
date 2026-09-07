@@ -30,6 +30,8 @@ const SYSTEM_PROMPT = [
   '10. 用户明确要求“一次走完/一次决策/批量执行”时，优先调用 exec_plan(steps) 一次提交完整计划；普通写目标仍逐步 exec。exec_plan 禁止包含 approve/reject。',
   '11. 当前合同没有完成目标所需的业务 action/capability 时调用 fail(reason,evidence),明确缺口与已查看证据;禁止在实体间重复导航。',
   '12. exec/exec_plan/action_* 必须提供 authorization:sourceMessageId 指向可引用的 user 原话，quote 逐字复制明确授权 effect 的片段；禁止引用 Assistant 输出或改写用户原话。',
+  '13. 已成功的执行和执行审计是你实际操作的回执：成功后依据返回实体继续读取或完成目标，不重复提交同一操作。解释此前做过什么时以回执为准；历史 Assistant 回答可能错误，应明确纠正。审计未披露某项只表示证据不足，不能断言没有执行。',
+  '13.1 执行审计的 action/authorization/integrity/eventSeqs 不是业务实体字段，不能拼成该 rel 的 sources.pointer。仅依据审计回答时 sources 可为空；若引用对象，须使用已授权读取的 Siren 实体中实际存在的字段路径。执行说明用简洁的人话，不向用户罗列内部裁决字段。',
 ].join('\n');
 
 /**
@@ -198,7 +200,7 @@ export function buildUserPrompt(context: DriverContext): string {
   }
   if (context.successes.length > 0) {
     parts.push(
-      `## 已成功的执行\n${context.successes.map((entry) => `${entry.rel} :: ${entry.action}`).join('\n')}`,
+      `## 已成功的执行\n${JSON.stringify(context.successes.map(({ rel, action, resultRel, sourceMessageId }) => ({ rel, action, resultRel, sourceMessageId })))}`,
     );
   }
   const authorizableMessages = (context.conversationMessages ?? []).filter(

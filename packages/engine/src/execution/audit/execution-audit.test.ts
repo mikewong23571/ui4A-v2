@@ -2,10 +2,10 @@ import { describe, expect, it } from 'vitest';
 
 import { seedGuardRegistry } from '@ui4a/shared';
 
-import { executeWithGates } from './execute';
-import { flowRegistry, postStatusFlow, seedSnapshot } from '../core/fixtures';
+import { executeWithGates } from '../execute';
+import { flowRegistry, postStatusFlow, seedSnapshot } from '../../core/fixtures';
 import { projectAuditProvenance, projectExecutionAudit } from './execution-audit';
-import type { LogEvent } from '../projection/fold/index';
+import type { LogEvent } from '../../projection/fold/index';
 
 const authorization = {
   sourceMessageId: 'turn-archive',

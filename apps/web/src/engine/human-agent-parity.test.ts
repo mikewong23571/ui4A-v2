@@ -157,7 +157,13 @@ describe('T15 U19 — renderer and Assistant action-contract parity', () => {
     );
     expect(agentResult.outcome).toBe('done');
     expect(agentResult.successes).toEqual([
-      { rel: 'post:first-post', action: 'unpublish', params: {} },
+      {
+        rel: 'post:first-post',
+        action: 'unpublish',
+        params: {},
+        resultRel: 'post:first-post',
+        sourceMessageId: 'u19-user',
+      },
     ]);
     const agentEvent = await pool.query(
       `SELECT rel, action, principal

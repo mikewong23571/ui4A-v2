@@ -15,7 +15,7 @@ import type {
 import type { ClientViewReport, NavigationCompletion } from '@ui4a/shared';
 
 import type { ChatTurnDetail, ChatTurnProgressDetail, ChatTurnStartedDetail } from './history';
-import { executionAuditContext } from './audit-context';
+import { executionAuditContext } from './history/audit-context';
 import { conversationView } from './conversation';
 import { appendEvent, listEvents, toLogEvent } from '@ui4a/db/events';
 import { getDb } from '../engine/service';
@@ -125,7 +125,7 @@ export async function loadAgentConversation(
   // （双键再校验，纵深防御）与 executionAuditContext 共用同一事件流。
   const events = (await listEvents(getDb(), 0, { domain: 'core', principal })).map(toLogEvent);
   const view = conversationView(events, sessionId, principal);
-  const executionAudit = executionAuditContext(events, principal);
+  const executionAudit = executionAuditContext(events, principal, undefined, sessionId);
   return {
     messages: view.recentMessages.map(({ messageId, role, content }) => ({
       messageId,

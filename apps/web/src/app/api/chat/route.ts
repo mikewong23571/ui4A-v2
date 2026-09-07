@@ -50,7 +50,7 @@ export async function POST(request: Request) {
   });
 
   // 段 1b:inline 凭证交换与 turnFetch 构造(顺序保持:身份 → situation → 交换)。
-  const turnFetch = await buildTurnFetch({ request, mode, production });
+  const turnFetch = await buildTurnFetch({ request, mode, production, principal: turn.principal });
   if (turnFetch instanceof Response) return turnFetch;
 
   // 段 4a:baseUrl 口径 + 平面归属/显式 lens + AI-first 配置检查。
@@ -75,5 +75,15 @@ export async function POST(request: Request) {
   });
 
   // 段 4b:configurationFailure / delegated / inline 三分支响应。
-  return respondToTurn({ goal, sessionId, turnId, requested, mode, turn, session, plan, turnFetch });
+  return respondToTurn({
+    goal,
+    sessionId,
+    turnId,
+    requested,
+    mode,
+    turn,
+    session,
+    plan,
+    turnFetch,
+  });
 }

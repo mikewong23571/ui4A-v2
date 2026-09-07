@@ -46,7 +46,12 @@ describe('exec 操作与拒绝即数据', () => {
 
     expect(result.steps[0]!.outcome).toBe('executed');
     expect(result.successes).toEqual([
-      { rel: 'post:post-welcome', action: 'unpublish', params: { note: '委托' } },
+      {
+        rel: 'post:post-welcome',
+        action: 'unpublish',
+        params: { note: '委托' },
+        resultRel: 'post:post-welcome',
+      },
     ]);
     expect(driver.contexts[1]!.successes).toEqual(result.successes);
   });
@@ -214,7 +219,13 @@ describe('副作用来源与目标授权门(U10–U12)', () => {
 
     expect(transport.calls.filter((call) => call.method === 'POST')).toHaveLength(1);
     expect(result.successes).toEqual([
-      { rel: 'post:first-post', action: 'archive', params: undefined },
+      {
+        rel: 'post:first-post',
+        action: 'archive',
+        params: undefined,
+        resultRel: 'post:first-post',
+        sourceMessageId: 'm1',
+      },
     ]);
     expect(result.steps[0]).toMatchObject({
       outcome: 'executed',
@@ -247,7 +258,13 @@ describe('副作用来源与目标授权门(U10–U12)', () => {
 
     expect(result.outcome).toBe('done');
     expect(result.successes).toEqual([
-      { rel: 'post:first-post', action: 'unpublish', params: undefined },
+      {
+        rel: 'post:first-post',
+        action: 'unpublish',
+        params: undefined,
+        resultRel: 'post:first-post',
+        sourceMessageId: 'm1',
+      },
     ]);
     expect(transport.calls.filter((call) => call.method === 'POST')).toHaveLength(1);
   });

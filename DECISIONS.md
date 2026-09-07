@@ -1774,3 +1774,8 @@
   的原始授权消息关联再限量，避免别的会话/人类操作挤占当前执行上下文。
 - 当轮成功披露保留返回实体 rel 和授权消息 ID；跨轮依靠日志审计。历史 Assistant 原话
   不重写，LLM 应以执行回执纠正错误叙述，审计缺失只能表示未知，不能证明没有执行。
+- T60 真实模型复验补正：本地 demo 的 turn principal 已是 user:sessionId，合同 GET 却
+  默认 local-user，出现“已建但集合为空”。本地 turn transport 用既有 x-ui4a-principal
+  传递同一身份，使读写一致；生产仍仅凭 delegated credential，绝不采用此自报头。
+  审计对象与 Siren 引用分明：action/authorization/integrity 是审计字段，不是业务实体
+  JSON Pointer；仅审计说明可给空 sources，实体引用必须能以同一身份从合同读回。

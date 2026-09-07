@@ -18,6 +18,75 @@ test.beforeEach(() => {
   expect(process.env.DATABASE_URL).toBe(isolatedEvalDatabaseUrl());
 });
 
+test('chat creates one work thread and recalls its own execution on the next turn', async ({}, info) => {
+  await withIsolatedStoryServer(loadLlmEvalProfile(), async (base) => {
+    const sessionId = 'execution-continuity';
+    const creationId = 'execution-continuity-create';
+    const cursor = (await readAllEvents(base)).at(-1)?.seq ?? 0;
+    const created = await runEvalTurn(
+      base,
+      sessionId,
+      creationId,
+      '工作线创建：ui4a 界面优化；',
+      view(null, 'threads'),
+    );
+    const afterCreate = await readAllEvents(base, cursor);
+    const births = afterCreate.filter((event) => event.kind === 'thread-created');
+    expect(created.error, JSON.stringify(created)).toBeNull();
+    expect(['done', 'answered'], JSON.stringify(created)).toContain(created.outcome);
+    expect(births).toHaveLength(1);
+    const birth = births[0]!;
+    expect(birth.actor).toBe('agent');
+    expect(birth.detail).toMatchObject({
+      receipt: { authorization: { sourceMessageId: creationId } },
+      goal: { text: 'ui4a 界面优化' },
+    });
+    const beforeRecall = afterCreate.at(-1)!.seq;
+    const recalled = await runEvalTurn(
+      base,
+      sessionId,
+      'execution-continuity-recall',
+      '刚才你创建了几条工作线？请根据你实际执行的记录回答，并说明是不是你创建的。只读，不再创建。',
+      view(null, 'threads'),
+    );
+    expect(recalled.error, JSON.stringify(recalled)).toBeNull();
+    expect(recalled.outcome, JSON.stringify(recalled)).toBe('answered');
+    const afterRecall = await readAllEvents(base, beforeRecall);
+    expect(afterRecall.filter((event) => !NON_MUTATING_EVENT_KINDS.has(event.kind))).toEqual([]);
+    const recallDecisions = afterRecall.filter((event) => event.kind === 'agent-decision');
+    expect(recallDecisions.length).toBeGreaterThan(0);
+    const prompt = (recallDecisions[0]!.detail as { prompt: { user: string } }).prompt.user;
+    const audit = prompt.split('## 执行审计处境')[1]?.split('## 可引用')[0];
+    expect(audit).toContain(birth.rel);
+    expect(audit).toContain(creationId);
+    const headers = { 'x-ui4a-principal': `user:${sessionId}` };
+    const collectionResponse = await fetch(`${base}/api/entity?rel=threads`, { headers });
+    expect(collectionResponse.ok).toBe(true);
+    expect((await collectionResponse.json()).properties.count).toBe(1);
+    for (const ref of (recalled.payload.sources ?? []) as EvalFactRef[]) {
+      const response = await fetch(`${base}/api/entity?rel=${encodeURIComponent(ref.rel)}`, {
+        headers,
+      });
+      expect(response.ok, ref.rel).toBe(true);
+      let value: unknown = await response.json();
+      for (const key of ref.pointer === '/' ? [] : ref.pointer.slice(1).split('/')) {
+        const decoded = key.replaceAll('~1', '/').replaceAll('~0', '~');
+        value =
+          typeof value === 'object' && value !== null
+            ? (value as Record<string, unknown>)[decoded]
+            : undefined;
+      }
+      expect(value, `${ref.rel}${ref.pointer}`).not.toBeUndefined();
+    }
+    const evidence = { created, recalled, birth, audit };
+    await info.attach('execution-continuity.json', {
+      body: JSON.stringify(evidence, null, 2),
+      contentType: 'application/json',
+    });
+    console.log('[execution-continuity evidence]', JSON.stringify(evidence));
+  });
+});
+
 function view(thread: string | null = null, focus: string | null = null): ClientViewReport {
   return {
     schemaVersion: 2,

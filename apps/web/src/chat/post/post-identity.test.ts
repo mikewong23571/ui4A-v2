@@ -104,17 +104,23 @@ describe('resolveProductionIdentity (local demo profile)', () => {
 });
 
 describe('buildTurnFetch (local demo)', () => {
-  it('falls back to the ambient fetch without production bundle', async () => {
+  it('uses the same local principal for contract reads and writes', async () => {
     const ambient = vi.fn();
     vi.stubGlobal('fetch', ambient);
     const turnFetch = await buildTurnFetch({
       request: new Request('http://localhost:3100/api/chat'),
       mode: 'inline',
+      principal: 'user:s1',
     });
     expect(turnFetch).not.toBeInstanceOf(Response);
     if (!(turnFetch instanceof Response)) {
       await turnFetch('http://localhost:3100/api/entity', {});
-      expect(ambient).toHaveBeenCalled();
+      expect(ambient).toHaveBeenCalledWith('http://localhost:3100/api/entity', {
+        headers: expect.any(Headers),
+      });
+      expect((ambient.mock.calls[0]?.[1]?.headers as Headers).get('x-ui4a-principal')).toBe(
+        'user:s1',
+      );
     }
     vi.unstubAllGlobals();
   });

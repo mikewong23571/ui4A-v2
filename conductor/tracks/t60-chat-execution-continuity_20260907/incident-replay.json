@@ -1,0 +1,51 @@
+{
+  "mode": "read-only replay of recorded incident observation; no business transport",
+  "input": "你为啥会创建三个？",
+  "audit": [
+    {
+      "rel": "thread:91970141-816c-4ebf-bc2c-f49d5c58214b",
+      "action": "create",
+      "actor": "agent",
+      "eventSeqs": [
+        1447
+      ],
+      "sourceMessageId": "443d7e94-7eba-486e-9dea-935430e2248b"
+    },
+    {
+      "rel": "thread:4ae83a85-ef7e-4437-bc87-28d30d3fdd04",
+      "action": "create",
+      "actor": "agent",
+      "eventSeqs": [
+        1458
+      ],
+      "sourceMessageId": "443d7e94-7eba-486e-9dea-935430e2248b"
+    },
+    {
+      "rel": "thread:6ff43d0f-7a3c-4dbf-a125-f38b5ad6ac66",
+      "action": "create",
+      "actor": "agent",
+      "eventSeqs": [
+        1466
+      ],
+      "sourceMessageId": "443d7e94-7eba-486e-9dea-935430e2248b"
+    }
+  ],
+  "result": {
+    "kind": "answer",
+    "content": "抱歉，这是我的执行错误：你只发了一次「工作线创建：ui4a 界面优化」，但引擎审计显示这条指令被重复执行了 3 次 create（三次都引用了同一条消息 443d7e94 的同一句原话），于是产生了三条同名「ui4a 界面优化」工作线——不是你要求建三个。需要的话我可以帮你保留一条、将其余两条暂停或归档，你说了算。",
+    "sources": [
+      {
+        "rel": "threads",
+        "pointer": "/entities/5/properties/identity"
+      },
+      {
+        "rel": "threads",
+        "pointer": "/entities/6/properties/identity"
+      },
+      {
+        "rel": "threads",
+        "pointer": "/entities/7/properties/identity"
+      }
+    ]
+  }
+}

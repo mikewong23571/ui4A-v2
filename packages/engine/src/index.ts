@@ -24,7 +24,7 @@ export * from './projection/work-thread';
 export * from './projection/work-thread-action-experience';
 export * from './projection/work-thread-input';
 export * from './projection/work-thread-command';
-export * from './execution/execution-audit';
+export * from './execution/audit/execution-audit';
 export * from './execution/capability-input-binding';
 export * from './definition/lifecycle';
 export * from './definition/meta';

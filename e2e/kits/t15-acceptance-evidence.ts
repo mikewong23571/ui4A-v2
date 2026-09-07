@@ -27,8 +27,8 @@ export const T15_PHASE_GH_EVIDENCE: readonly T15AcceptanceEvidence[] = [
   {
     storyId: 'U20',
     deterministic: [
-      'packages/engine/src/execution/execution-audit.test.ts',
-      'apps/web/src/chat/audit-context.test.ts',
+      'packages/engine/src/execution/audit/execution-audit.test.ts',
+      'apps/web/src/chat/history/audit-context.test.ts',
       'packages/agent/src/llm/execution-audit-prompt.test.ts',
     ],
     focusedLiveEval: 'e2e/eval/t15-ai-first-phase-gh.spec.ts',
@@ -38,8 +38,8 @@ export const T15_PHASE_GH_EVIDENCE: readonly T15AcceptanceEvidence[] = [
   {
     storyId: 'U21',
     deterministic: [
-      'packages/engine/src/execution/execution-audit.test.ts',
-      'apps/web/src/chat/audit-context.test.ts',
+      'packages/engine/src/execution/audit/execution-audit.test.ts',
+      'apps/web/src/chat/history/audit-context.test.ts',
     ],
     focusedLiveEval: 'e2e/eval/t15-ai-first-phase-gh.spec.ts',
     liveClosure: 'required',
