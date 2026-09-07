@@ -1734,3 +1734,16 @@
 - 不修订 D78.4 的 thread specialised 确认门现状，不新增 provider、worker、存储权威或规则智能。
 - 首页 `/` 的无显式 focus 观察由共享 HOME_WORKSPACE_DECLARATION 的源集合构造现有 selection；Web composition 与 clientView 使用同一声明，不新增观察类型/接口或复制事实。首页壳提供“与助手讨论”（打开既有会话）、“发起工作”（canonical threads action 面）与历史链接；不以新chat输入流写业务数据。
 - T57 G4 实测补正：同一已配置 DeepSeek profile 的 Revision 在 60s 硬上限被截断，绑定树仅7758 UTF-8字节；同一真实场景另一次已生成并接受两次合法Patch，说明不是缺配置或输入预算超限。Presentation Revision 单次流默认对齐 D43 的300s有界总时限，仍保留调用方更短 timeoutMs、零额外自动重试、失败不写Sidecar/业务事件；不扩展到其它呈现适配器、不新增provider特判。真实时延与真人便利性分别记录，不把延长期限声称为响应速度改善。
+
+
+## D80 T59 工作材料读一致性与传输身份（2026-09-07）
+
+- 依据：公网同 SHA 走查 F01–F11。消息详情可读而 thread 成员误判 dangling，材料行丢声明处境，移出只更新抽屉，提供方缺会话头拒绝真实请求。
+- 修订 D78.2 的状态展示限制：机器 status 原值保留，状态角色可以绑定独立 statusText，其值只能来自节点/既有投影的声明标题，未知值回原词；不能在 UI 按应用或业务状态建立翻译表。
+- 特殊实体（消息/Agent Run）与 thread 成员在 Web 授权读组合边界统一解析；业务 fold 不装聊天副本。先 principal 及授予裁剪再丰富，逐源读取仍使用当前凭证；独立详情、HTTP、Presentation 与执行回执消费同一组合。
+- 移出动作可携带 JSON Schema 注解 x-ui4a-reference-selection={effect:'unlink',options:[{title,params:{category,rel}}]}；选项从最终可见成员投影，绝不在裁剪前构造泄漏标题。客户端选择不授权执行，提交仍 fresh read、声明→guard→schema。操作影响文案来自声明，不以 high 推断不可逆。
+- LLM 外部配置新增可选 sessionHeader，只接受 x- 前缀扩展头；它是传输路由元数据，不是授权或 provider 选择。头值为已分隔 principal+conversation 的摘要；无会话的独立模型任务按模型调用生命周期生成随机标识，稳定覆盖其重试。客户端使用真实 UI4A user agent，不冒充其他软件；无模型/端点兜底。
+- 失败历史从已记录 steps/outcome 机械还原结构原因，原错误全文保留在折叠诊断，绝不解析自然语言猜分类。主面可用中性失败标签和“修改后再试”的编辑入口；点击只复制原问题到输入框，不自动重放可能已部分成功的动作。
+- 应用更正仍经 Governed Draft 与 human-only activation；新代码 bundle 不可静默覆盖已激活定义，也不修改旧实例出生版本。部署授权不替代业务批准，必要时交付待批准候选及明确未生效边界。
+
+- T59 捕捉定义修订的校验补正：既有 todo-capture 含不可达终态 done，候选不能通过 terminal-reachable。仅在候选中声明 recorded#retire（high，“停用此捕捉入口”）通达既有终态，终态标题明确已停用；不是普通“结束记录”，不自动执行、不重建单例、不改已有待办。再记一条仍为循环主路径并清空输入。其额外语义必须出现在 Draft 的机械差异及人类批准说明中。
