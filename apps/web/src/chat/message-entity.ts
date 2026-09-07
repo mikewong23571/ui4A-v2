@@ -66,6 +66,18 @@ export async function getMessageEntities(
         ...(typeof detail.sessionId === 'string' ? { sessionId: detail.sessionId } : {}),
         ...(typeof detail.turnId === 'string' ? { turnId: detail.turnId } : {}),
         content: detail.content,
+        presentation: {
+          version: 1,
+          fields: [
+            { path: 'properties.identity', title: '消息摘要', role: 'identity' },
+            {
+              path: 'properties.content',
+              title: '消息原文',
+              role: 'primary-content',
+              contentMediaType: 'text/plain',
+            },
+          ],
+        },
       },
       actions: [],
       links: [{ rel: ['self'], href: `/api/entity?rel=${encodeURIComponent(rel)}` }],
