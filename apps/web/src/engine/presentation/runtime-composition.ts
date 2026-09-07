@@ -73,6 +73,16 @@ function excludeCanonicalMembers(
   return node;
 }
 
+function containsWorkContent(node: SurfaceNode): boolean {
+  if (node.kind === 'word') {
+    return PRESENTATION_SURFACE_CATALOG.words[node.word]?.pattern === 'work-content';
+  }
+  if (node.kind === 'layout') return node.children.some(containsWorkContent);
+  if (node.kind === 'slot') return containsWorkContent(node.child);
+  if (node.kind === 'repeat') return containsWorkContent(node.item);
+  return false;
+}
+
 /**
  * One Recipe slot per authorized region (T30: slot name = region id, kind = source
  * contract shape). Available regions derive kind from the live entity class; an
@@ -153,6 +163,7 @@ function planRegion(region: AuthorizedRegion): CompositionRegionSurfaceInput {
     : (region.entity as Parameters<typeof planGenericSurface>[1]);
   const reusable =
     selected !== undefined &&
+    !((region.excludedMemberRels?.length ?? 0) > 0 && containsWorkContent(selected.surface.root)) &&
     hasResponsibilityCoverage(selected.surface, {
       rels: [region.declaration.source],
       entities: [region.entity],

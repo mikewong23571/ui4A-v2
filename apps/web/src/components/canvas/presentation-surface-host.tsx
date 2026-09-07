@@ -40,6 +40,7 @@ import {
 } from '@/render/canvas/collection-read-navigation';
 import { PresentationDensityProvider } from '@/render/presentation-density';
 import { ActionSubmitProvider } from '../actions/action-submit';
+import { PresentationInteractionProvider } from './interaction/presentation-interaction';
 import { Button } from '../ui/button';
 import { readThreadPins, writeThreadPin } from './desk/thread-desk';
 import { SurfaceErrorBoundary } from './surface-error-boundary';
@@ -92,6 +93,7 @@ export function PresentationSurfaceHost({ parameters }: PresentationSurfaceHostP
     promoteSidecar,
     load,
     surfaceSubmit,
+    holdPresentation,
   } = usePresentationSurfaceLoad(parameters);
   // T35 W2:钉住集(呈现偏好,localStorage 按线隔离);版本号驱动钉住图标重渲。
   const [pinsVersion, setPinsVersion] = useState(0);
@@ -183,15 +185,14 @@ export function PresentationSurfaceHost({ parameters }: PresentationSurfaceHostP
         )}
 
         {/* T35 F-02:focus 不可解析的结构化空态(D51 中性口径);机制细节在抽屉。 */}
-        {focusUnavailable && !loading && (
+        {!loading && (focusUnavailable || (errors.length > 0 && surfaces.length === 0)) && (
           <div
             data-testid="canvas-focus-unavailable"
             className="mt-6 rounded-lg border bg-card p-6 text-card-foreground"
           >
-            <p className="text-sm font-medium">{SIDECAR_UNAVAILABLE_PHRASE}</p>
-            <p className="mt-1 text-sm text-muted-foreground">
-              你声明的注视当前无法展开。可以用顶栏的「调整声明」更换注视，或回到首页。
-            </p>
+            {focusUnavailable && (
+              <p className="text-sm font-medium">{SIDECAR_UNAVAILABLE_PHRASE}</p>
+            )}
             <div className="mt-3">
               <Button asChild variant="outline" size="sm">
                 <a href="/">返回首页</a>
@@ -284,7 +285,9 @@ export function PresentationSurfaceHost({ parameters }: PresentationSurfaceHostP
                         sidecarMeta?.view.densityByNodeId[sidecarMeta.rootNodeId] ?? 'comfortable'
                       }
                     >
-                      <A2uiSurface surface={entry.surface} />
+                      <PresentationInteractionProvider hold={holdPresentation}>
+                        <A2uiSurface surface={entry.surface} />
+                      </PresentationInteractionProvider>
                     </PresentationDensityProvider>
                   </ActionSubmitProvider>
                 </SurfaceErrorBoundary>

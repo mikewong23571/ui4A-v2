@@ -33,6 +33,14 @@ const layouts = {
 } as const;
 
 const words: Readonly<Record<string, A2uiWordAdapter>> = {
+  'work-content': {
+    component: 'work-content',
+    bindings: {
+      entities: { prop: 'entities', transform: 'value' },
+      actions: { prop: 'entity', transform: 'actions-entity' },
+      links: { prop: 'links', transform: 'value' },
+    },
+  },
   heading: {
     component: 'semantic-text',
     bindings: { value: { prop: 'value', transform: 'value' } },

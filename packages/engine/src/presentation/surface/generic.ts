@@ -226,10 +226,18 @@ export function planGenericSurface(
       role,
       binding: { kind: 'property', subject, path },
     }));
-  if (entity.actions.length > 0) {
+  const workPattern =
+    entity.entities !== undefined &&
+    (options.excludedMemberRels?.length ?? 0) === 0 &&
+    cognitiveTraitsOf(entity.properties.presentation)?.includes('work-context')
+      ? Object.entries(catalog.words).find(
+          ([, definition]) => definition.pattern === 'work-content',
+        )
+      : undefined;
+  if (entity.actions.length > 0 && workPattern === undefined) {
     regions.push({ role: 'actions', binding: { kind: 'actions', subject } });
   }
-  if (entity.links.length > 0) {
+  if (entity.links.length > 0 && workPattern === undefined) {
     regions.push({ role: 'relation', binding: { kind: 'links', subject } });
   }
   // T56/D78(非密度 trait 消费通路):成员区角色由 version:1 声明的
@@ -241,7 +249,7 @@ export function planGenericSurface(
   if (entity.entities !== undefined) {
     memberTraits = cognitiveTraitsOf(entity.properties.presentation);
     regions.push({
-      role: genericMemberRegionRole(memberTraits),
+      role: workPattern === undefined ? genericMemberRegionRole(memberTraits) : 'primary-content',
       binding: { kind: 'entities', subject },
     });
   }
@@ -252,6 +260,24 @@ export function planGenericSurface(
   // 用作节点 id 前缀(唯一性由区域序保证)。
   const memberRegion = (index: number, role: SemanticRegionRole): SurfaceNode => {
     const source: Extract<SurfaceBinding, { kind: 'entities' }> = { kind: 'entities', subject };
+    if (workPattern !== undefined) {
+      const actions = { kind: 'actions', subject } as const;
+      const links = { kind: 'links', subject } as const;
+      return {
+        kind: 'word',
+        id: `word-${index}-work`,
+        role,
+        word: workPattern[0],
+        bindings: { entities: source, actions, links },
+        dependencies: [
+          catalogDependency(catalog),
+          ...[source, actions, links].map((binding) =>
+            entityDependencyFor(subject, options.entityVersion, binding),
+          ),
+        ],
+        provenance: genericProvenance(provenanceRef),
+      };
+    }
     const excludedMembers = new Set(options.excludedMemberRels ?? []);
     const itemIdentityPath =
       entity.entities!.length > 0 &&

@@ -8,7 +8,6 @@
 
 - [x] **Track: T60 聊天执行连续性：重复创建与跨轮审计缺口**（2026-09-07：D82，同 run 命令身份复用、thread receipt 审计、session 关联、local 读写身份一致；check 4464、chat E2E 7、真实模型创建后追问与原始事故重放通过；本地提交 0cf8df10，未部署） *Link: [tracks/archive/t60-chat-execution-continuity_20260907/index.md](./tracks/archive/t60-chat-execution-continuity_20260907/index.md)*
 
-（当前无活跃 Track）
 
 
 - [x] **Track: T55 架构治理落地:审查结论 → 决策 → 门禁 → 重构**（2026-09-05 完成:Phase 0 决策先行 D75/D76/D77(开工事实复核全成立,notes 含口径补正);Phase 1 治理盲区——GR2 中文词形(33 存量=27 改写+6 术语登记)、相对 import 逃逸检测(t22 探针改声明依赖 @temporalio root devDeps)、fsReadDisclosures 披露段(t21/t16)、check-size 测试/非测试分列(definition 非测试 1134 精确);Phase 2 文档真源——AGENTS.md 补第四应用 agent-runner(引 D34/D36+部署链路)、arch-brief §8.1 陈旧路径;Phase 3 chat POST 四段重构(D75;route.ts 440→47 有效行/POST 体 41,模块落位 src/chat/post/;9 测试断言零删除+e2e 7 passed);Phase 4 service hub 降权(D76;ExecOutcome/EngineRuntime 类型下沉 service-outcome.ts 解环,exec 六段归位 exec/coding-result/spawn/event-log/confirmation,service.ts 497→211 有效行,service 相关环 7→0,service-tests 113 全绿);Phase 5——t22 工作流文件迁 scripts/t22/(D77 批准修订 D52)、.next* 根 5→2(pnpm next:recover-roots 常驻脚本+演示释放 1.2GB)、arch-review 落地表+复测(churn 60/54、贴限 10 目录、GR1 0/GR2 13/GR3 0/环 8→1)、GR5 全常驻晋升;实施期 GR3 拆解两次(D75/D76 修订:chat/post 与 engine/exec 子域);收口 check 4147 测试/e2e 79/invariants 20 全绿;证据 DONE.md + 各 checkpoint git notes) *Link: [tracks/archive/t55-architecture-governance_20260905/index.md](./tracks/archive/t55-architecture-governance_20260905/index.md)*

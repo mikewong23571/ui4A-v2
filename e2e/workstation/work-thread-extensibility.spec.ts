@@ -16,7 +16,12 @@ import { expect, test, type Page } from '@playwright/test';
 
 import { SCENARIO_BASE, withFreshServer } from '../kits/server-kit';
 
-import { execAction, openThreadOverview, saveShot } from './work-thread-fixtures';
+import {
+  execAction,
+  openMaterialPreview,
+  openThreadOverview,
+  saveShot,
+} from './work-thread-fixtures';
 
 const LENS = 'publishing';
 const MATERIAL_COUNT = 30;
@@ -169,11 +174,10 @@ test.describe('work-thread extensibility', () => {
       });
       await page.setViewportSize({ width: 1440, height: 900 });
       await openThreadOverview(page, thread);
-      await expect(page.getByRole('button', { name: /相关材料（30）/ })).toBeVisible();
-      // 新应用的普通材料仍通过通用摘要行呈现,无需新增应用组件。
-      await expect(page.locator('[data-word="member-row"]')).toHaveCount(MATERIAL_COUNT);
-      // 长标题身份可读(声明字段直出,零特判)。
-      await expect(page.locator('main')).toContainText('扩展登记样例 07·');
+      await expect(page.getByTestId('work-materials-trigger')).toHaveText('材料 · 30');
+      // 大工作集默认不占主内容、不读取全部材料正文。
+      await expect(page.locator('[data-work-member]')).toHaveCount(0);
+      await expect(page.getByTestId('work-materials-dialog')).toHaveCount(0);
       expect(
         entityReads.length,
         `/api/entity 读次数(${entityReads.length})应小于成员数`,
@@ -182,10 +186,12 @@ test.describe('work-thread extensibility', () => {
         `[US11] 30 成员概览页 /api/entity 读次数=${entityReads.length}(< ${MATERIAL_COUNT})`,
       );
 
-      await page.getByRole('button', { name: /相关材料/ }).click();
-      const dialog = page.getByTestId('thread-materials-dialog');
-      await expect(page.getByTestId('desk-working-set-count')).toHaveText('关联（30）');
-      expect(dialog.locator('[data-desk-entry]')).toHaveCount(MATERIAL_COUNT);
+      await page.getByTestId('work-materials-trigger').click();
+      const dialog = page.getByTestId('work-materials-dialog');
+      await expect(dialog.locator('[data-work-material]')).toHaveCount(MATERIAL_COUNT);
+      await expect(dialog).toContainText('扩展登记样例 07·');
+      await expect(dialog.locator('[data-work-member]')).toHaveCount(0);
+      expect(entityReads.length, '材料目录也不逐项预读正文').toBeLessThan(MATERIAL_COUNT);
       await saveShot(page, 'p4-us11-ext-app-bigset');
 
       // 4) 新 app 实例的对象面:同一 generic 管线呈现声明动作并可执行(零 UI 改动)。
@@ -214,10 +220,8 @@ test.describe('work-thread extensibility', () => {
       // 节点迁移生效(起草 → 复核):回到概览,成员卡状态指针逐字更新
       // (身份行取声明 title,以 data-rel 锚定成员)。
       await page.getByRole('link', { name: '返回本线' }).click();
-      await expect(page.locator(`[data-word="member-row"][data-rel="${firstUnit}"]`)).toContainText(
-        '复核',
-        { timeout: 15_000 },
-      );
+      const preview = await openMaterialPreview(page, firstUnit);
+      await expect(preview).toContainText('复核', { timeout: 15_000 });
       await expect(page.getByTestId('canvas-errors')).toHaveCount(0);
     });
   });

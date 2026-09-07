@@ -128,7 +128,7 @@ describe('Work Thread 重放一致性(P1.3;FR10/G1)', () => {
         rel: 'comment:c2',
         class: ['thread-reference'],
         category: 'context',
-        identity: 'comment:c2',
+        identity: '学习了',
         status: 'pending',
         actions: [],
       },
@@ -151,7 +151,7 @@ describe('Work Thread 重放一致性(P1.3;FR10/G1)', () => {
     ]);
     const presentation = replayedEntity!.properties.presentation as Record<string, unknown>;
     expect(presentation.version).toBe(1);
-    expect(presentation.traits).toEqual(['human-responsibility', 'work-queue']);
+    expect(presentation.traits).toEqual(['human-responsibility', 'work-queue', 'work-context']);
     expect(presentation.groupRole).toBe('responsibility');
     expect(presentation.emptyMeaning).toBe('ready-to-start');
   });

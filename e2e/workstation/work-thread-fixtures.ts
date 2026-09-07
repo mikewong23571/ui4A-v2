@@ -145,8 +145,18 @@ export async function createFullThreadFixture(
 /** 本线成员按语义呈现为摘要行或决定卡;data-rel 始终是被引对象。 */
 export function memberCard(page: Page, rel: string): Locator {
   return page.locator(
-    `[data-word="member-card"][data-rel="${rel}"], [data-word="member-row"][data-rel="${rel}"]`,
+    `[data-word="member-card"][data-rel="${rel}"], [data-word="member-row"][data-rel="${rel}"], [data-work-member="${rel}"]:not(:has([data-word="member-card"]))`,
   );
+}
+
+/** Supporting materials remain secondary; preview opens only after the user's selection. */
+export async function openMaterialPreview(page: Page, rel: string): Promise<Locator> {
+  await page.getByTestId('work-materials-trigger').click();
+  const dialog = page.getByTestId('work-materials-dialog');
+  await dialog.locator(`[data-work-material="${rel}"] [data-nav="local:material-preview"]`).click();
+  const preview = dialog.locator(`[data-work-member="${rel}"]`);
+  await expect(preview).toBeVisible();
+  return preview;
 }
 
 /** 打开本线概览并等 surface 上屏(冷编译窗口放宽)。 */

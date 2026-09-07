@@ -74,6 +74,13 @@ function threadEntity(): SirenEntity {
   };
 }
 
+it('leaves the on-thread material entry to the declared work-content presentation', async () => {
+  const entity = threadEntity();
+  entity.properties.presentation = { version: 1, traits: ['work-context'] };
+  renderBar({ onThreadSelf: true, entities: { 'thread:t1': entity } });
+  await waitFor(() => expect(screen.queryByTestId('thread-workspace-bar')).toBeNull());
+});
+
 function renderBar(props: {
   onThreadSelf?: boolean;
   scope?: string;

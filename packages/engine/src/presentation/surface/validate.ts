@@ -65,6 +65,7 @@ export function validateSurfaceCatalog(value: unknown): SurfaceCatalogValidation
         definition.pattern !== 'member-row' &&
         definition.pattern !== 'member-card' &&
         definition.pattern !== 'member-table' &&
+        definition.pattern !== 'work-content' &&
         definition.pattern !== 'collection-filters' &&
         definition.pattern !== 'page-links' &&
         definition.pattern !== 'empty-state')

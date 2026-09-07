@@ -364,3 +364,10 @@ Surface member-row消费逐成员认知与overview绑定；声明责任保持决
 compare/table不依赖动作存在。纯责任覆盖校验检查当前已授权事实、实际可读绑定及折叠view，
 Web在generic/Recipe/Sidecar与生命周期候选提交边界复用；旧责任覆盖失效经409触发一次重规划。
 页面缓存按已观测身份、集合回链、成员关系失效相关切片，客户端导航不创建第二份事实或聊天状态。
+
+### T61 工作现场与支持上下文（D83）
+
+工作线声明 work-context，参考成员声明 supporting-context。通用 work-content 词消费授权后的
+entities/actions/links：主区呈现当前工作与全部显式责任，材料在次级入口按需读取，生命周期
+管理单独披露。组合有 canonical member 排除时仍走 repeat，不以新词绕过排除或责任覆盖。
+本地弹层期间只延迟整面重建，缓存失效、逐项执行和授权读取继续，关闭后合并重建；不新增业务状态。

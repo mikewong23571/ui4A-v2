@@ -278,7 +278,7 @@ describe('第二应用零改动可读(P1.3 A7/US11 Fixture H)', () => {
     expect(approvalCard!.actions.map((action) => action.name)).toEqual(['approve', 'reject']);
     const presentation = entity.properties.presentation as Record<string, unknown>;
     expect(presentation.version).toBe(1);
-    expect(presentation.traits).toEqual(['human-responsibility', 'work-queue']);
+    expect(presentation.traits).toEqual(['human-responsibility', 'work-queue', 'work-context']);
 
     // 同一呈现链路逐成员携带认知:普通对象摘要行,当前责任由词汇展开为决定卡。
     const receipt = await present(threadRel, `t56p13-h-present-${RUN}`, [app]);
@@ -287,24 +287,23 @@ describe('第二应用零改动可读(P1.3 A7/US11 Fixture H)', () => {
     const version = snapshot.sidecars[receipt.sidecar!.id]!.versions[receipt.sidecar!.version]!;
     expect(version.provenance.kind).toBe('generic-fallback');
     const nodes = nodesOf(version.surface.root);
-    const memberWord = nodes.find((node) => node.kind === 'word' && node.word === 'member-row');
+    const memberWord = nodes.find((node) => node.kind === 'word' && node.word === 'work-content');
     expect(memberWord).toMatchObject({
       bindings: {
-        cognitive: { kind: 'item', path: 'properties.presentation' },
-        members: { kind: 'item', path: 'entities' },
-        actions: { kind: 'item', path: 'actions' },
+        entities: { kind: 'entities', subject: threadRel },
+        actions: { kind: 'actions', subject: threadRel },
+        links: { kind: 'links', subject: threadRel },
       },
     });
     expect(firstMaterial!.properties.presentation).toMatchObject({
       version: 1,
-      traits: ['work-queue'],
+      traits: ['supporting-context'],
     });
     expect(approvalCard!.properties.presentation).toMatchObject({
       version: 1,
       traits: ['human-responsibility'],
     });
-    const repeat = nodes.find((node) => node.kind === 'repeat');
-    expect(repeat!.role).toBe('primary-content');
+    expect(memberWord!.role).toBe('primary-content');
 
     // 批准后责任卡动作消失(与内置应用同门,动作照常可提交)。
     await execAccepted(pendingApprovalRel, 'approve');

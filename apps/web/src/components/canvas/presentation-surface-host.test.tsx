@@ -312,6 +312,28 @@ describe('PresentationSurfaceHost 共享单树宿主', () => {
     expect(screen.queryAllByText('部分内容暂时无法显示，详情见「为什么这样展示」')).toHaveLength(0);
   });
 
+  it('retains a recovery link when an unreadable subject produces no surface', async () => {
+    const source = sourceEntity('case:denied', 'Private');
+    const fixture = presentationContract({ subject: 'case:denied', source });
+    const inner = fixture.fetchMock.getMockImplementation() as (
+      request: RequestInfo | URL,
+      init?: RequestInit,
+    ) => Promise<Response>;
+    fixture.fetchMock.mockImplementation((request: RequestInfo | URL, init?: RequestInit) =>
+      String(request).startsWith('/api/entity?rel=case%3Adenied')
+        ? Promise.resolve(jsonResponse(403, { error: 'scope_insufficient' }))
+        : inner(request, init),
+    );
+    vi.stubGlobal('fetch', fixture.fetchMock);
+    render(
+      <EntityCacheProvider>
+        <PresentationSurfaceHost parameters={{ focus: 'case:denied' }} />
+      </EntityCacheProvider>,
+    );
+    expect(await screen.findByRole('link', { name: '返回首页' })).toBeTruthy();
+    expect(screen.queryByText('Private')).toBeNull();
+  });
+
   it.each(cases)(
     '$name 走 presentation → sidecar → hydrate → action gate → 单树链',
     async (testCase) => {

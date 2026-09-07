@@ -1,10 +1,17 @@
-import { beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { GENERIC_INTENT_POLICY_VERSION, type SirenEntity, type SurfaceNode } from '@ui4a/engine';
+import {
+  GENERIC_INTENT_POLICY_VERSION,
+  planGenericSurface,
+  type SirenEntity,
+  type SurfaceNode,
+} from '@ui4a/engine';
 import type { CompositionRegionDeclaration } from '@ui4a/shared';
 
 import { resetRecipeCoordinatorForTests } from './recipes-runtime';
 import { authorizedRegionSlot, planWorkspaceComposition } from './runtime-composition';
+import { PRESENTATION_SURFACE_CATALOG } from './catalog';
+import * as recipeSelection from './recipe-selection';
 
 function propertyPaths(node: SurfaceNode): string[] {
   if (node.kind === 'layout') return node.children.flatMap(propertyPaths);
@@ -17,6 +24,45 @@ function propertyPaths(node: SurfaceNode): string[] {
 }
 
 beforeEach(() => resetRecipeCoordinatorForTests());
+afterEach(() => vi.restoreAllMocks());
+
+it('does not reuse a work-content recipe when a composition excludes an exact member', () => {
+  const entity: SirenEntity = {
+    class: ['collection'],
+    properties: {
+      rel: 'work:group',
+      identity: 'Work',
+      presentation: { version: 1, traits: ['work-context'] },
+    },
+    actions: [],
+    links: [],
+    entities: [
+      { class: [], properties: { rel: 'work:one', identity: 'One' }, actions: [], links: [] },
+    ],
+  };
+  const selectedSurface = planGenericSurface('work:group', entity, PRESENTATION_SURFACE_CATALOG, {
+    intent: 'read',
+    entityVersion: '1',
+  });
+  expect(JSON.stringify(selectedSurface)).toContain('"word":"work-content"');
+  vi.spyOn(recipeSelection, 'selectAndInstantiateRecipe').mockReturnValue({
+    surface: selectedSurface,
+  } as NonNullable<ReturnType<typeof recipeSelection.selectAndInstantiateRecipe>>);
+  const region = {
+    region: 'work',
+    source: 'work:group',
+    intent: 'read',
+    mode: 'rehydrate' as const,
+  };
+  const planned = planWorkspaceComposition({
+    rels: ['work:group'],
+    entities: [entity],
+    declaration: { id: 'excluded-work', version: '1', regions: [region] },
+    regions: [{ declaration: region, entity, excludedMemberRels: ['work:one'] }],
+  });
+  expect(JSON.stringify(planned.surface)).not.toContain('"word":"work-content"');
+  expect(JSON.stringify(planned.surface)).toContain('"exclude":["work:one"]');
+});
 
 describe('runtime composition generic intent fallback', () => {
   it('passes each exact region intent for the same source and records policy dependency', () => {

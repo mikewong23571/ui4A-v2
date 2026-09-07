@@ -10,8 +10,17 @@ export const PRESENTATION_SURFACE_CATALOG: SurfaceCatalog = {
   // 同一通用目录。v10:非密度 trait 消费通路(T56/D78 路线 A)——成员区
   // 角色与排布由 human-responsibility/work-queue 声明驱动(规划语义变更,
   // 已持久化 sidecar 须重规划;词表零增)。
-  version: 'semantic-v11',
+  version: 'semantic-v12',
   words: {
+    'work-content': {
+      roles: ['primary-content'],
+      pattern: 'work-content',
+      bindings: {
+        entities: { sources: ['entities'], required: true },
+        actions: { sources: ['actions'], required: true },
+        links: { sources: ['links'], required: true },
+      },
+    },
     heading: {
       roles: ['identity'],
       bindings: { value: { sources: ['property', 'item'], required: true } },

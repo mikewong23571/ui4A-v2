@@ -44,6 +44,7 @@ export function ThreadWorkspaceBar({
   const threadRel = `thread:${threadId}`;
   const [thread, setThread] = useState<SirenEntity | null>(null);
   const [open, setOpen] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
   const triggerRef = useRef<HTMLButtonElement | null>(null);
 
   // 挂载首读:setState 置于 then 回调(effect 体内不直呼含 setState 的函数)。
@@ -79,13 +80,17 @@ export function ThreadWorkspaceBar({
   // 偏好,不冒充材料(US06/P3.1)。线不可读时不伪称 0。
   const materialCount = useMemo(() => {
     if (thread === null) return undefined;
-    return (thread.entities ?? []).filter((member) => relOf(member) !== '').length;
+    const references = new Set(
+      Array.isArray(thread.properties.context) ? thread.properties.context : [],
+    );
+    return (thread.entities ?? []).filter((member) => references.has(relOf(member))).length;
   }, [thread]);
 
   const close = useCallback(() => {
+    if (submitting) return;
     setOpen(false);
     triggerRef.current?.focus();
-  }, []);
+  }, [submitting]);
 
   const pickEntry = useCallback(() => {
     setOpen(false);
@@ -105,6 +110,10 @@ export function ThreadWorkspaceBar({
   const identity = firstString(thread?.properties.identity);
   const statusText = firstString(thread?.properties.statusText);
   const backHref = `/canvas?thread=${encodeURIComponent(threadId)}&focus=${encodeURIComponent(threadRel)}${scope === undefined ? '' : `&scope=${encodeURIComponent(scope)}`}`;
+
+  const presentation = thread?.properties.presentation as { traits?: string[] } | undefined;
+  // The declared work surface owns its support tools; deep object pages retain the shell entry.
+  if (onThreadSelf && presentation?.traits?.includes('work-context')) return null;
 
   return (
     <div className="grid gap-2" data-testid="thread-workspace-bar">
@@ -144,6 +153,7 @@ export function ThreadWorkspaceBar({
           data-nav="local:thread-materials"
           aria-expanded={open}
           aria-haspopup="dialog"
+          disabled={submitting}
           onClick={() => setOpen((current) => !current)}
           className="ml-auto rounded-md border border-dashed px-2.5 py-1 text-xs text-muted-foreground transition-colors hover:bg-accent hover:text-foreground focus-visible:outline-2 focus-visible:outline-ring"
         >
@@ -163,12 +173,18 @@ export function ThreadWorkspaceBar({
               type="button"
               data-nav="local:thread-materials-close"
               onClick={close}
+              disabled={submitting}
               className="rounded-md px-2 py-0.5 text-xs text-muted-foreground transition-colors hover:bg-accent hover:text-foreground focus-visible:outline-2 focus-visible:outline-ring"
             >
               关闭
             </button>
           </div>
-          <ThreadDesk threadId={threadId} scope={scope} onEntryNavigate={pickEntry} />
+          <ThreadDesk
+            threadId={threadId}
+            scope={scope}
+            onEntryNavigate={pickEntry}
+            onSubmittingChange={setSubmitting}
+          />
         </div>
       )}
     </div>

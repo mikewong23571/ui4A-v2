@@ -125,7 +125,7 @@ export function SituationBar() {
             observation.focus,
             focusEndpoint?.startsWith('/_meta/') ? metaDiscovery : applications,
           ))
-        : `已选 ${observation.focus.selection.length} 个对象`;
+        : `查看 ${observation.focus.selection.length} 个对象`;
 
   const situationDetails = [
     ['site', '站点', siteLabel],

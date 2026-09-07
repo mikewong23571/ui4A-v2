@@ -103,6 +103,7 @@ export interface SurfaceCatalogWord {
     | 'member-row'
     | 'member-card'
     | 'member-table'
+    | 'work-content'
     | 'collection-filters'
     | 'page-links'
     | 'empty-state';

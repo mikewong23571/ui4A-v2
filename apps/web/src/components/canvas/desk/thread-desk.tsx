@@ -80,7 +80,12 @@ interface DeskEntry {
 }
 
 /** 线工作台书桌:本线叙述(纯读) + 工作集条目 + 对象选择器。 */
-export function ThreadDesk({ threadId, scope, onEntryNavigate }: ThreadDeskProps) {
+export function ThreadDesk({
+  threadId,
+  scope,
+  onEntryNavigate,
+  onSubmittingChange,
+}: ThreadDeskProps) {
   const cache = useEntityCache();
   const threadRel = `thread:${threadId}`;
   const [thread, setThread] = useState<SirenEntity | null>(null);
@@ -183,7 +188,7 @@ export function ThreadDesk({ threadId, scope, onEntryNavigate }: ThreadDeskProps
     const list: DeskEntry[] = [];
     for (const member of thread?.entities ?? []) {
       const rel = relOf(member);
-      if (rel === '') continue;
+      if (rel === '' || !contextRels.has(rel)) continue;
       list.push({
         rel,
         identity: firstString(member.properties.identity, member.properties.title) ?? rel,
@@ -193,7 +198,7 @@ export function ThreadDesk({ threadId, scope, onEntryNavigate }: ThreadDeskProps
       });
     }
     return list;
-  }, [thread, pins]);
+  }, [thread, pins, contextRels]);
 
   // 固定视图 = 仅钉住页(pin-only):本机呈现偏好,不冒充材料(US06)。
   const pinnedEntries = useMemo<DeskEntry[]>(
@@ -223,10 +228,12 @@ export function ThreadDesk({ threadId, scope, onEntryNavigate }: ThreadDeskProps
   }, [thread]);
   const canAttach = usableActions.has('attach');
   const canDetach = usableActions.has('detach');
+  const attachAction = thread?.actions.find((action) => action.name === 'attach');
 
   const runThreadAction = useCallback(
     async (action: string, params?: Record<string, unknown>): Promise<boolean> => {
       setBusy(true);
+      onSubmittingChange?.(true);
       setFailure(null);
       try {
         const result = await execAction({ rel: threadRel, action, params, scope });
@@ -242,9 +249,10 @@ export function ThreadDesk({ threadId, scope, onEntryNavigate }: ThreadDeskProps
         return false;
       } finally {
         setBusy(false);
+        onSubmittingChange?.(false);
       }
     },
-    [cache, scope, threadRel],
+    [cache, scope, threadRel, onSubmittingChange],
   );
 
   // 移出 = membership 变更(合同 detach);失败时成员原样保留、拒绝原因可读,
@@ -364,16 +372,12 @@ export function ThreadDesk({ threadId, scope, onEntryNavigate }: ThreadDeskProps
               className="inline-flex items-center gap-1 rounded-md border border-dashed px-2 py-0.5 text-xs text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
             >
               <Plus aria-hidden />
-              添加关联
+              {attachAction?.title}
             </button>
           )}
         </div>
         {memberEntries.length === 0 ? (
-          <p className="mt-2 text-xs text-muted-foreground">
-            {canAttach
-              ? '还没有关联。点「添加关联」把相关材料挂进本线，助手在线内工作时就能看到。'
-              : '当前可见的关联对象为空。'}
-          </p>
+          <p className="mt-2 text-xs text-muted-foreground">暂无可见材料。</p>
         ) : (
           <ul className="mt-1 divide-y" data-testid="desk-entries">
             {memberEntries.map(renderEntryRow)}
@@ -381,6 +385,8 @@ export function ThreadDesk({ threadId, scope, onEntryNavigate }: ThreadDeskProps
         )}
         {selectorOpen && canAttach && (
           <ObjectSelectorPanel
+            targetTitle={firstString(thread?.properties.identity)}
+            onSubmittingChange={onSubmittingChange}
             attachedRels={contextRels}
             busy={busy}
             onPick={(rel) => runThreadAction('attach', { category: 'context', rel })}

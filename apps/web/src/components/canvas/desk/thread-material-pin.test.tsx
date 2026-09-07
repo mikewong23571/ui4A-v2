@@ -352,6 +352,7 @@ describe('材料/pin 语义分离(US06/FR5;T56 P3.1)', () => {
 
     fireEvent.click(screen.getByTestId('desk-add-material'));
     fireEvent.click(await screen.findByTestId('desk-selector-pick:todo:buy'));
+    fireEvent.click(screen.getByTestId('desk-selector-add'));
     await screen.findByText('买牛奶');
 
     const uiRels = [...container.querySelectorAll('[data-desk-entry]')]
@@ -375,6 +376,7 @@ describe('材料/pin 语义分离(US06/FR5;T56 P3.1)', () => {
 
     fireEvent.click(screen.getByTestId('desk-add-material'));
     fireEvent.click(await screen.findByTestId('desk-selector-pick:todo:buy'));
+    fireEvent.click(screen.getByTestId('desk-selector-add'));
     await waitFor(() =>
       expect(
         (screen.getByTestId('desk-selector-pick:todo:buy') as HTMLButtonElement).disabled,
@@ -417,6 +419,7 @@ it('membership mutations refresh the same-page Surface as well as the drawer', a
   await waitFor(() => expect(mainMembers()).toEqual([]));
   fireEvent.click(screen.getByTestId('desk-add-material'));
   fireEvent.click(await screen.findByTestId('desk-selector-pick:todo:buy'));
+  fireEvent.click(screen.getByTestId('desk-selector-add'));
   await waitFor(() => expect(mainMembers()).toEqual(['买牛奶']));
   expect(screen.getByTestId('desk-working-set-count').textContent).toBe('关联（1）');
   expect(state.events).toEqual(['thread-reference-detached', 'thread-reference-attached']);

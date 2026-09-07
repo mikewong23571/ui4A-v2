@@ -7,6 +7,8 @@ export const COGNITIVE_SEMANTICS_TRAITS = [
   'task-history',
   'human-responsibility',
   'audit-only',
+  'work-context',
+  'supporting-context',
 ] as const;
 
 export const COGNITIVE_SEMANTICS_GROUP_ROLES = [

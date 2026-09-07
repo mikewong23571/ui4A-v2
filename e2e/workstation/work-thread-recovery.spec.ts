@@ -42,9 +42,9 @@ test.describe('work-thread recovery', () => {
       const main = page.locator('main');
       // 目标为主内容;无材料/责任成员;创建原文另有只读来源,不重复状态。
       await expect(main.getByText('空线起步走查')).toBeVisible();
-      await expect(page.locator('[data-word="member-card"], [data-word="member-row"]')).toHaveCount(
-        0,
-      );
+      await expect(
+        page.locator('[data-word="member-card"], [data-word="member-row"], [data-work-member]'),
+      ).toHaveCount(0);
       await expect(main).not.toContainText('目标来源');
       await expect(main).toContainText('进行中');
       await expect(main).not.toContainText('停在「进行中」');
@@ -125,13 +125,17 @@ test.describe('work-thread recovery', () => {
       await caseyPage.goto(`${SCENARIO_BASE}/canvas?thread=${secret}&focus=thread%3A${secret}`);
       const main = caseyPage.locator('main');
       await expect(
-        main.getByTestId('canvas-focus-unavailable').or(main.getByTestId('canvas-errors')),
+        main.getByTestId('canvas-focus-unavailable').or(main.getByTestId('canvas-errors')).first(),
       ).toBeVisible({ timeout: 30_000 });
       await expect(main).not.toContainText(secretGoal);
       await expect(
-        caseyPage.locator('[data-word="member-card"], [data-word="member-row"]'),
+        caseyPage.locator(
+          '[data-word="member-card"], [data-word="member-row"], [data-work-member]',
+        ),
       ).toHaveCount(0);
+      await expect(caseyPage.getByTestId('work-materials-trigger')).toHaveCount(0);
       await expect(caseyPage.getByRole('button', { name: '相关材料', exact: true })).toBeVisible();
+      await expect(main.getByRole('link', { name: '返回首页' })).toBeVisible();
       await saveShot(caseyPage, 'p4-us10-cross-principal-hidden');
       await otherContext.close();
 
@@ -144,7 +148,7 @@ test.describe('work-thread recovery', () => {
       await ownerPage.setViewportSize({ width: 1440, height: 900 });
       await openThreadOverview(ownerPage, secret);
       await expect(ownerPage.locator('main').getByText(secretGoal)).toBeVisible();
-      await expect(ownerPage.getByRole('button', { name: '相关材料（1）' })).toBeVisible();
+      await expect(ownerPage.getByTestId('work-materials-trigger')).toHaveText('材料 · 1');
       await ownerContext.close();
     });
   });

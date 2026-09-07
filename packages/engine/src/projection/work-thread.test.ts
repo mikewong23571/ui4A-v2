@@ -24,6 +24,25 @@ import { executeThreadCommand } from './work-thread-command';
 
 const deps = { flows: {}, guards: seedGuardRegistry };
 
+it('labels a referenced object from its declared content field without type-specific names', () => {
+  const state = snapshot();
+  state.instances['post:known']!.fields = { summary: { value: '可辨认的材料', origin: 'default' } };
+  const entity = project(state, 'thread:release-1', {
+    guards: seedGuardRegistry,
+    flows: {
+      'post-status': {
+        name: 'post-status',
+        initial: 'published',
+        nodes: [{ name: 'published', actions: [] }],
+        fields: [{ name: 'summary', type: 'text', presentation: { role: 'primary-content' } }],
+      },
+    },
+  });
+  expect(
+    entity?.entities?.find((member) => member.properties.rel === 'post:known')?.properties.identity,
+  ).toBe('可辨认的材料');
+});
+
 function snapshot(status: ThreadStatus = 'open'): EngineSnapshot {
   return {
     instances: {
@@ -221,8 +240,6 @@ describe('Work Thread Siren projection', () => {
         fields: [
           { path: 'properties.identity', title: '目标', role: 'identity' },
           { path: 'properties.statusText', title: '状态', role: 'status' },
-          { path: 'properties.resume', title: '上次停在哪', role: 'primary-content' },
-          { path: 'properties.goalSourceText', title: '目标来源', role: 'metadata' },
         ],
       },
     });
@@ -291,8 +308,8 @@ describe('Work Thread Siren projection', () => {
     expect(THREAD_CREATE_ACTION.title).toBe('创建工作线');
     expect(THREAD_CREATE_ACTION.fields?.map((field) => field.title)).toEqual(['提交标识', '目标']);
     // T35 F-27/T60 UX 评审:机制动词换任务语,实体面上的动作不复述实体名。
-    expect(THREAD_ATTACH_ACTION.title).toBe('添加关联');
-    expect(THREAD_DETACH_ACTION.title).toBe('移出关联');
+    expect(THREAD_ATTACH_ACTION.title).toBe('添加材料');
+    expect(THREAD_DETACH_ACTION.title).toBe('移出');
     expect(
       THREAD_ATTACH_ACTION.fields?.find((field) => field.name === 'rel')?.description,
     ).toContain('合同路径');
@@ -633,7 +650,6 @@ describe('Work Thread 角色读语义与认知声明(D78 路线 A 目标合同;R
       expect.arrayContaining([
         { path: 'properties.identity', title: '目标', role: 'identity' },
         { path: 'properties.statusText', title: '状态', role: 'status' },
-        { path: 'properties.resume', title: '上次停在哪', role: 'primary-content' },
       ]),
     );
     // 空线起步:emptyMeaning 声明起步引导(T40 先例词),不写「无进行中/无责任」

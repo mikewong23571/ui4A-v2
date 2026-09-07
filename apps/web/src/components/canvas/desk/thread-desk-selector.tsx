@@ -1,216 +1,212 @@
 'use client';
-/**
- * F-27② 对象选择器:「添加关联」的候选面板。
- *
- * - 候选 = sitemap 集合面(collection:true)成员——§二 同一扇门:人与 agent
- *   共用的发现面,机械派生零特判;flow 面不是集合,不入候选;
- * - 集合实体读取走页面级缓存(useEntityCache);顶部标题过滤;点击即挂由
- *   宿主执行(attach category 缺省 context);已在本线的成员禁选并标注;
- * - G07 DoD2:候选标题消费合同声明字段(selectorCandidateLabel)——声明
- *   identity/内容字段值如实使用;全组只剩集合级同名兜底时退 rel,不猜测;
- * - 零每实体特判:身份/状态一律读实体声明字段。
- */
-import { useCallback, useEffect, useState } from 'react';
-
-import { Badge } from '@/components/ui/badge';
-
+import { useEffect, useRef, useState } from 'react';
+import { Button } from '../../ui/button';
 import { useEntityCache } from '../../entity-cache-provider';
-import { withPolicyScope } from '../../exec-client';
-import { hrefToRel } from '../../contract-href';
-import {
-  collapseSharedFallbackLabel,
-  firstString,
-  selectorCandidateLabel,
-} from './thread-desk-shared';
-
-interface SelectorMember {
-  rel: string;
-  identity: string;
-  labelDeclared: boolean;
-  status?: string;
-}
-
-interface SelectorGroup {
-  collection: string;
-  title: string;
-  members: SelectorMember[];
-}
+import { discoverCandidates, type SelectorCandidate } from './selector/discovery';
+import { CandidatePreview } from './selector/preview';
 
 export function ObjectSelectorPanel({
   attachedRels,
   busy,
   onPick,
   onClose,
+  targetTitle,
+  onSubmittingChange,
 }: {
   attachedRels: ReadonlySet<string>;
   busy: boolean;
   onPick: (rel: string) => Promise<boolean>;
   onClose: () => void;
+  targetTitle?: string;
+  onSubmittingChange?: (busy: boolean) => void;
 }) {
   const cache = useEntityCache();
-  const [groups, setGroups] = useState<SelectorGroup[] | null>(null);
+  const [candidates, setCandidates] = useState<SelectorCandidate[] | null>(null);
   const [failed, setFailed] = useState(false);
+  const [unavailable, setUnavailable] = useState(false);
+  const [attempt, setAttempt] = useState(0);
   const [filter, setFilter] = useState('');
+  const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [added, setAdded] = useState<Set<string>>(new Set());
+  const [preview, setPreview] = useState<SelectorCandidate | null>(null);
+  const [submitting, setSubmitting] = useState(false);
+  const [receipt, setReceipt] = useState<string | null>(null);
+  const inFlight = useRef(false);
+  const disabled = busy || submitting;
+  const pending = [...selected].filter((rel) => !attachedRels.has(rel) && !added.has(rel));
 
-  // load 不在体内同步 setState(failed 归零由重试按钮处理器负责;挂载时
-  // failed 本就为 false)——react-hooks/set-state-in-effect 合规。
-  const load = useCallback(() => {
+  useEffect(() => {
     let cancelled = false;
-    void (async () => {
-      try {
-        const response = await fetch(withPolicyScope('/.well-known/ui4a.json', undefined));
-        if (!response.ok) throw new Error(`HTTP ${response.status}`);
-        const body = (await response.json()) as {
-          surfaces?: Array<{ rel?: unknown; title?: unknown; collection?: unknown }>;
-        };
-        const collections = (body.surfaces ?? []).filter(
-          (surface): surface is { rel: string; title?: string } =>
-            surface.collection === true && typeof surface.rel === 'string',
-        );
-        const loaded: SelectorGroup[] = [];
-        for (const collection of collections) {
-          const entity = await cache.get(collection.rel).catch(() => null);
-          if (cancelled) return;
-          const members = (entity?.entities ?? [])
-            .map((member): SelectorMember | null => {
-              const rel =
-                firstString(member.properties.rel) ??
-                member.links
-                  .map((link) => hrefToRel(link.href))
-                  .find((rel): rel is string => rel !== null) ??
-                null;
-              if (rel === null || rel === '') return null;
-              // G07 DoD2:可区分标题 = 声明字段值优先;缺标题回退 rel,不猜测。
-              const label = selectorCandidateLabel(member);
-              return {
-                rel,
-                identity: label?.text ?? rel,
-                labelDeclared: label?.declared ?? false,
-                status: firstString(member.properties.title, member.properties.statusText),
-              };
-            })
-            .filter((member): member is SelectorMember => member !== null);
-          loaded.push({
-            collection: collection.rel,
-            title: firstString(entity?.properties.title) ?? collection.title ?? collection.rel,
-            members: collapseSharedFallbackLabel(members),
-          });
-        }
-        if (!cancelled) setGroups(loaded);
-      } catch {
+    void discoverCandidates(cache)
+      .then((result) => {
+        if (cancelled) return;
+        setCandidates(result.candidates);
+        setUnavailable(result.unavailable);
+      })
+      .catch(() => {
         if (!cancelled) setFailed(true);
-      }
-    })();
+      });
     return () => {
       cancelled = true;
     };
-  }, [cache]);
+  }, [cache, attempt]);
 
-  useEffect(() => load(), [load]);
-
+  const toggle = (rel: string) =>
+    setSelected((current) => {
+      const next = new Set(current);
+      if (next.has(rel)) next.delete(rel);
+      else next.add(rel);
+      return next;
+    });
+  const add = async () => {
+    if (disabled || inFlight.current || pending.length === 0) return;
+    inFlight.current = true;
+    setSubmitting(true);
+    onSubmittingChange?.(true);
+    setReceipt(null);
+    let succeeded = 0;
+    const rejected: string[] = [];
+    for (const rel of pending) {
+      let ok = false;
+      try {
+        ok = await onPick(rel);
+      } catch {
+        /* The failed selection remains available for retry. */
+      }
+      if (ok) {
+        succeeded += 1;
+        setAdded((current) => new Set([...current, rel]));
+        setSelected((current) => {
+          const next = new Set(current);
+          next.delete(rel);
+          return next;
+        });
+      } else rejected.push(rel);
+    }
+    setReceipt(
+      rejected.length > 0
+        ? `已添加 ${succeeded} 项；${rejected.length} 项未确认`
+        : `已添加 ${succeeded} 项`,
+    );
+    setSubmitting(false);
+    onSubmittingChange?.(false);
+    inFlight.current = false;
+  };
   const needle = filter.trim().toLowerCase();
-  const visible = (groups ?? [])
-    .map((group) => ({
-      ...group,
-      members: group.members.filter(
-        (member) =>
-          needle === '' ||
-          member.identity.toLowerCase().includes(needle) ||
-          member.rel.toLowerCase().includes(needle),
-      ),
-    }))
-    .filter((group) => group.members.length > 0);
-
+  const titleCounts = new Map<string, number>();
+  for (const candidate of candidates ?? [])
+    titleCounts.set(candidate.identity, (titleCounts.get(candidate.identity) ?? 0) + 1);
+  const visible = (candidates ?? []).filter((candidate) =>
+    [candidate.identity, candidate.rel, ...candidate.sources].some((value) =>
+      value.toLowerCase().includes(needle),
+    ),
+  );
   return (
     <div
       data-testid="desk-selector"
-      className="mt-2 rounded-md border bg-background p-2"
       role="group"
-      aria-label="选择关联对象"
+      aria-label="选择材料"
+      className="min-w-0 space-y-3"
     >
-      <div className="flex items-center gap-2">
-        <input
-          type="search"
-          value={filter}
-          onChange={(event) => setFilter(event.target.value)}
-          placeholder="按标题过滤"
-          aria-label="按标题过滤"
-          data-testid="desk-selector-filter"
-          className="min-w-0 flex-1 rounded-md border bg-background px-2 py-1 text-xs"
-        />
-        <button
-          type="button"
-          data-nav="local:desk-selector-close"
-          onClick={onClose}
-          className="shrink-0 rounded-md px-1.5 py-1 text-xs text-muted-foreground hover:bg-accent hover:text-foreground"
-        >
-          收起
-        </button>
-      </div>
-      {groups === null && !failed && (
-        <p className="mt-2 text-xs text-muted-foreground">正在列出可选对象…</p>
-      )}
-      {failed && (
-        <p className="mt-2 text-xs text-muted-foreground">
-          对象清单暂时读不到，
-          <button
-            type="button"
-            data-nav="local:desk-selector-retry"
-            onClick={() => {
-              setFailed(false);
-              load();
-            }}
-            className="underline hover:text-foreground"
-          >
-            重试
-          </button>
-          。
-        </p>
-      )}
-      {groups !== null && visible.length === 0 && (
-        <p className="mt-2 text-xs text-muted-foreground">没有匹配的对象。</p>
-      )}
-      <div className="mt-1 max-h-64 overflow-y-auto">
-        {visible.map((group) => (
-          <div key={group.collection} className="mt-1">
-            <p className="px-1 py-0.5 text-[11px] text-muted-foreground">
-              {group.title}（{group.members.length}）
+      {targetTitle && <p className="break-words text-sm text-muted-foreground">{targetTitle}</p>}
+      {preview ? (
+        <div className="max-h-[50dvh] overflow-y-auto">
+          <CandidatePreview key={preview.rel} candidate={preview} onBack={() => setPreview(null)} />
+        </div>
+      ) : (
+        <>
+          <input
+            type="search"
+            value={filter}
+            onChange={(event) => setFilter(event.target.value)}
+            placeholder="搜索材料"
+            aria-label="搜索材料"
+            data-testid="desk-selector-filter"
+            className="w-full rounded-md border bg-background px-3 py-2 text-sm"
+          />
+          {candidates === null && !failed && (
+            <p role="status" className="text-sm text-muted-foreground">
+              读取中…
             </p>
-            <ul>
-              {group.members.map((member) => {
-                const attached = attachedRels.has(member.rel);
-                return (
-                  <li key={member.rel}>
+          )}
+          {(failed || unavailable) && (
+            <p role="status" className="text-sm text-muted-foreground">
+              {failed ? '暂时无法列出材料' : '部分清单无法读取'}{' '}
+              <button
+                type="button"
+                className="underline"
+                onClick={() => {
+                  setFailed(false);
+                  setUnavailable(false);
+                  setAttempt((value) => value + 1);
+                }}
+              >
+                重试
+              </button>
+            </p>
+          )}
+          {candidates !== null && visible.length === 0 && (
+            <p className="text-sm text-muted-foreground">没有匹配的材料</p>
+          )}
+          <ul className="max-h-[46dvh] divide-y overflow-y-auto">
+            {visible.map((candidate) => {
+              const attached = attachedRels.has(candidate.rel) || added.has(candidate.rel);
+              return (
+                <li key={candidate.rel} className="flex items-start gap-3 py-3">
+                  <input
+                    type="checkbox"
+                    data-testid={`desk-selector-pick:${candidate.rel}`}
+                    aria-label={`选择 ${candidate.identity} (${candidate.rel})`}
+                    checked={!attached && selected.has(candidate.rel)}
+                    disabled={disabled || attached}
+                    onChange={() => toggle(candidate.rel)}
+                    className="mt-1 size-4 shrink-0 accent-primary"
+                  />
+                  <div className="min-w-0 flex-1">
                     <button
                       type="button"
-                      data-testid={`desk-selector-pick:${member.rel}`}
-                      data-nav={`local:desk-selector-pick:${member.rel}`}
-                      disabled={busy || attached}
-                      onClick={() => void onPick(member.rel)}
-                      className="flex w-full items-center gap-2 rounded-md px-1 py-1 text-left text-xs hover:bg-accent disabled:opacity-60"
+                      data-testid={`desk-selector-preview:${candidate.rel}`}
+                      onClick={() => setPreview(candidate)}
+                      className="block max-w-full truncate text-left text-sm font-medium hover:underline"
                     >
-                      <span className="min-w-0 flex-1 truncate">{member.identity}</span>
-                      {attached ? (
-                        <Badge
-                          variant="secondary"
-                          className="shrink-0 rounded px-1 py-0 text-[10px] font-normal"
-                        >
-                          已在本线
-                        </Badge>
-                      ) : (
-                        member.status !== undefined && (
-                          <span className="shrink-0 text-[10px] text-muted-foreground">
-                            {member.status}
-                          </span>
-                        )
-                      )}
+                      {candidate.identity}
                     </button>
-                  </li>
-                );
-              })}
-            </ul>
-          </div>
-        ))}
+                    <p className="mt-1 break-words text-xs text-muted-foreground">
+                      {candidate.sources.join(' · ')}
+                    </p>
+                    <p className="break-all text-[11px] text-muted-foreground">{candidate.rel}</p>
+                  </div>
+                  <span className="shrink-0 text-xs text-muted-foreground">
+                    {attached
+                      ? '已添加'
+                      : candidate.status !== candidate.identity
+                        ? candidate.status
+                        : null}
+                  </span>
+                </li>
+              );
+            })}
+          </ul>
+        </>
+      )}
+      {receipt && (
+        <p role="status" className="text-sm">
+          {receipt}
+        </p>
+      )}
+      <div className="flex items-center justify-between gap-2 border-t pt-3">
+        <Button type="button" variant="ghost" size="sm" disabled={disabled} onClick={onClose}>
+          关闭
+        </Button>
+        <Button
+          type="button"
+          size="sm"
+          data-testid="desk-selector-add"
+          disabled={disabled || pending.length === 0}
+          onClick={() => void add()}
+        >
+          {submitting ? '添加中…' : `添加 ${pending.length} 项`}
+        </Button>
       </div>
     </div>
   );

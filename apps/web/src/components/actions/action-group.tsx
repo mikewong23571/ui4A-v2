@@ -3,11 +3,7 @@
 import { useId, useRef, useState, type ReactNode } from 'react';
 import { Button } from '../ui/button';
 
-import {
-  THREAD_ATTACH_ACTION,
-  THREAD_DETACH_ACTION,
-  THREAD_REL_PREFIX,
-} from '@ui4a/engine';
+import { THREAD_ATTACH_ACTION, THREAD_DETACH_ACTION, THREAD_REL_PREFIX } from '@ui4a/engine';
 import type { GuardResultEntry, SirenAction, SirenEntity } from '@ui4a/engine';
 
 import { ReferenceSelection, referenceOptions } from './reference-selection';
@@ -67,7 +63,8 @@ export function ActionGroup({
   formHost = 'inline',
 }: ActionGroupProps) {
   const submit = useActionSubmit(explicitSubmit);
-  if (entity.actions.length === 0) return null;
+  const visibleActions = entity.actions.filter((action) => referenceOptions(action)?.length !== 0);
+  if (visibleActions.length === 0) return null;
   if (submit === undefined) throw new Error('ActionGroup requires an explicit host submit adapter');
   const rel = entity.properties.rel ?? explicitRel;
   if (typeof rel !== 'string' || rel === '') {
@@ -80,19 +77,18 @@ export function ActionGroup({
       : undefined;
   const compact = density === 'compact';
 
-  const confirmationActions = entity.actions.filter(
+  const confirmationActions = visibleActions.filter(
     (action) => action['requires-confirmation'] === 'high',
   );
-  const normalActions = entity.actions.filter(
+  const normalActions = visibleActions.filter(
     (action) => action['requires-confirmation'] !== 'high',
   );
   // T60 UX 评审:线实体上的 attach/detach 先行成组披露——它们改的是本线的
   // 引用集合(边),与 pause/complete 等实体状态迁移(节点)性质不同,不该
   // 平铺在一列里;分组只调摆位,动作仍逐一经引擎声明渲染与裁决。
-  const referenceActions =
-    rel.startsWith(THREAD_REL_PREFIX)
-      ? normalActions.filter((action) => THREAD_REFERENCE_ACTION_NAMES.has(action.name))
-      : [];
+  const referenceActions = rel.startsWith(THREAD_REL_PREFIX)
+    ? normalActions.filter((action) => THREAD_REFERENCE_ACTION_NAMES.has(action.name))
+    : [];
   const primaryActions = normalActions.filter((action) => !referenceActions.includes(action));
   const renderItem = (action: SirenAction) => {
     const guard = guards.get(action.name);

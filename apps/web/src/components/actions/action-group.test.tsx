@@ -8,6 +8,21 @@ import { ActionGroup } from './action-group';
 import type { ActionSubmit } from './action-submit';
 import { EntityCacheProvider } from '../entity-cache-provider';
 
+it('does not offer unlink when the authorized choice list is empty', () => {
+  const entity = entityOf([]);
+  entity.actions = [
+    {
+      name: 'detach',
+      title: '移出',
+      method: 'POST',
+      href: '/api/exec',
+      fields: { 'x-ui4a-reference-selection': { effect: 'unlink', options: [] } },
+    },
+  ];
+  render(<ActionGroup entity={entity} submit={vi.fn()} />);
+  expect(screen.queryByRole('button', { name: '移出' })).toBeNull();
+});
+
 function entityOf(classes: string[], blocked = false): SirenEntity {
   return {
     class: classes,

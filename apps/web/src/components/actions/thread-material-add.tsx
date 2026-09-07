@@ -1,28 +1,17 @@
 'use client';
-/**
- * G07 材料入口收敛:非书桌宿主(首页工作线区成员卡 / 工作线实体页)上的
- * 「添加关联」——与书桌(thread-desk)同一扇门。
- *
- * - 主路径 = 授权发现选择器 ObjectSelectorPanel(与书桌共用同一组件):候选
- *   来自 sitemap 集合面 + 页面缓存授权读,点击即挂 category=context;裸 rel
- *   RJSF 表单(ActionRunner 原样)降级为「高级」回退,不再是唯一入口;
- * - 提交走宿主 submit 适配器(surfaceSubmit/directSubmit——同一 /api/exec
- *   裁决,服务端仍是最终裁判);成功后经页面缓存精确失效 + 广播
- *   THREAD_UPDATED_EVENT(同页书桌/舞台据此重读),与书桌执行语义对齐;
- * - 已在本线(context)的候选禁选(重复不可选);本组件只提交 attach,
- *   移出不删除对象本身(合同 detach 语义不变,由各宿主既有入口承担);
- * - 「已添加」集合读线程实体的授权投影(properties.context),不自造清单。
- */
 import { Plus } from 'lucide-react';
 import { useCallback, useEffect, useState } from 'react';
+import { usePresentationInteraction } from '../canvas/interaction/presentation-interaction';
+import { Dialog } from 'radix-ui';
 
 import type { SirenAction, SirenEntity } from '@ui4a/engine';
 
 import { ObjectSelectorPanel } from '../canvas/desk/thread-desk-selector';
 import { THREAD_UPDATED_EVENT, notifyThreadUpdated } from '../canvas/desk/thread-desk-shared';
 import { useEntityCache } from '../entity-cache-provider';
-import { ActionRunner } from '../action-runner';
+import { identityOf } from '../canvas/desk/thread-desk-shared';
 import { Button } from '../ui/button';
+import { ActionRunner } from '../action-runner';
 import type { ActionSubmit, ActionSubmitInput } from './action-submit';
 
 export interface ThreadMaterialAddProps {
@@ -58,7 +47,10 @@ export function ThreadMaterialAdd({
 }: ThreadMaterialAddProps) {
   const cache = useEntityCache();
   const [selectorOpen, setSelectorOpen] = useState(false);
-  const [advancedOpen, setAdvancedOpen] = useState(false);
+  usePresentationInteraction(selectorOpen);
+  const [targetTitle, setTargetTitle] = useState<string>();
+  const [targetUnavailable, setTargetUnavailable] = useState(false);
+  const [loadingTarget, setLoadingTarget] = useState(false);
   const [busy, setBusy] = useState(false);
   const [failure, setFailure] = useState<string | null>(null);
   const [attachedRels, setAttachedRels] = useState<ReadonlySet<string>>(new Set());
@@ -67,13 +59,16 @@ export function ThreadMaterialAdd({
   // (setState 一律置于 then/事件回调,不落 react-hooks/set-state-in-effect)。
   const reloadAttached = useCallback(async (): Promise<void> => {
     const entity = await cache.get(rel).catch(() => null);
+    if (entity === null) throw new Error('暂时无法读取工作线');
     setAttachedRels(contextRelsOf(entity));
+    setTargetTitle(identityOf(entity));
   }, [cache, rel]);
 
   // 同页书桌/其它入口挂入或移出后重读(context 是线的派生投影)。
   useEffect(() => {
     const sync = (event: Event): void => {
-      if ((event as CustomEvent<string>).detail === rel) void reloadAttached();
+      if ((event as CustomEvent<string>).detail === rel)
+        void reloadAttached().catch(() => setFailure('暂时无法读取工作线'));
     };
     window.addEventListener(THREAD_UPDATED_EVENT, sync);
     return () => window.removeEventListener(THREAD_UPDATED_EVENT, sync);
@@ -87,7 +82,7 @@ export function ThreadMaterialAdd({
       if (result.ok) {
         cache.invalidateAfterExec(rel, result.entity, result.subject);
         notifyThreadUpdated(rel);
-        void reloadAttached();
+        void reloadAttached().catch(() => setFailure('暂时无法读取工作线'));
       }
       return result;
     },
@@ -96,7 +91,6 @@ export function ThreadMaterialAdd({
 
   const attach = useCallback(
     async (memberRel: string): Promise<boolean> => {
-      setBusy(true);
       setFailure(null);
       try {
         const result = await threadSubmit({
@@ -113,85 +107,112 @@ export function ThreadMaterialAdd({
       } catch (error) {
         setFailure(`[network] ${error instanceof Error ? error.message : String(error)}`);
         return false;
-      } finally {
-        setBusy(false);
       }
     },
     [action, onExecuted, rel, threadSubmit],
   );
 
   const openSelector = (): void => {
-    setSelectorOpen((open) => !open);
-    void reloadAttached();
+    setSelectorOpen(true);
+    setFailure(null);
+    setLoadingTarget(true);
+    setTargetUnavailable(false);
+    cache.invalidate(rel);
+    void reloadAttached()
+      .catch(() => {
+        setTargetUnavailable(true);
+        setFailure('暂时无法读取工作线');
+      })
+      .finally(() => setLoadingTarget(false));
   };
 
   return (
     <div className="flex flex-col gap-2">
-      <div className="flex flex-wrap items-center gap-2">
-        <Button
-          type="button"
-          variant="outline"
-          size="sm"
-          data-testid="thread-add-material"
-          data-nav="local:thread-add-material"
-          aria-expanded={selectorOpen}
-          disabled={blocked || busy}
-          onClick={openSelector}
-        >
-          <Plus aria-hidden />
-          {action.title}
-        </Button>
-      </div>
-      {blocked && blockReason !== undefined ? (
+      <Dialog.Root
+        open={selectorOpen}
+        onOpenChange={(open) => {
+          if (!busy) setSelectorOpen(open);
+        }}
+      >
+        <Dialog.Trigger asChild>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            data-testid="thread-add-material"
+            data-nav="local:thread-add-material"
+            disabled={blocked || busy}
+            onClick={openSelector}
+          >
+            <Plus aria-hidden />
+            {action.title}
+          </Button>
+        </Dialog.Trigger>
+        <Dialog.Portal>
+          <Dialog.Overlay className="fixed inset-0 z-50 bg-black/40" />
+          <Dialog.Content
+            aria-describedby={undefined}
+            onEscapeKeyDown={(event) => {
+              if (busy) event.preventDefault();
+            }}
+            onInteractOutside={(event) => event.preventDefault()}
+            className="fixed top-1/2 left-1/2 z-50 max-h-[90dvh] w-[calc(100%-2rem)] max-w-xl -translate-x-1/2 -translate-y-1/2 overflow-y-auto rounded-lg border bg-background p-5 shadow-lg"
+          >
+            <Dialog.Title className="mb-3 text-lg font-semibold">{action.title}</Dialog.Title>
+            {targetUnavailable ? (
+              <div className="flex justify-between gap-2">
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setSelectorOpen(false)}
+                >
+                  关闭
+                </Button>
+                <Button type="button" size="sm" onClick={openSelector}>
+                  重试
+                </Button>
+              </div>
+            ) : (
+              <ObjectSelectorPanel
+                attachedRels={attachedRels}
+                busy={busy || loadingTarget || blocked}
+                targetTitle={targetTitle}
+                onPick={attach}
+                onSubmittingChange={setBusy}
+                onClose={() => setSelectorOpen(false)}
+              />
+            )}
+            {!targetUnavailable && !loadingTarget && (
+              <details className="mt-3 text-xs text-muted-foreground">
+                <summary className="cursor-pointer">其他关联</summary>
+                <div className="pt-3">
+                  <ActionRunner
+                    rel={rel}
+                    action={action}
+                    submit={threadSubmit}
+                    onExecuted={onExecuted}
+                    blocked={blocked || busy}
+                    blockReason={blockReason}
+                  />
+                </div>
+              </details>
+            )}
+            {failure !== null && (
+              <p
+                role="alert"
+                data-testid="thread-add-material-failure"
+                className="mt-2 text-xs text-destructive"
+              >
+                {failure}
+              </p>
+            )}
+          </Dialog.Content>
+        </Dialog.Portal>
+      </Dialog.Root>
+      {blocked && blockReason !== undefined && (
         <p role="status" className="text-xs text-muted-foreground">
           {blockReason}
-        </p>
-      ) : null}
-      {selectorOpen && (
-        <>
-          <ObjectSelectorPanel
-            attachedRels={attachedRels}
-            busy={busy}
-            onPick={attach}
-            onClose={() => {
-              setSelectorOpen(false);
-              setAdvancedOpen(false);
-            }}
-          />
-          {/* 高级回退入口收进选择器面板底部:裸 rel 表单不再与主路径并列常驻。 */}
-          <button
-            type="button"
-            data-testid="thread-add-material-advanced"
-            data-nav="local:thread-add-material-advanced"
-            aria-expanded={advancedOpen}
-            disabled={busy}
-            onClick={() => setAdvancedOpen((open) => !open)}
-            className="text-xs text-muted-foreground underline-offset-2 hover:underline disabled:opacity-60"
-          >
-            高级:手动填写
-          </button>
-        </>
-      )}
-      {/* 高级回退:合同声明的原始表单(类别 + 裸 rel)原样可达,零行为改动。 */}
-      {advancedOpen && (
-        <div data-testid="thread-add-material-advanced-form">
-          <ActionRunner
-            rel={rel}
-            action={action}
-            submit={threadSubmit}
-            onExecuted={onExecuted}
-            blocked={blocked}
-            blockReason={blockReason}
-          />
-        </div>
-      )}
-      {failure !== null && (
-        <p
-          role="alert"
-          data-testid="thread-add-material-failure"
-          className="text-xs text-destructive"
-        >
-          {failure}
         </p>
       )}
     </div>

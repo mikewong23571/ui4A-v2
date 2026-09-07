@@ -20,6 +20,7 @@ import {
   createThreadFixture,
   expectAssistantTurnFailed,
   memberCard,
+  openMaterialPreview,
   runId,
   saveShot,
   sendChatGoal,
@@ -127,14 +128,21 @@ test.describe('work-thread-workspace', () => {
       await expect(duty).toBeVisible();
       await expect(duty).toHaveAttribute('data-word', 'member-card');
       await expect(duty.getByRole('button', { name: '批准' })).toBeVisible();
-      const material = memberCard(page, 'articles');
-      await expect(material).toBeVisible();
-      await expect(material).toHaveAttribute('data-word', 'member-row');
+      await expect(memberCard(page, 'articles')).toHaveCount(0);
+      await expect(memberCard(page, 'comment:c1')).toHaveCount(0);
+      const material = await openMaterialPreview(page, 'articles');
+      await expect(material).toHaveAttribute('data-work-member', 'articles');
       await expect(material.getByRole('button')).toHaveCount(0);
+      const dialog = page.getByTestId('work-materials-dialog');
+      await dialog.getByRole('button', { name: '返回列表' }).click();
+      await dialog
+        .locator('[data-work-material="comment:c1"] [data-nav="local:material-preview"]')
+        .click();
       await expect(memberCard(page, 'comment:c1')).toBeVisible();
+      await dialog.getByRole('button', { name: '关闭', exact: true }).click();
       // 身份行(archive · 由 agent 提议)在待决责任卡内可读(已决卡同式身份,
       // 以 data-rel 定位区分,见上方 duty/material 断言)。
-      await expect(duty).toContainText('archive · 由 agent 提议');
+      await expect(duty).toContainText(/archive.*由 agent 提议/);
       await saveShot(page, 'p4-us01-thread-overview-full');
     });
     await cleanupNotifyWorkflows();
@@ -230,24 +238,39 @@ test.describe('work-thread-workspace', () => {
       await createThreadFixture(page, thread);
       await page.setViewportSize({ width: 1440, height: 900 });
       await page.goto(`${SCENARIO_BASE}/canvas?thread=${thread}&focus=thread%3A${thread}`);
-      // 「相关材料」入口(FR4)默认收起;展开覆盖层进 X(articles,context 成员)。
-      const materials = page.getByRole('button', { name: /相关材料/ });
-      await expect(materials).toHaveAttribute('aria-expanded', 'false');
-      await materials.click();
-      await page.locator('[data-desk-entry="articles"] a').click();
-      await expect(page).toHaveURL(new RegExp(`thread=${thread}&focus=articles`));
-      // 选中即关覆盖层(不自动打开下一条材料)。
-      await expect(page.getByTestId('thread-materials-dialog')).toHaveCount(0);
+      // 材料入口默认收起；显式预览后可进入 X 的完整对象面。
+      await expect(page.getByTestId('work-materials-dialog')).toHaveCount(0);
+      const material = await openMaterialPreview(page, 'articles');
+      await material.locator('a[data-nav="presentation:work-member"]').click();
+      await expect(page).toHaveURL(
+        (url) =>
+          url.searchParams.get('thread') === thread && url.searchParams.get('focus') === 'articles',
+      );
+      await expect(page.getByTestId('work-materials-dialog')).toHaveCount(0);
       // 再进 Y(article-drafting:main,active 成员):URL 保留 thread。
-      await page.getByRole('button', { name: /相关材料/ }).click();
-      await page.locator('[data-desk-entry="article-drafting:main"] a').click();
-      await expect(page).toHaveURL(new RegExp(`thread=${thread}&focus=article-drafting%3Amain`));
+      await page.getByRole('link', { name: '返回本线' }).click();
+      await memberCard(page, 'article-drafting:main')
+        .locator('a[data-nav="presentation:work-member"]')
+        .click();
+      await expect(page).toHaveURL(
+        (url) =>
+          url.searchParams.get('thread') === thread &&
+          url.searchParams.get('focus') === 'article-drafting:main',
+      );
       // 「返回本线」客户端导航回概览,线保留(US01)。
       await page.getByRole('link', { name: '返回本线' }).click();
-      await expect(page).toHaveURL(new RegExp(`thread=${thread}&focus=thread%3A${thread}`));
+      await expect(page).toHaveURL(
+        (url) =>
+          url.searchParams.get('thread') === thread &&
+          url.searchParams.get('focus') === `thread:${thread}`,
+      );
       // 浏览器后退:回到 Y 且 thread 不丢(US07;客户端导航历史)。
       await page.goBack();
-      await expect(page).toHaveURL(new RegExp(`thread=${thread}&focus=article-drafting%3Amain`));
+      await expect(page).toHaveURL(
+        (url) =>
+          url.searchParams.get('thread') === thread &&
+          url.searchParams.get('focus') === 'article-drafting:main',
+      );
     });
   });
 
@@ -270,15 +293,19 @@ test.describe('work-thread-workspace', () => {
 
       // X(articles):常显条随客户端导航更新 → 提问(LLM 未配置 → 诚实失败,
       // user 消息的 clientView 真实落账)。
-      await page.getByRole('button', { name: /相关材料/ }).click();
-      await page.locator('[data-desk-entry="articles"] a').click();
+      const material = await openMaterialPreview(page, 'articles');
+      await material.locator('a[data-nav="presentation:work-member"]').click();
+      await expect(page.getByTestId('work-content')).toHaveCount(0);
       await expect(strip).toHaveAttribute('data-focus', 'articles');
       await sendChatGoal(page, 'X 处提问:这篇文章讲什么?');
       await expectAssistantTurnFailed(page);
 
       // Y(article-drafting:main):URL、常显条、下一步发送的 clientView 同源一致。
-      await page.getByRole('button', { name: /相关材料/ }).click();
-      await page.locator('[data-desk-entry="article-drafting:main"] a').click();
+      await page.getByRole('link', { name: '返回本线' }).click();
+      await memberCard(page, 'article-drafting:main')
+        .locator('a[data-nav="presentation:work-member"]')
+        .click();
+      await expect(page.getByTestId('work-content')).toHaveCount(0);
       await expect(strip).toHaveAttribute('data-focus', 'article-drafting:main');
       await sendChatGoal(page, 'Y 处提问:向导停在哪一步?');
       await expectAssistantTurnFailed(page);

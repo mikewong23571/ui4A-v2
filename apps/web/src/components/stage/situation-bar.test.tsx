@@ -23,6 +23,12 @@ vi.mock('@/presence/location', () => ({
 
 import { SituationBar } from './situation-bar';
 
+it('describes an observed collection selection without claiming the user selected it', () => {
+  location.observation.focus = { selection: ['inbox', 'threads-current', 'delegations-current'] };
+  render(<SituationBar />);
+  expect(screen.queryByText('已选 3 个对象')).toBeNull();
+});
+
 afterEach(() => {
   cleanup();
   vi.unstubAllGlobals();

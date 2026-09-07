@@ -261,6 +261,7 @@ describe('ThreadDesk(书桌目录)', () => {
     expect(panel.textContent).toContain('todos');
     // 已挂对象(context 成员 todo:t35 不在 todos 集合,但选择器应标注已在本线的成员)
     fireEvent.click(screen.getByTestId('desk-selector-pick:todo:buy'));
+    fireEvent.click(screen.getByTestId('desk-selector-add'));
     await waitFor(() =>
       expect(execCalls).toEqual([
         {
@@ -279,7 +280,7 @@ describe('ThreadDesk(书桌目录)', () => {
         (screen.getByTestId('desk-selector-pick:todo:buy') as HTMLButtonElement).disabled,
       ).toBe(true),
     );
-    expect(screen.getByTestId('desk-selector-pick:todo:buy').textContent).toContain('已在本线');
+    expect(screen.getByText('已添加')).toBeTruthy();
   });
 
   it('exec 拒绝如实呈现(role=alert),不伪造成功', async () => {

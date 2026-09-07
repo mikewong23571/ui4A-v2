@@ -1,17 +1,5 @@
 // @vitest-environment jsdom
-/**
- * G07 材料入口收敛:非书桌宿主(首页工作线区/实体页)的「添加关联」。
- *
- * - 主路径 = 授权发现选择器(与书桌同一 ObjectSelectorPanel):点击候选经
- *   宿主 submit 适配器提交 attach(category 缺省 context),成功后失效线缓存
- *   并广播 THREAD_UPDATED_EVENT;
- * - 裸 rel RJSF 表单仅为「高级」回退:默认不可见,展开后合同字段(类别/rel)
- *   原样可达,同一提交适配器;
- * - 已在本线的候选禁选(重复不可提交);本组件只提交 attach,移出不删除对象
- *   本身(合同 detach 语义由既有入口承担);
- * - guard blocked 投影为 disabled + 原因 status。
- */
-import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import type { SirenAction, SirenEntity } from '@ui4a/engine';
@@ -20,6 +8,14 @@ import { ThreadMaterialAdd } from './thread-material-add';
 import type { ActionSubmit } from './action-submit';
 import { THREAD_UPDATED_EVENT } from '../canvas/desk/thread-desk-shared';
 import { EntityCacheProvider } from '../entity-cache-provider';
+
+it('retains other declared reference categories behind a secondary form', async () => {
+  renderMaterialAdd({ 'thread:t1': threadEntity([]), todos: todosCollection() }, vi.fn());
+  fireEvent.click(screen.getByTestId('thread-add-material'));
+  fireEvent.click(await screen.findByText('其他关联'));
+  fireEvent.click(screen.getByRole('button', { name: '添加关联' }));
+  expect(await screen.findByRole('combobox', { name: /类别/ })).toBeTruthy();
+});
 
 const attachAction: SirenAction = {
   name: 'attach',
@@ -158,6 +154,8 @@ describe('ThreadMaterialAdd(材料入口收敛)', () => {
     expect(screen.queryByLabelText(/关联对象/)).toBeNull();
     fireEvent.click(screen.getByTestId('thread-add-material'));
     fireEvent.click(await screen.findByTestId('desk-selector-pick:todo:buy'));
+    expect(submit).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByTestId('desk-selector-add'));
 
     await waitFor(() =>
       expect(submit).toHaveBeenCalledWith({
@@ -174,7 +172,7 @@ describe('ThreadMaterialAdd(材料入口收敛)', () => {
         (screen.getByTestId('desk-selector-pick:todo:buy') as HTMLButtonElement).disabled,
       ).toBe(true),
     );
-    expect(screen.getByTestId('desk-selector-pick:todo:buy').textContent).toContain('已在本线');
+    expect(screen.getByText('已添加')).toBeTruthy();
     window.removeEventListener(THREAD_UPDATED_EVENT, updated);
   });
 
@@ -191,41 +189,35 @@ describe('ThreadMaterialAdd(材料入口收敛)', () => {
     fireEvent.click(screen.getByTestId('thread-add-material'));
     const attached = await screen.findByTestId('desk-selector-pick:todo:buy');
     expect((attached as HTMLButtonElement).disabled).toBe(true);
-    expect(attached.textContent).toContain('已在本线');
+    expect(screen.getByText('已添加')).toBeTruthy();
     expect(submit).not.toHaveBeenCalled();
   });
 
-  it('裸 rel 表单仅为高级回退:默认收起,展开后合同字段原样可达并走同一适配器', async () => {
-    const store: Record<string, SirenEntity> = { 'thread:t1': threadEntity([]) };
-    const submit = vi.fn(async () => ({
-      ok: true as const,
-      entity: threadEntity([]),
-    })) as unknown as ActionSubmit;
-    renderMaterialAdd(store, submit);
-
-    // 高级未展开:无裸 rel 文本框;入口收在选择器面板底部。
-    expect(screen.queryByLabelText(/关联对象/)).toBeNull();
+  it('opens an accessible dialog with its target title and restores trigger focus on Escape', async () => {
+    renderMaterialAdd({ 'thread:t1': threadEntity([]), todos: todosCollection() }, vi.fn());
+    const trigger = screen.getByTestId('thread-add-material');
+    trigger.focus();
+    fireEvent.click(trigger);
+    const dialog = await screen.findByRole('dialog', { name: attachAction.title });
+    expect(await screen.findByText('完成跨应用评审闭环')).toBeTruthy();
     expect(screen.queryByTestId('thread-add-material-advanced')).toBeNull();
-    fireEvent.click(screen.getByTestId('thread-add-material'));
-    fireEvent.click(await screen.findByTestId('thread-add-material-advanced'));
-    // 原始通用表单(ActionRunner)原样呈现:触发键 → RJSF 字段(高级区域内唯一)。
-    const advancedForm = await screen.findByTestId('thread-add-material-advanced-form');
-    fireEvent.click(within(advancedForm).getByRole('button', { name: '添加关联' }));
-    const relInput = (await within(advancedForm).findByLabelText(/关联对象/)) as HTMLInputElement;
-    fireEvent.change(relInput, { target: { value: 'idea:ux0905' } });
-    // RJSF v6 enum select 的 DOM value 是选项下标(indexed),变更后解码回真值。
-    fireEvent.change(within(advancedForm).getByLabelText(/类别/), { target: { value: '0' } });
-    fireEvent.click(
-      advancedForm.querySelector('button[type="submit"][data-action="attach"]')!,
-    );
+    fireEvent.keyDown(dialog, { key: 'Escape' });
+    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
+    expect(document.activeElement).toBe(trigger);
+  });
 
-    await waitFor(() =>
-      expect(submit).toHaveBeenCalledWith({
-        rel: 'thread:t1',
-        action: attachAction,
-        params: { category: 'context', rel: 'idea:ux0905' },
-      }),
-    );
+  it('keeps a failed target read out of selection and allows retry without writing', async () => {
+    const store: Record<string, SirenEntity> = { todos: todosCollection() };
+    const submit = vi.fn();
+    renderMaterialAdd(store, submit);
+    fireEvent.click(screen.getByTestId('thread-add-material'));
+    expect(await screen.findByText('暂时无法读取工作线')).toBeTruthy();
+    expect(screen.queryByTestId('desk-selector')).toBeNull();
+    store['thread:t1'] = threadEntity(['todo:buy']);
+    fireEvent.click(screen.getByRole('button', { name: '重试' }));
+    const item = await screen.findByTestId('desk-selector-pick:todo:buy');
+    expect((item as HTMLInputElement).disabled).toBe(true);
+    expect(submit).not.toHaveBeenCalled();
   });
 
   it('guard blocked 投影为触发键 disabled + 原因 status', () => {

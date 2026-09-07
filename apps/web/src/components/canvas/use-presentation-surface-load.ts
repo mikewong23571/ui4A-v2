@@ -133,7 +133,7 @@ export function usePresentationSurfaceLoad(parameters: PresentationSurfaceParame
     };
   }, [cache, scopeParam]);
 
-  useContractRefresh(reloadRef);
+  const holdPresentation = useContractRefresh(reloadRef);
 
   // Sidecar 个人视图操作(pin/revert/patch/explain/promote)与元信息状态:
   // 搬到 use-sidecar-actions;revert 后的整面重载经 reloadRef 触发(同拦截门口径)。
@@ -593,5 +593,6 @@ export function usePresentationSurfaceLoad(parameters: PresentationSurfaceParame
     promoteSidecar,
     load,
     surfaceSubmit,
+    holdPresentation,
   };
 }

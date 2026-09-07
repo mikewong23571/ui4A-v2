@@ -32,6 +32,7 @@ import { FormWord } from '../words/form';
 import { KanbanWord } from '../words/kanban';
 import { usePresentationHeadingLevel } from './heading-level';
 import { MemberRowWord } from '../words/member-row';
+import { WorkContentWord } from '../words/work-content/work-content';
 import { MemberCardWord } from '../words/member-card';
 import { MemberTableWord } from '../words/member-table';
 import { EmptyStateWord } from '../words/empty-state';
@@ -146,6 +147,15 @@ const wordImplementations: ReactComponentImplementation[] = [
     'timeline',
     { events: dynamic(z.array(z.any())), caption: dynamic(z.string()).optional() },
     TimelineWord,
+  ),
+  wordImplementation(
+    'work-content',
+    {
+      entities: dynamic(z.array(z.any())),
+      entity: dynamic(z.any()),
+      links: dynamic(z.array(z.any())).optional(),
+    },
+    WorkContentWord,
   ),
   wordImplementation('flow', { graph: dynamic(z.any()) }, FlowWord),
   wordImplementation('form', { entity: dynamic(z.any()) }, FormWord),

@@ -93,7 +93,7 @@ describe('Security slice generic presentation', () => {
       expect.objectContaining({
         properties: expect.objectContaining({
           rel: 'cve:CVE-2026-0001',
-          identity: '受控参考漏洞（非实时情报）',
+          identity: 'CVE-2026-0001',
           status: 'enriching',
         }),
       }),

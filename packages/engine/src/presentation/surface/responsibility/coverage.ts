@@ -134,6 +134,12 @@ export function validateResponsibilityCoverage(
       )
         return;
       const pattern = definition.pattern;
+      // The work-content word keeps every explicit responsibility visible, including nested
+      // responsibilities reached through supporting members; only references are disclosed.
+      if (pattern === 'work-content' && node.bindings.entities?.kind === 'entities') {
+        const source = entities.get(node.bindings.entities.subject);
+        if (source !== undefined && Array.isArray(values.entities)) coverNested(source);
+      }
       if (item !== undefined && itemBinding(node, 'rel', 'properties.rel')) {
         const rel = canonicalRel(item);
         const row =

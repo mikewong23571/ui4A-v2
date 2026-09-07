@@ -10,6 +10,8 @@ import {
 
 import { threadInputRel } from './work-thread-input';
 import { flowForInstance } from '../execution/judge';
+import { mergeFieldDefinitions } from '../contract/schema';
+import { resolveCollectionOwnership } from '../contract/collection-ownership';
 
 import type { ActionDefinition } from '../core/types';
 import { entityHref, toSirenAction } from '../contract/siren/build';
@@ -91,14 +93,14 @@ const referenceFields: ActionDefinition['fields'] = [
 // 引用(边)操作,与生命周期(节点)操作在渲染层分组,任务语统一「关联」词表。
 export const THREAD_ATTACH_ACTION: ActionDefinition = {
   name: 'attach',
-  title: '添加关联',
+  title: '添加材料',
   ...noNodeFields,
   fields: referenceFields,
 };
 
 export const THREAD_DETACH_ACTION: ActionDefinition = {
   name: 'detach',
-  title: '移出关联',
+  title: '移出',
   ...noNodeFields,
   fields: referenceFields,
 };
@@ -241,7 +243,7 @@ const THREAD_STATUS_TITLES: Readonly<Record<ThreadStatus, string>> = {
  */
 const THREAD_COGNITIVE_DECLARATION: CognitiveSemanticsDeclarationV1 = {
   version: 1,
-  traits: ['human-responsibility', 'work-queue'],
+  traits: ['human-responsibility', 'work-queue', 'work-context'],
   groupRole: 'responsibility',
   emptyMeaning: 'ready-to-start',
 };
@@ -249,14 +251,36 @@ const THREAD_COGNITIVE_DECLARATION: CognitiveSemanticsDeclarationV1 = {
 /** 被引用对象的一行业务身份:实例取声明字段(identity/title;fields 是带 origin
  * 的 FieldValue,经 fieldValues 解包),其余取既有投影 identity。解析不出时
  * 返回 undefined——调用方决定兜底(导航成员回退 rel,来源显示干净省略)。 */
-function resolvedReferenceLabel(rel: string, snapshot: EngineSnapshot): string | undefined {
+function resolvedReferenceLabel(
+  rel: string,
+  snapshot: EngineSnapshot,
+  deps: ProjectDeps,
+): string | undefined {
   const instance = snapshot.instances[rel];
   if (instance !== undefined) {
     const fields = fieldValues(instance.fields);
+    const flow = flowForInstance(deps, instance);
+    const node = flow?.nodes.find((entry) => entry.name === instance.node);
+    const definitions = mergeFieldDefinitions(flow?.fields ?? [], node?.fields ?? []);
+    const candidates = [
+      ...definitions.filter((field) => field.presentation?.role === 'identity'),
+      ...definitions.filter(
+        (field) => field.presentation?.role === 'primary-content' || field.presentation?.overview,
+      ),
+    ];
+    for (const field of candidates) {
+      const value = fields[field.name];
+      if (typeof value === 'string' && value.trim() !== '') return value.trim();
+      if (typeof value === 'number' || typeof value === 'boolean') return String(value);
+    }
     const declared = fields['identity'];
     if (typeof declared === 'string' && declared.trim() !== '') return declared.trim();
     const title = fields['title'];
     if (typeof title === 'string' && title.trim() !== '') return title.trim();
+  }
+  if (rel in snapshot.collections) {
+    const title = resolveCollectionOwnership(Object.values(deps.flows)).get(rel)?.title;
+    if (title) return title;
   }
   const delegation = snapshot.delegations?.[rel];
   if (delegation !== undefined) return delegation.goal.verb;
@@ -273,8 +297,8 @@ function resolvedReferenceLabel(rel: string, snapshot: EngineSnapshot): string |
   return undefined;
 }
 
-function referenceIdentity(rel: string, snapshot: EngineSnapshot): string {
-  return resolvedReferenceLabel(rel, snapshot) ?? rel;
+function referenceIdentity(rel: string, snapshot: EngineSnapshot, deps: ProjectDeps): string {
+  return resolvedReferenceLabel(rel, snapshot, deps) ?? rel;
 }
 
 /**
@@ -311,7 +335,7 @@ function threadMemberCard(
     class: ['thread-reference', ...(pointer.dangling ? ['dangling'] : [])],
     properties: {
       rel,
-      identity: referenceIdentity(rel, snapshot),
+      identity: referenceIdentity(rel, snapshot, deps),
       // 机器状态与声明标签分别携带;外部日志材料由授权读取层完成解析。
       // 无状态的归属(集合/工件)省略 status。
       ...(pointer.dangling
@@ -329,7 +353,9 @@ function threadMemberCard(
               ? pending.status === 'pending'
                 ? ['human-responsibility']
                 : ['human-responsibility', 'task-history']
-              : ['work-queue'],
+              : category === 'context'
+                ? ['supporting-context']
+                : ['work-queue'],
         },
       }),
     },
@@ -360,16 +386,12 @@ export function projectWorkThread(
   );
   // F-08/T40 来源可读物优先:goal.source 是规范审计引用,可解析为合同指代时
   // 投影任务语,不可解析(chat/message UUID 等)干净省略——裸标识只在 raw 层。
-  const goalSourceText = resolvedReferenceLabel(thread.goal.source, snapshot);
+  const goalSourceText = resolvedReferenceLabel(thread.goal.source, snapshot, deps);
   // D54 单一落点:fields 读字段声明 + 版本化认知声明(D78 决定 2)合并为
   // version:1 presentation;渲染器只消费语义,零 class/rel 分支。
   const threadFields: SirenFieldPresentation[] = [
     { path: 'properties.identity', title: '目标', role: 'identity' },
     { path: 'properties.statusText', title: '状态', role: 'status' },
-    { path: 'properties.resume', title: '上次停在哪', role: 'primary-content' },
-    ...(goalSourceText === undefined
-      ? []
-      : [{ path: 'properties.goalSourceText', title: '目标来源', role: 'metadata' as const }]),
   ];
   const presentation = projectCognitiveSemantics({
     declaration: THREAD_COGNITIVE_DECLARATION,

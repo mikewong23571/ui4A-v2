@@ -262,7 +262,6 @@ describe('T56 S1 探针:Work Thread 合同与呈现链路现状', () => {
     expect(presentation.fields?.map((field) => field.path)).toEqual([
       'properties.identity',
       'properties.statusText',
-      'properties.resume',
     ]);
     // 创建原文由 source link 独立回读，不在主内容重复目标。
     expect(entity!.properties).not.toHaveProperty('goalSourceText');
@@ -420,25 +419,25 @@ describe('T56 S1 探针:Work Thread 合同与呈现链路现状', () => {
     const boundPaths = nodes.flatMap((node) => node.bindings ?? []).map((binding) => binding.ref);
     expect(boundPaths).toContain('property:properties.identity');
     expect(boundPaths).toContain('property:properties.statusText');
-    expect(boundPaths).toContain('property:properties.resume');
+    expect(boundPaths).not.toContain('property:properties.resume');
     expect(boundPaths.some((ref) => ref.startsWith('actions:'))).toBe(true);
     expect(boundPaths.some((ref) => ref.startsWith('links:'))).toBe(true);
-    const repeat = nodes.find((node) => node.kind === 'repeat');
-    expect(repeat).toBeDefined();
+    const work = nodes.find((node) => node.kind === 'word' && node.word === 'work-content');
+    expect(work).toBeDefined();
     // P1.2(D78 决定 2):active/approval 角色成员卡经 entities 进 repeat 区
     //(状态指针数组本身不作为 property 词位绑定——成员事实由 item 绑定 + deref 携带)。
     expect(boundPaths.some((ref) => ref.startsWith('property:properties.active'))).toBe(false);
     expect(boundPaths.some((ref) => ref.startsWith('property:properties.approval'))).toBe(false);
     // 通用行携带逐成员认知/动作,由同一词汇区分普通材料与知情决定面。
-    const memberWord = nodes.find((node) => node.kind === 'word' && node.word === 'member-row');
+    const memberWord = work;
     expect(memberWord?.bindings).toEqual(
       expect.arrayContaining([
-        { kind: 'cognitive', ref: 'item:properties.presentation' },
-        { kind: 'members', ref: 'item:entities' },
-        { kind: 'actions', ref: 'item:actions' },
+        { kind: 'entities', ref: `entities:${threadRel}` },
+        { kind: 'actions', ref: `actions:${threadRel}` },
+        { kind: 'links', ref: `links:${threadRel}` },
       ]),
     );
-    expect(repeat!.role).toBe('primary-content');
+    expect(work!.role).toBe('primary-content');
     const entity = await getEngine(pool).then((engine) => engine.getEntity(threadRel));
     const pendingMember = entity!.entities!.find(
       (member) =>
@@ -454,12 +453,12 @@ describe('T56 S1 探针:Work Thread 合同与呈现链路现状', () => {
     );
     expect(materialMember?.properties.presentation).toMatchObject({
       version: 1,
-      traits: ['work-queue'],
+      traits: ['supporting-context'],
     });
     const presentation = entity!.properties.presentation as Record<string, unknown>;
     // P1.2(D78 决定 2/D54 单一落点):version:1 认知声明经服务层同合同可见。
     expect(presentation.version).toBe(1);
-    expect(presentation.traits).toEqual(['human-responsibility', 'work-queue']);
+    expect(presentation.traits).toEqual(['human-responsibility', 'work-queue', 'work-context']);
     expect(presentation.groupRole).toBe('responsibility');
     expect(presentation.emptyMeaning).toBe('ready-to-start');
   });

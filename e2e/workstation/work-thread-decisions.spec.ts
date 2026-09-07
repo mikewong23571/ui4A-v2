@@ -126,13 +126,13 @@ test.describe('work-thread decisions', () => {
       // 普通 active 对象采用摘要行;以 canonical data-rel 锚定同一成员。
       const activeCard = memberCard(page, 'article-drafting:main');
       await expect(activeCard).toBeVisible();
-      await expect(activeCard).toHaveAttribute('data-word', 'member-row');
+      await expect(activeCard).toHaveAttribute('data-work-member', 'article-drafting:main');
       await expect(activeCard).toContainText('基本信息');
 
       // 在注视面执行 active 对象的声明动作(参数表单默认收起,先开表单;
       // 节点字段 title 必填;human 常规动作零确认)。
-      await page.getByRole('button', { name: /相关材料/ }).click();
-      await page.locator('[data-desk-entry="article-drafting:main"] a').click();
+      await activeCard.locator('a[data-nav="presentation:work-member"]').click();
+      await expect(page.getByTestId('work-content')).toHaveCount(0);
       const next = page.locator('[data-action-group-item="next"]');
       await next.locator('button[data-presentation-action="open-form"]').click();
       // 短任务表单挂在 Dialog portal；以该声明动作的标题定位精确宿主。
@@ -148,7 +148,7 @@ test.describe('work-thread decisions', () => {
       await expect(memberCard(page, 'article-drafting:main')).toContainText('分类', {
         timeout: 15_000,
       });
-      await expect(page.locator('main')).toContainText('停在「classification」');
+      await expect(page.locator('main')).not.toContainText('停在「classification」');
       await saveShot(page, 'p4-us03-overview-updated');
     });
   });

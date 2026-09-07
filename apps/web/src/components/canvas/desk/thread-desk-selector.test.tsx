@@ -178,8 +178,8 @@ describe('ObjectSelectorPanel 候选标题(G07 DoD2:可区分、声明驱动)', 
       },
       [{ rel: 'statics', title: '静态评审', collection: true }],
     );
-    const first = await screen.findByTestId('desk-selector-pick:static:a');
-    const second = screen.getByTestId('desk-selector-pick:static:b');
+    const first = await screen.findByTestId('desk-selector-preview:static:a');
+    const second = screen.getByTestId('desk-selector-preview:static:b');
     expect(first.textContent).toContain('static:a');
     expect(second.textContent).toContain('static:b');
     expect(first.textContent).not.toContain('静态评审');
@@ -200,7 +200,7 @@ describe('ObjectSelectorPanel 授权读面与已添加约束(G07 DoD3/DoD4)', ()
     );
     const attached = await screen.findByTestId('desk-selector-pick:comment:c1');
     expect((attached as HTMLButtonElement).disabled).toBe(true);
-    expect(attached.textContent).toContain('已在本线');
+    expect(screen.getByText('已添加')).toBeTruthy();
     expect(
       (screen.getByTestId('desk-selector-pick:comment:c2') as HTMLButtonElement).disabled,
     ).toBe(false);
