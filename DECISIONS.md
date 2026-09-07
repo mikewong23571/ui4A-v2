@@ -1747,3 +1747,12 @@
 - 应用更正仍经 Governed Draft 与 human-only activation；新代码 bundle 不可静默覆盖已激活定义，也不修改旧实例出生版本。部署授权不替代业务批准，必要时交付待批准候选及明确未生效边界。
 
 - T59 捕捉定义修订的校验补正：既有 todo-capture 含不可达终态 done，候选不能通过 terminal-reachable。仅在候选中声明 recorded#retire（high，“停用此捕捉入口”）通达既有终态，终态标题明确已停用；不是普通“结束记录”，不自动执行、不重建单例、不改已有待办。再记一条仍为循环主路径并清空输入。其额外语义必须出现在 Draft 的机械差异及人类批准说明中。
+
+
+## D81 未编辑工作副本与已批准完整候选的原子交接（2026-09-07，T59现场恢复）
+
+- 现场事实：经典定义 revise 只建立当前版本的未编辑工作副本；随后完整 Governed Draft 批准计划只校验版本，事务提交 candidate+draft-accepted 后才调用 fold，fold要求生命周期active而抛错，造成合法批准已落账但全局读取无法重放。事前纯应用必须成为事务提交的必要条件，不能在commit后才发现事件不可应用。
+- 单一交接语义：除active外，仅允许**未编辑的当前版本工作副本**接受精确基线的完整已批准候选。要求 lifecycle=draft、entry.status=draft、entry.version=baseVersion、bornBy=baseVersion、不可变基线存在、工作副本与基线结构完全相等、同流程没有其他pending审批；仍执行human决定、名称、payload SHA256、artifact、下一版本、checks与重复激活校验。已编辑/校验中/待审批/驳回/废弃工作副本继续拒绝，不覆盖他人的未提交改动。不得按特定应用、事件seq或Draft id特判。
+- 同一candidate事件原子更新definition、version registry、activation及lifecycle.node=active；不修改旧实例bornVersion。请求期在锁内先完整纯应用，失败事务零candidate/accepted事件；重放用同一纯函数。拒绝必须有结构化可恢复结果，不能让错误事件提交后使全站不可读。
+- 已保存的human批准记录不删除、不跳过、不重写；新的单一交接语义可确定性重放原本未编辑副本上的批准。上线前备份并离线重放现有日志确认只影响该交接条件；任何非未编辑副本仍失败而不得扩大恢复口径。
+- 这不是把批准权交给agent。此次用户明确指示通过已登录浏览器代操作指定两份批准，页面两步确认按凭证合同执行；不注入actor或绕过服务端规则。

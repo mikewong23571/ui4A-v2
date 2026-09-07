@@ -25,3 +25,8 @@
 - [x] Task: 浏览器复验原消息、新消息、导航、移出、表单、状态与真实模型；补窄屏与缩放。
 - [x] Task: 同步 DEPLOYMENT.local.md 至 home 并比较 SHA256；更新 evidence/release/registry（待批准，未创建完整DONE）。
 - [x] Task: Phase Verification & Checkpoint：交付0230c8db与未解决边界；定义批准任务保持开放。
+
+## P4 批准现场恢复（用户明确授权浏览器代批准）
+- [~] Task: D81 未编辑副本交接 + 事务追加前完整纯应用；真实日志离线重放与负例。
+- [ ] Task: 发布恢复版本并验证全站读取、首个已提交批准、第二份页面批准。
+- [ ] Task: 验证新待办定义生效与旧出生版本边界；同步部署记录及最终交付。
