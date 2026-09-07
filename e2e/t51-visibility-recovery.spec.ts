@@ -62,7 +62,9 @@ test('approve 即披露:批准者在同一页面看到可见性回执并直达�
       .getByRole('combobox', { name: /kind/ })
       .selectOption({ label: 'application-bundle' });
     await form.getByRole('textbox', { name: /target/ }).fill(bundleName);
-    await form.getByRole('textbox', { name: /payload/ }).fill(bundlePayloadJson(bundleName, appTitle));
+    await form
+      .getByRole('textbox', { name: /payload/ })
+      .fill(bundlePayloadJson(bundleName, appTitle));
     await form.locator('button[type="submit"]').click();
     await expect(page.getByRole('status', { name: '执行结果' })).toBeVisible({ timeout: 30_000 });
     const member = page.locator('a[data-nav="meta:collection-member"]', { hasText: bundleName });
@@ -72,9 +74,10 @@ test('approve 即披露:批准者在同一页面看到可见性回执并直达�
     await expect(page.getByTestId('meta-content-ready')).toBeVisible({ timeout: 60_000 });
 
     await page.locator('button[data-action="submit"]').click();
-    await expect(
-      page.getByRole('main').locator('header').first(),
-    ).toContainText('pending-approval', { timeout: 15_000 });
+    await expect(page.getByRole('main').locator('header').first()).toContainText(
+      'pending-approval',
+      { timeout: 15_000 },
+    );
   });
 
   let draftId = '';
@@ -88,7 +91,7 @@ test('approve 即披露:批准者在同一页面看到可见性回执并直达�
     await expect(page.getByRole('region', { name: '人类责任点' })).toBeVisible();
 
     await page.getByRole('button', { name: 'Approve', exact: true }).click();
-    await expect(page.getByRole('status').filter({ hasText: '已请求' })).toBeVisible();
+    await expect(page.getByRole('status').filter({ hasText: '尚未发送请求' })).toBeVisible();
     await page.getByRole('button', { name: '确认并执行Approve' }).click();
     await expect(page.getByRole('status', { name: '执行结果' })).toBeVisible({ timeout: 30_000 });
 
@@ -98,9 +101,10 @@ test('approve 即披露:批准者在同一页面看到可见性回执并直达�
     await expect(disclosure).toContainText('安装结果与你的会话授权');
     await expect(disclosure).toContainText(bundleName);
     await expect(disclosure).toContainText('已对当前会话可见');
-    await expect(
-      disclosure.getByRole('link', { name: '前往应用目录' }),
-    ).toHaveAttribute('href', '/applications');
+    await expect(disclosure.getByRole('link', { name: '前往应用目录' })).toHaveAttribute(
+      'href',
+      '/applications',
+    );
   });
 
   await test.step('应用目录:新应用可见,措辞诚实(US1.3/US4)', async () => {

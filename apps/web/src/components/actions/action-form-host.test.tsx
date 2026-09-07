@@ -113,13 +113,13 @@ it('Escape cancels a fieldless confirmation request inside a disclosure even whe
   const trigger = screen.getByRole('button', { name: '独立任务' });
   fireEvent.click(trigger);
   expect(screen.queryByRole('dialog')).toBeNull();
-  expect(screen.getByRole('status').textContent).toContain('尚未执行');
+  expect(screen.getByRole('status').textContent).toContain('尚未发送请求');
   fireEvent.keyDown(screen.getByRole('button', { name: '确认并执行独立任务' }), { key: 'Escape' });
   expect(disclosure.getAttribute('aria-expanded')).toBe('true');
   expect(screen.queryByRole('status')).toBeNull();
   expect(document.activeElement).toBe(trigger);
   fireEvent.click(trigger);
-  expect(screen.getByRole('status').textContent).toContain('尚未执行');
+  expect(screen.getByRole('status').textContent).toContain('尚未发送请求');
   expect(submit).not.toHaveBeenCalled();
 });
 

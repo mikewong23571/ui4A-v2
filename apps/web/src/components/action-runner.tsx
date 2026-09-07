@@ -5,7 +5,7 @@
  * - 有 fields(参数 schema 属性非空)→ 可取消、可重开的 RJSF v6 inline 表单,
  *   schema 即 action.fields；打开/取消是零业务事件的 presentation interaction;
  *   (draft-07,引擎 schema.ts 派生;零硬编码字段——字段集完全由合同声明);
- * - 无 fields → 推送按钮；high-risk 先显式标记“已请求、未执行”，二次确认才
+ * - 无 fields → 推送按钮；high-risk 先展示对象与声明影响，二次确认才
  *   POST /api/exec；业务提交身份固定 human/local-user/renderer;
  * - guard-results 的 blocked 投影为 disabled + title 原因(谓词两投影之一,另一投影给 agent);
  * - 拒绝如实呈现([layer] reason · detail),成功回调 onExecuted 供上层刷新实体;
@@ -27,6 +27,7 @@ import { callerActionSchema, type SirenAction, type SirenEntity } from '@ui4a/en
 
 import type { ExecClientResult } from '@/components/exec-client';
 import { Button } from '@/components/ui/button';
+import { ActionErrorList, localizeActionErrors } from './actions/action-validation-errors';
 import { ActionFormHost } from './actions/action-form-host';
 import {
   FORM_CONTROL_STYLES,
@@ -81,6 +82,8 @@ export interface ActionRunnerProps {
   formHost?: 'inline' | 'dialog';
   /** Explicit destructive semantics from the host, never inferred from confirmation level. */
   tone?: 'danger';
+  /** Declared identity of the current target for informed confirmation. */
+  targetTitle?: string;
 }
 
 export function ActionRunner({
@@ -94,6 +97,7 @@ export function ActionRunner({
   submit: submitAction,
   prefill,
   tone,
+  targetTitle,
   formHost = 'inline',
 }: ActionRunnerProps) {
   const callerSchema = callerActionSchema(action.fields);
@@ -114,6 +118,7 @@ export function ActionRunner({
   const [interaction, setInteraction] = useState<
     'closed' | 'form' | 'requested' | 'executed' | 'pending'
   >('closed');
+  const [attempted, setAttempted] = useState(false);
   const [pendingParams, setPendingParams] = useState<Record<string, unknown> | undefined>();
   const triggerRef = useRef<HTMLButtonElement>(null);
   const receiptRef = useRef<HTMLDivElement>(null);
@@ -147,6 +152,7 @@ export function ActionRunner({
   }
 
   function requestHighRisk(params?: Record<string, unknown>): void {
+    setAttempted(false);
     setPendingParams(params);
     setFailure(null);
     setInteraction('requested');
@@ -155,6 +161,7 @@ export function ActionRunner({
   async function submit(params?: Record<string, unknown>): Promise<void> {
     if (submitLock.current || blocked) return;
     submitLock.current = true;
+    setAttempted(true);
     setSubmitting(true);
     setFailure(null);
     try {
@@ -318,6 +325,8 @@ export function ActionRunner({
         {interaction === 'requested' && (
           <RiskRequest
             action={action}
+            targetTitle={targetTitle ?? rel}
+            attempted={attempted}
             disabled={disabled}
             submitting={submitting}
             onConfirm={() => void submit(pendingParams)}
@@ -361,6 +370,7 @@ export function ActionRunner({
               schema={formSchema}
               uiSchema={formProjection.uiSchema}
               validator={rjsfValidator}
+              transformErrors={localizeActionErrors}
               noHtml5Validate
               onError={() => undefined}
               formData={draft}
@@ -368,6 +378,7 @@ export function ActionRunner({
               templates={{
                 FieldTemplate: RjsfFieldTemplate,
                 FieldErrorTemplate: RjsfFieldErrorTemplate,
+                ErrorListTemplate: ActionErrorList,
               }}
               className={FORM_CONTROL_STYLES}
               // 只提交当前 action schema 声明过的字段(铁律 3 的提交面):
@@ -406,6 +417,8 @@ export function ActionRunner({
         {interaction === 'requested' && (
           <RiskRequest
             action={action}
+            targetTitle={targetTitle ?? rel}
+            attempted={attempted}
             disabled={disabled}
             submitting={submitting}
             onConfirm={() => void submit(pendingParams)}
@@ -425,20 +438,34 @@ export function ActionRunner({
 
 function RiskRequest({
   action,
+  targetTitle,
+  attempted,
   disabled,
   submitting,
   onConfirm,
   onCancel,
 }: {
   action: SirenAction;
+  targetTitle: string;
+  attempted: boolean;
   disabled: boolean;
   submitting: boolean;
   onConfirm: () => void;
   onCancel: () => void;
 }) {
   return (
-    <div className="rounded-md border border-amber-300 bg-amber-50 p-3 text-sm">
-      <p role="status">已请求“{action.title}”，尚未执行。</p>
+    <div className="rounded-md border border-border bg-muted p-3 text-sm">
+      <p className="font-medium">操作对象：{targetTitle}</p>
+      {typeof action.fields.description === 'string' && (
+        <p className="mt-1">{action.fields.description}</p>
+      )}
+      <p role="status" className="mt-1">
+        {submitting
+          ? '正在提交执行…'
+          : attempted
+            ? '尚未取得成功回执；再次确认将重新提交。'
+            : '确认后提交执行；尚未发送请求。'}
+      </p>
       <div className="mt-2 flex flex-wrap gap-2">
         <Button
           type="button"

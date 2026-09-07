@@ -119,6 +119,7 @@ describe('createCanvasActionHandler:exec 后精确失效 + 整面 reload', () =>
     expect(execFn).toHaveBeenCalledTimes(1);
     expect(notify).toHaveBeenCalledWith('动作已执行:publish');
     expect(reload).toHaveBeenCalledTimes(1);
+    expect(reload).toHaveBeenCalledWith('post:p1');
 
     // 失效口径:所属 collection(回链 articles)重取;无关 rel(comments)零重取。
     expect(await handle.get('articles')).not.toBeNull();

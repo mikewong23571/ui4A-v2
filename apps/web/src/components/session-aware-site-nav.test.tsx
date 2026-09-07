@@ -12,7 +12,10 @@ import { SessionAwareSiteNav } from './session-aware-site-nav';
 const requestCookies = vi.hoisted(() => ({ has: vi.fn(), read: vi.fn() }));
 
 vi.mock('next/headers', () => ({ cookies: requestCookies.read }));
-vi.mock('next/navigation', () => ({ usePathname: () => '/' }));
+vi.mock('next/navigation', () => ({
+  usePathname: () => '/',
+  useSearchParams: () => new URLSearchParams(),
+}));
 
 beforeEach(() => {
   requestCookies.has.mockReset();

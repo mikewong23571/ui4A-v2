@@ -3,6 +3,7 @@ export interface LlmConfigOverrides {
   apiKey?: string;
   baseURL?: string;
   model?: string;
+  sessionHeader?: string;
   /**
    * 发送前 provider request UTF-8 JSON 预算(D54.4 机制;D72 修订为可配置):
    * 缺省时依次取 LLM_PROVIDER_REQUEST_BUDGET_BYTES 环境变量与保守默认值。
@@ -14,6 +15,7 @@ export interface LlmRuntimeConfig {
   apiKey: string;
   baseURL: string;
   model: string;
+  sessionHeader?: string;
   requestBudgetBytes: number;
 }
 
@@ -70,10 +72,15 @@ export function resolveLlmConfig(
   };
   const missing = ENV_NAMES.filter((name) => values[name] === undefined);
   if (missing.length > 0) throw new LlmConfigurationError(missing);
+  const sessionHeader = configured(overrides.sessionHeader) ?? configured(env.LLM_SESSION_HEADER);
+  if (sessionHeader !== undefined && !/^x-[a-z0-9-]{1,60}$/i.test(sessionHeader)) {
+    throw new Error('LLM_SESSION_HEADER must be an x- extension header');
+  }
   return {
     apiKey: values.LLM_API_KEY!,
     baseURL: values.LLM_BASE_URL!,
     model: values.LLM_MODEL!,
+    ...(sessionHeader === undefined ? {} : { sessionHeader }),
     requestBudgetBytes: resolveRequestBudgetBytes(overrides.requestBudgetBytes, env),
   };
 }

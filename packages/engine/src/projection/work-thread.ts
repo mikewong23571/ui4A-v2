@@ -9,6 +9,7 @@ import {
 } from '@ui4a/shared';
 
 import { threadInputRel } from './work-thread-input';
+import { flowForInstance } from '../execution/judge';
 
 import type { ActionDefinition } from '../core/types';
 import { entityHref, toSirenAction } from '../contract/siren/build';
@@ -277,7 +278,8 @@ function referenceIdentity(rel: string, snapshot: EngineSnapshot): string {
 /**
  * D78 决定 2(路线 A):与 context 同构的 thread-reference 角色成员卡——properties
  * {rel, identity, status?, category},identity 解析自被引对象的声明字段,dangling
- * 如实标注;status 携带合同状态原词(终局/未知不翻译,缺失省略)。approval 卡携带
+ * 如实标注;status 保留合同状态原词,statusText 取出生版本的节点声明标题。
+ * approval 卡携带
  * 被引确认实体的声明动作(pending → approve/reject,人机同权;已决/悬挂无动作),
  * 经既有 membersDeclareActions 纯结构判定让 generic 规划器自动选 D50 责任卡。
  * 纯投影:全部字段可重建,事件/写入模型零变化。
@@ -289,6 +291,12 @@ function threadMemberCard(
   deps: ProjectDeps,
 ): SirenEntity {
   const pointer = statusPointer(rel, snapshot);
+  const instance = snapshot.instances[rel];
+  const statusText =
+    instance === undefined
+      ? pointer.status
+      : (flowForInstance(deps, instance)?.nodes.find((node) => node.name === instance.node)
+          ?.title ?? pointer.status);
   const pending = snapshot.confirmations?.[rel];
   const confirmationActions: readonly ActionDefinition[] =
     category === 'approval' && pending?.status === 'pending'
@@ -302,15 +310,16 @@ function threadMemberCard(
     properties: {
       rel,
       identity: referenceIdentity(rel, snapshot),
-      // 合同状态原词逐字携带(终局/未知不翻译);dangling 走既有「对象不存在」
-      // 任务语;无状态的归属(集合/工件)省略 status。
+      // 机器状态与声明标签分别携带;外部日志材料由授权读取层完成解析。
+      // 无状态的归属(集合/工件)省略 status。
       ...(pointer.dangling
-        ? { status: '对象不存在' }
+        ? { status: '对象不存在', statusText: '对象不存在' }
         : pointer.status === undefined
           ? {}
-          : { status: pointer.status }),
+          : { status: pointer.status, statusText }),
       category,
       presentation: projectCognitiveSemantics({
+        fieldPresentations: [{ path: 'properties.statusText', title: '状态', role: 'status' }],
         declaration: {
           version: 1,
           traits:

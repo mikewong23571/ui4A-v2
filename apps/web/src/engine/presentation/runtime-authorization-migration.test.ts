@@ -130,3 +130,54 @@ describe('durable composition authorization migration', () => {
     expect(sidecarKinds(await listEvents(getDb()))).toEqual([]);
   });
 });
+
+it('replans a persisted archived-thread Sidecar when a member status binding changes', async () => {
+  const threadKey = { ...key, subject: 'thread:archived-review', intent: 'read' };
+  const member = {
+    class: ['thread-reference'],
+    properties: {
+      rel: 'record:a',
+      identity: 'Review material',
+      status: 'archived',
+      statusText: '已归档',
+      presentation: {
+        fields: [
+          { path: 'properties.identity', title: '标题', role: 'identity' },
+          { path: 'properties.status', title: '状态', role: 'status' },
+        ],
+      },
+    },
+    actions: [],
+    links: [],
+  };
+  const thread = {
+    class: ['work-thread', 'archived'],
+    properties: { rel: threadKey.subject, identity: 'Archived review', status: 'archived' },
+    actions: [],
+    links: [],
+    entities: [member],
+  };
+  authorization.visible.set(threadKey.subject, thread);
+  const present = (requestId: string) =>
+    getPresentationBroker().present(
+      completePresentationRequest(
+        { subject: threadKey.subject, intent: threadKey.intent, delivery: 'canvas' },
+        { requestId, principal: threadKey.principal, sourceMessageIds: [] },
+      ),
+    );
+  const first = await present('member-contract:old');
+  const saved = await findActiveSidecar(getDb(), threadKey);
+  expect(first).toMatchObject({ status: 'ready', sidecar: { version: 1 } });
+  expect(JSON.stringify(saved?.versions[1]?.surface)).toContain('properties.status');
+
+  member.properties.presentation.fields[1]!.path = 'properties.statusText';
+  const second = await present('member-contract:new');
+  const updated = await findActiveSidecar(getDb(), threadKey);
+  expect(second).toMatchObject({ status: 'ready', sidecar: { id: first.sidecar!.id, version: 2 } });
+  expect(JSON.stringify(updated?.versions[2]?.surface)).toContain('properties.statusText');
+  expect(sidecarKinds(await listEvents(getDb()))).toEqual([
+    'user-sidecar-instantiated',
+    'user-sidecar-staled',
+    'user-sidecar-revised',
+  ]);
+});

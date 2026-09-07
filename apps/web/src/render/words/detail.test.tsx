@@ -3,7 +3,7 @@
  * detail 词条组件测试(T7 Phase B):给 deref 输出(实体引用)→ 详情卡:
  * properties/actions/links 四件组装直出;动作走 ActionRunner(data-action)。
  */
-import { cleanup, render, screen } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { ActionSubmitProvider, type ActionSubmit } from '@/components/actions/action-submit';
@@ -148,4 +148,20 @@ describe('detail 词条', () => {
       'https://docs.example/api/entity?rel=external',
     );
   });
+});
+
+it('keeps named sources visible and moves unlabeled contract references into a closed disclosure', () => {
+  const entity = detailEntity();
+  entity.links = [
+    { rel: ['source'], href: '/api/entity?rel=source%3Aone', title: '创建时的目标原文' },
+    { rel: ['context'], href: '/api/entity?rel=message%3Along-id' },
+  ];
+  const { container } = render(<DetailWord entity={entity} mode="links" />);
+  expect(screen.getByRole('link', { name: '创建时的目标原文' })).toBeTruthy();
+  const disclosure = container.querySelector('details')!;
+  expect(disclosure).not.toBeNull();
+  expect(disclosure.open).toBe(false);
+  expect(disclosure.contains(screen.getByText('message:long-id'))).toBe(true);
+  fireEvent.click(screen.getByText('合同引用（1）'));
+  expect(disclosure.open).toBe(true);
 });

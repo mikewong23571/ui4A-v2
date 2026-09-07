@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { parseCognitiveSemanticsProjection, type SirenEntity } from '@ui4a/engine';
-import { canvasEntityHref } from '@/presence/navigation';
+import { useCanvasEntityHref } from '@/presence/use-canvas-entity-href';
 import { ActionGroup } from '../../components/actions/action-group';
 import { MemberCardWord } from './member-card';
 import { declaredMemberOverview } from './member-overview';
@@ -43,6 +43,7 @@ function responsibilities(members: readonly SirenEntity[]): SirenEntity[] {
 }
 
 function ResponsibilityLinks({ members }: { members: readonly SirenEntity[] }) {
+  const canvasEntityHref = useCanvasEntityHref();
   const pending = [
     ...new Map(responsibilities(members).map((member) => [member.properties.rel, member])).values(),
   ];
@@ -64,6 +65,7 @@ function ResponsibilityLinks({ members }: { members: readonly SirenEntity[] }) {
 
 /** A compact reading row; explicit grouping never obscures an object's own responsibility. */
 export function MemberRowWord(props: WordProps) {
+  const canvasEntityHref = useCanvasEntityHref();
   const label = asRequiredString(props.label, 'member-row', 'label');
   const rel = asRequiredString(props.rel, 'member-row', 'rel');
   const status = asOptionalString(props.status, 'member-row', 'status');

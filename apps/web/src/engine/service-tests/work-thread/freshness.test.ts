@@ -196,7 +196,7 @@ describe('Work Thread 新鲜度(P1.3;US03/FR10)', () => {
     expect(card!.properties).toMatchObject({ identity: '第一篇(修订版)', status: 'published' });
   });
 
-  it('A3 动作变化:pending approval 被 approve 后责任卡声明动作消失(同 Sidecar 命中+重读);主体动作组变化触发指纹失效重规划', async () => {
+  it('A3 动作变化:pending approval 被 approve 后责任卡声明动作消失使成员合同失效重规划;主体动作组变化触发指纹失效重规划', async () => {
     const { threadRel, pendingApprovalRel } = await buildFixture();
     const first = await present(threadRel, `t56p13-a1-${RUN}`, ['local-demo']);
     expect(first.status).toBe('ready');
@@ -208,7 +208,7 @@ describe('Work Thread 新鲜度(P1.3;US03/FR10)', () => {
     );
     expect(pendingCard!.actions.map((action) => action.name)).toEqual(['approve', 'reject']);
 
-    // 批准:确认状态值变化、责任卡动作组消失;链接/成员/主体动作不变 → 同 Sidecar 命中。
+    // 批准:责任卡动作组消失,嵌入成员合同变化 → 同 id 重规划,不可沿用旧责任结构。
     await execAccepted(pendingApprovalRel, 'approve', {}, 'human');
     const after = await readAuthorized(threadRel, ['local-demo']);
     const decidedCard = (after.entities ?? []).find(
@@ -219,7 +219,8 @@ describe('Work Thread 新鲜度(P1.3;US03/FR10)', () => {
 
     const afterApprove = await present(threadRel, `t56p13-a2-${RUN}`, ['local-demo']);
     expect(afterApprove.status).toBe('ready');
-    expect(afterApprove.sidecar).toEqual(first.sidecar);
+    expect(afterApprove.sidecar!.id).toBe(first.sidecar!.id);
+    expect(afterApprove.sidecar!.version).toBeGreaterThan(first.sidecar!.version);
 
     // 主体动作组变化(pause → resume 换位):entity 合同指纹含 actions → 失效重规划。
     await execAccepted(threadRel, 'pause');

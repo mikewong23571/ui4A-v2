@@ -23,7 +23,7 @@ describe('walkthrough application entries', () => {
   });
 
   it('keeps direct bundle versions aligned with changed installed declaration data', () => {
-    expect(todoApplicationBundle.bundle).toEqual({ name: 'todo', version: 8 });
+    expect(todoApplicationBundle.bundle).toEqual({ name: 'todo', version: 9 });
     expect(ideasApplicationBundle.bundle).toEqual({ name: 'ideas', version: 8 });
 
     expect(todoApplicationBundle.flows.find(({ name }) => name === 'todo-item')).toMatchObject({

@@ -13,10 +13,9 @@
  *
  * 探针只观测、不执行:工具不带 execute,模型单步产出 tool call 即结束。
  */
-import { createOpenAI } from '@ai-sdk/openai';
 import { generateText, jsonSchema, streamText, type LanguageModel, type ToolSet } from 'ai';
 
-import { buildSystemPrompt } from './llm-driver';
+import { buildSystemPrompt, createLlmChatModel } from './llm-driver';
 import { resolveLlmConfig, type LlmConfigOverrides } from './llm-config';
 import { extractRawReasoning, readRawDelta } from './raw-reasoning';
 
@@ -114,13 +113,7 @@ function createProbeModel(options: GlmProbeOptions): {
 } {
   const config = resolveLlmConfig(options);
   const capture: RawCapture = { jsonBody: undefined };
-  const provider = createOpenAI({
-    baseURL: config.baseURL,
-    apiKey: config.apiKey,
-    fetch: createRecordingFetch(capture),
-  });
-  // Baseline 端点均以 OpenAI 协议 Chat Completions 接入。
-  const model: LanguageModel = provider.chat(config.model);
+  const model = createLlmChatModel({ ...options, fetchImpl: createRecordingFetch(capture) });
   return { model, modelId: config.model, baseURL: config.baseURL, capture };
 }
 

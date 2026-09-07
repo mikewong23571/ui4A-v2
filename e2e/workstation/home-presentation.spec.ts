@@ -316,7 +316,7 @@ test('current responsibility stays expanded beside ordinary summary rows and rem
     await page.getByRole('button', { name: '页面工具', exact: true }).click();
 
     await card.getByRole('button', { name: '批准', exact: true }).click();
-    await expect(card.getByText('已请求“批准”，尚未执行。')).toBeVisible();
+    await expect(card.getByText('确认后提交执行；尚未发送请求。')).toBeVisible();
     await card.locator('button[data-action="approve"]').click();
     await expect(card).toHaveCount(0);
     await expect(row).toBeVisible();

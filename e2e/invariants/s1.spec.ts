@@ -410,7 +410,7 @@ test('UI 走查:收件箱保留路由 → 确认页 RJSF 批准 → 文章实体
       '',
     );
     await approveRequest.click();
-    await expect(approveItem.getByText('已请求“批准”，尚未执行。')).toBeVisible();
+    await expect(approveItem.getByText('确认后提交执行；尚未发送请求。')).toBeVisible();
     const approveSubmit = approveItem.locator('button[data-action="approve"]');
     await expect(approveSubmit).toHaveText('确认并执行批准');
     await approveSubmit.click();

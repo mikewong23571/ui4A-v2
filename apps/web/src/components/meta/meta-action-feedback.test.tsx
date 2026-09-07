@@ -166,7 +166,7 @@ describe('Meta action outcome and projection synchronization', () => {
 
     fireEvent.click(screen.getByRole('button', { name: '批准候选版本' }));
     expect(fetchMock).toHaveBeenCalledTimes(readsBeforeDecision);
-    expect(screen.getByText(/已请求.*尚未执行/)).toBeTruthy();
+    expect(screen.getByText(/确认后提交执行；尚未发送请求/)).toBeTruthy();
     fireEvent.click(screen.getByRole('button', { name: '确认并执行批准候选版本' }));
 
     await waitFor(() => {

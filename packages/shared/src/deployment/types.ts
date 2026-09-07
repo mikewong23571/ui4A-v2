@@ -106,6 +106,7 @@ export interface ProductionDeploymentSettings {
     model: string;
     apiKeyRef: string;
     requestTimeoutMs: number;
+    sessionHeader?: string;
   };
   runtime: {
     defaultProfiles: Record<ProductionAgentSpecialization, string>;

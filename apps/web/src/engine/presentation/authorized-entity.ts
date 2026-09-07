@@ -7,6 +7,8 @@ import {
   filterThreadEntityForPrincipal,
 } from '../../auth/application-scope';
 import { ProductionIdentityError } from '../../auth/production/request-identity';
+import { getMessageEntity, isMessageRel } from '../../chat/message-entity';
+import { composeAuthorizedEntity } from '../entity-read/compose';
 import { getDb, getEngine } from '../service';
 
 /**
@@ -30,7 +32,8 @@ export async function getAuthorizedPresentationResult(
   principal: string,
   grantedApplications: readonly string[],
 ): Promise<AuthorizedPresentationResult> {
-  const engine = await getEngine(getDb());
+  const db = getDb();
+  const engine = await getEngine(db);
   const snapshot = await engine.readSnapshot();
   const sitemap = engine.getSitemap();
   try {
@@ -48,21 +51,30 @@ export async function getAuthorizedPresentationResult(
     if (error instanceof ProductionIdentityError) return { kind: 'subject-unavailable' };
     throw error;
   }
-  const entity = await engine.getEntity(rel);
+  const entity = isMessageRel(rel)
+    ? await getMessageEntity(db, rel, principal)
+    : await engine.getEntity(rel);
   if (entity === undefined) return { kind: 'subject-unavailable' };
   const principalScoped = filterThreadEntityForPrincipal(entity, snapshot, rel, principal);
   if (grantedApplications.includes('local-demo')) {
-    return { kind: 'authorized', entity: principalScoped };
+    return {
+      kind: 'authorized',
+      entity: await composeAuthorizedEntity(db, principalScoped, principal),
+    };
   }
   return {
     kind: 'authorized',
-    entity: filterEntityForGrantedApplications(principalScoped, {
-      snapshot,
-      sitemap,
-      plane: 'business',
-      grantedApplications,
+    entity: await composeAuthorizedEntity(
+      db,
+      filterEntityForGrantedApplications(principalScoped, {
+        snapshot,
+        sitemap,
+        plane: 'business',
+        grantedApplications,
+        principal,
+      }),
       principal,
-    }),
+    ),
   };
 }
 

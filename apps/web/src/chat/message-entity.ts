@@ -38,14 +38,26 @@ export async function getMessageEntity(
   rel: string,
   principal: string,
 ): Promise<SirenEntity | undefined> {
-  const id = rel.slice('message:'.length);
-  if (id === '') return undefined;
+  return (await getMessageEntities(db, [rel], principal)).get(rel);
+}
+
+/** One principal-scoped log read for all requested references, with no retained message store. */
+export async function getMessageEntities(
+  db: DbExecutor,
+  rels: readonly string[],
+  principal: string,
+): Promise<Map<string, SirenEntity>> {
+  const requested = new Set(rels.filter((rel) => isMessageRel(rel) && rel !== 'message:'));
+  const entities = new Map<string, SirenEntity>();
+  if (requested.size === 0) return entities;
   const events = await listEvents(db, 0, { kind: 'chat-message-appended', principal });
   for (const event of events) {
     const detail = event.detail as MessageAppendedShape | undefined;
-    if (detail?.messageId !== id) continue;
-    if (typeof detail.content !== 'string') continue;
-    return {
+    if (typeof detail?.messageId !== 'string' || detail.messageId === '') continue;
+    const rel = `message:${detail.messageId}`;
+    if (!requested.has(rel) || entities.has(rel)) continue;
+    if (typeof detail?.content !== 'string') continue;
+    entities.set(rel, {
       class: ['message', typeof detail.role === 'string' ? detail.role : 'unknown'],
       properties: {
         rel,
@@ -57,7 +69,7 @@ export async function getMessageEntity(
       },
       actions: [],
       links: [{ rel: ['self'], href: `/api/entity?rel=${encodeURIComponent(rel)}` }],
-    };
+    });
   }
-  return undefined;
+  return entities;
 }

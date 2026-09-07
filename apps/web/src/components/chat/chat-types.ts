@@ -9,6 +9,7 @@ import type { PresentationReceipt } from '@ui4a/shared';
 
 import type { ChatSessionSummary, ChatTurn } from '@/chat/history';
 import { citationsOrEmpty } from '@/chat/citations';
+import { failureReasonFromResult } from '@/chat/failure/structure';
 import type { TurnContextRow } from '@/chat/history/turn-context';
 import type { ChatFailureReason, ChatStartNotice, ChatStepActivity } from '@/chat/sse';
 
@@ -20,7 +21,7 @@ import { PRESENTATION_PENDING_WORD, presentationFailureText } from './presentati
  * 活动语言(机器原文 content 保留作机器层),eventSeq 供审计下钻定位;
  * failure 为 T24 Phase B Task 3 结构化失败数据:在场时主呈现按措辞分层
  * (phrasing 主呈现 / 无则中性结构化行),content 保留机器层 summary;
- * 历史回放消息只有 text 投影,如实按原文渲染,不伪造结构化数据)。
+ * 历史失败回放从持久化 steps/outcome 还原结构数据)。
  */
 export interface ChatUiMessage {
   role: 'user' | 'assistant';
@@ -150,12 +151,25 @@ export function replayTurnsToMessages(turns: readonly ChatTurn[]): ChatUiMessage
   for (const turn of turns) {
     replayed.push({ role: 'user', content: turn.goal.verb });
     const citations = citationsOrEmpty(turn.citations);
-    for (const [index, entry] of turn.messages.entries()) {
-      const isCitedFinal = index === turn.messages.length - 1;
+    const failure =
+      turn.outcome === 'failed'
+        ? failureReasonFromResult({
+            outcome: turn.outcome,
+            summary: turn.summary ?? undefined,
+            steps: turn.steps,
+          })
+        : undefined;
+    const entries =
+      turn.messages.length === 0 && failure !== undefined
+        ? [{ role: 'assistant' as const, text: turn.summary ?? '' }]
+        : turn.messages;
+    for (const [index, entry] of entries.entries()) {
+      const isCitedFinal = index === entries.length - 1;
       replayed.push({
         role: 'assistant',
         content: entry.text,
         ...(isCitedFinal && citations.length > 0 ? { citations } : {}),
+        ...(isCitedFinal && failure !== undefined ? { failure } : {}),
       });
     }
   }

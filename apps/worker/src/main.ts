@@ -30,7 +30,18 @@ async function main(): Promise<void> {
   );
   await runWorkerStartup(
     {
-      preflight: runWorkerProductionDeploymentPreflight,
+      preflight: (environment) => {
+        const config = runWorkerProductionDeploymentPreflight(environment);
+        if (config !== undefined) {
+          const { llm } = config.settings;
+          process.env.LLM_BASE_URL ??= llm.baseUrl;
+          process.env.LLM_MODEL ??= llm.model;
+          const apiKey = config.secrets[llm.apiKeyRef];
+          if (apiKey !== undefined) process.env.LLM_API_KEY ??= apiKey;
+          if (llm.sessionHeader !== undefined) process.env.LLM_SESSION_HEADER ??= llm.sessionHeader;
+        }
+        return config;
+      },
       connect: (options) => connectWorkerTemporal(options),
       closeConnection: (connection) => connection.close(),
       createWorker: (options) =>

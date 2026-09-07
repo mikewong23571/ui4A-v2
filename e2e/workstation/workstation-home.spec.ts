@@ -340,7 +340,7 @@ test('waiting-for-me 成员决策卡:批准两段确认零导航零参数,同一
     await expect(approveRequest).toHaveAttribute('data-nav', 'presentation:request-risk:approve');
     const beforeDecisionUrl = page.url();
     await approveRequest.click();
-    await expect(approveItem.getByText('已请求“批准”，尚未执行。')).toBeVisible();
+    await expect(approveItem.getByText('确认后提交执行；尚未发送请求。')).toBeVisible();
     await expect(approveItem.locator('form')).toHaveCount(0);
     const approveSubmit = approveItem.locator('button[data-action="approve"]');
     await expect(approveSubmit).toHaveText('确认并执行批准');

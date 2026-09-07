@@ -316,7 +316,7 @@ describe('工作台 · 失败措辞分层(T24 Phase B Task 3)', () => {
     expect(screen.queryByText(/检测到无进展导航循环/)).toBeNull();
   });
 
-  it('中性降级形状:无 phrasing → 「失败 · code=… · 已尝试:…」,evidence 折叠在失败数据区', async () => {
+  it('中性降级形状:无 phrasing 只显示未完成标签,机械数据折叠', async () => {
     vi.stubGlobal(
       'fetch',
       vi.fn(() =>
@@ -337,9 +337,7 @@ describe('工作台 · 失败措辞分层(T24 Phase B Task 3)', () => {
     sendGoal('发布一篇文章');
 
     await waitFor(() => {
-      expect(
-        screen.getByText('失败 · code=no_progress_loop · 已尝试:导航到 articles'),
-      ).toBeTruthy();
+      expect(screen.getByText('本次未完成')).toBeTruthy();
     });
     expect(screen.queryByText(/检测到无进展导航循环/)).toBeNull();
     // evidence 作为结构化数据可达(次级区域),不作主叙事。

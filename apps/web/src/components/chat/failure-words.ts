@@ -35,13 +35,10 @@ export function isChatStartNotice(value: unknown): value is ChatStartNotice {
 }
 
 /**
- * 无 LLM 表述时的中性结构化主行:「失败 · code={code} · 已尝试:{tried 概要}」。
- * 结构标签 + 机械数据,零叙事;tried 缺省(零轨迹失败)时省略已尝试段。
+ * 无 LLM 表述时仅显示终局结构标签;机械原因与尝试记录在折叠详情。
  */
-export function failureNeutralLine(failure: ChatFailureReason): string {
-  const tried = failure.tried ?? [];
-  const triedPart = tried.length > 0 ? ` · 已尝试:${tried.join('、')}` : '';
-  return `失败 · code=${failure.code}${triedPart}`;
+export function failureNeutralLine(): string {
+  return '本次未完成';
 }
 
 /**

@@ -17,6 +17,7 @@ import { currentRecipeCoordinator } from './recipes-runtime';
 import { semanticHintsOf } from './situation';
 import { genericIntentPolicyDependency } from './generic-intent-policy';
 import { hasResponsibilityCoverage } from './responsibility/coverage';
+import { entityContractFingerprint } from './dependencies/entity-contract';
 import {
   applicationHeaderPlanningEntity,
   applicationHeaderSemanticHints,
@@ -35,28 +36,6 @@ function diagnosticSurface(): SurfaceTree {
       provenance: [{ kind: 'validator', ref: 'region-unavailable' }],
     },
   };
-}
-
-function contractFingerprint(entity: unknown): string {
-  const value = entity as {
-    class?: unknown;
-    properties?: Record<string, unknown>;
-    actions?: unknown;
-    links?: unknown;
-    entities?: Array<{ properties?: Record<string, unknown> }>;
-  };
-  return contentVersion({
-    class: value.class,
-    presentation: value.properties?.presentation,
-    actions: value.actions,
-    links: value.links,
-    // T35 R3/S2:区域指纹必须含成员清单——inbox/delegations 的成员集变化
-    // (批准退场、委托终局)否则指纹不变,sidecar 不重规划,首页列表冻结。
-    // 与单主体 members: 依赖同口径(成员 rel 序列)。
-    members: Array.isArray(value.entities)
-      ? value.entities.map((member) => member.properties?.rel)
-      : undefined,
-  });
 }
 
 function membershipFingerprint(entity: unknown): string | undefined {
@@ -153,7 +132,7 @@ function planRegion(region: AuthorizedRegion): CompositionRegionSurfaceInput {
         catalogVersion: PRESENTATION_SURFACE_CATALOG.version,
         slots: context.slots,
       });
-  const fingerprint = contractFingerprint(region.entity);
+  const fingerprint = entityContractFingerprint(region.entity);
   // T32 Q7:collection kind 由 class 推导,不保证 entities 数组在场;
   // 显式拒绝并点名区域与原因,不以非空断言把缺陷交给内核兜底。
   const membership = slot.kind === 'collection' ? membershipFingerprint(region.entity) : undefined;
@@ -234,7 +213,7 @@ function aliasDependencies(root: AuthorizedRoot, planned: readonly SidecarDepend
         ref: rel,
         pointers: ['$contract'],
         mode: 'invalidate',
-        fingerprint: contractFingerprint(entity),
+        fingerprint: entityContractFingerprint(entity),
         optional: false,
       },
     ];

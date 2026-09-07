@@ -7,17 +7,18 @@
 import { cleanup, fireEvent, render, screen, within } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
-import { SiteNav } from '@/components/site-nav';
+import { ContextSiteNav } from '@/components/site-nav';
 
-const pathnameMock = vi.hoisted(() => ({ value: '/' }));
+const pathnameMock = vi.hoisted(() => ({ value: '/', search: '' }));
 vi.mock('next/navigation', () => ({
   usePathname: () => pathnameMock.value,
+  useSearchParams: () => new URLSearchParams(pathnameMock.search),
 }));
 
 afterEach(cleanup);
 
 function renderNav(): HTMLElement {
-  const { container } = render(<SiteNav sessionControls />);
+  const { container } = render(<ContextSiteNav sessionControls />);
   return container;
 }
 
@@ -36,6 +37,7 @@ function expectLink(
 describe('SiteNav · workstation / meta / 系统区', () => {
   afterEach(() => {
     pathnameMock.value = '/';
+    pathnameMock.search = '';
   });
 
   it('以任务语言呈现 workstation 主入口与显式 meta 入口', () => {
@@ -101,4 +103,13 @@ describe('SiteNav · workstation / meta / 系统区', () => {
     expect(container.querySelector('a[href="/raw"]')).toBeNull();
     expect(container.textContent).not.toContain('原始合同');
   });
+});
+
+it('application directory navigation retains explicit thread and lens', () => {
+  pathnameMock.value = '/canvas';
+  pathnameMock.search = 'focus=object%3Aa&thread=review&scope=notes&sidecar=old';
+  renderNav();
+  expect(screen.getByRole('link', { name: '应用' }).getAttribute('href')).toBe(
+    '/applications?scope=notes&thread=review',
+  );
 });

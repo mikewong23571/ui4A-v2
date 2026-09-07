@@ -26,6 +26,13 @@ import type { GuardResultEntry, SirenAction, SirenEntity } from '@ui4a/engine';
 
 import { ThreadDesk, threadPinsKey } from './thread-desk';
 import { EntityCacheProvider } from '../../entity-cache-provider';
+import { PresentationSurfaceHost } from '../presentation-surface-host';
+import { renderCatalogJson } from '@/render/registry';
+
+vi.mock('next/navigation', () => ({
+  usePathname: () => '/canvas',
+  useSearchParams: () => new URLSearchParams('thread=t1&focus=thread%3At1'),
+}));
 
 const referenceFields = {
   $schema: 'http://json-schema.org/draft-07/schema#',
@@ -170,8 +177,18 @@ function baseState(overrides: Partial<ThreadState> = {}): ThreadState {
 function stubContract(state: ThreadState): ReturnType<typeof vi.fn> {
   return vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
     const url = String(input);
+    if (url === '/api/render/catalog') return jsonResponse(renderCatalogJson());
+    if (url.startsWith('/api/presentation')) return jsonResponse({ error: 'not found' }, 404);
     if (url.startsWith('/api/entity?rel=')) {
       const rel = new URL(url, 'http://ui4a.test').searchParams.get('rel') ?? '';
+      if (rel === 'render-specs')
+        return jsonResponse({
+          class: ['collection'],
+          properties: { rel },
+          entities: [],
+          actions: [],
+          links: [],
+        });
       if (rel === 'thread:t1') return jsonResponse(threadProjection(state));
       if (rel === 'todos') return jsonResponse(todosCollection());
       const facts = state.identities[rel];
@@ -372,4 +389,59 @@ describe('材料/pin 语义分离(US06/FR5;T56 P3.1)', () => {
     expect(screen.queryByTestId('desk-pinned')).toBeNull();
     expect(state.events).toEqual(['thread-reference-attached']);
   });
+});
+
+function renderDeskAndSurface() {
+  return render(
+    <EntityCacheProvider fetcher={httpFetcher} versionFetcher={async () => 'v-test'}>
+      <ThreadDesk threadId="t1" />
+      <section data-testid="main-surface">
+        <PresentationSurfaceHost parameters={{ focus: 'thread:t1', thread: 't1' }} />
+      </section>
+    </EntityCacheProvider>,
+  );
+}
+
+it('membership mutations refresh the same-page Surface as well as the drawer', async () => {
+  const state = baseState();
+  vi.stubGlobal('fetch', stubContract(state));
+  renderDeskAndSurface();
+  const main = screen.getByTestId('main-surface');
+  const mainMembers = () =>
+    [...main.querySelectorAll('[data-nav="presentation:member"]')].map((link) => link.textContent);
+  await waitFor(() => expect(mainMembers()).toEqual(['完成 T35 全轨道验收']));
+  fireEvent.click(screen.getByTestId('desk-remove:todo:t35'));
+  await waitFor(() =>
+    expect(screen.getByTestId('desk-working-set-count').textContent).toBe('工作集（0）'),
+  );
+  await waitFor(() => expect(mainMembers()).toEqual([]));
+  fireEvent.click(screen.getByTestId('desk-add-material'));
+  fireEvent.click(await screen.findByTestId('desk-selector-pick:todo:buy'));
+  await waitFor(() => expect(mainMembers()).toEqual(['买牛奶']));
+  expect(screen.getByTestId('desk-working-set-count').textContent).toBe('工作集（1）');
+  expect(state.events).toEqual(['thread-reference-detached', 'thread-reference-attached']);
+});
+
+it('a rejected membership change retains material in both the Surface and drawer', async () => {
+  const state = baseState({ rejectDetach: true });
+  const fetchMock = stubContract(state);
+  vi.stubGlobal('fetch', fetchMock);
+  renderDeskAndSurface();
+  const main = screen.getByTestId('main-surface');
+  await waitFor(() =>
+    expect(main.querySelector('[data-nav="presentation:member"]')?.textContent).toBe(
+      '完成 T35 全轨道验收',
+    ),
+  );
+  const presentationReads = () =>
+    fetchMock.mock.calls.filter(([url]) => String(url).startsWith('/api/presentation')).length;
+  const readsBefore = presentationReads();
+  fireEvent.click(screen.getByTestId('desk-remove:todo:t35'));
+  await screen.findByTestId('desk-failure');
+  expect(main.querySelector('[data-nav="presentation:member"]')?.textContent).toBe(
+    '完成 T35 全轨道验收',
+  );
+  expect(screen.getByTestId('desk-working-set-count').textContent).toBe('工作集（1）');
+  expect(presentationReads()).toBe(readsBefore);
+  expect(state.events).toEqual([]);
 });

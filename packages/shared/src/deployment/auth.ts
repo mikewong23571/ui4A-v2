@@ -180,11 +180,20 @@ export function parseLlm(value: unknown): ProductionDeploymentSettings['llm'] {
     'model',
     'apiKeyRef',
     'requestTimeoutMs',
+    'sessionHeader',
   ]);
+  const sessionHeader = candidate.sessionHeader;
+  if (
+    sessionHeader !== undefined &&
+    (typeof sessionHeader !== 'string' || !/^x-[a-z0-9-]{1,60}$/i.test(sessionHeader))
+  ) {
+    fail('settings.llm.sessionHeader', 'must be an x- extension header');
+  }
   return {
     baseUrl: httpsUrl(candidate.baseUrl, 'llm.baseUrl').toString().replace(/\/$/, ''),
     model: string(candidate.model, 'settings.llm.model'),
     apiKeyRef: identifier(candidate.apiKeyRef, 'settings.llm.apiKeyRef'),
     requestTimeoutMs: integer(candidate.requestTimeoutMs, 'settings.llm.requestTimeoutMs'),
+    ...(sessionHeader === undefined ? {} : { sessionHeader: sessionHeader as string }),
   };
 }

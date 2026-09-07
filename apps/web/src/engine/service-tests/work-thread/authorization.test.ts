@@ -13,6 +13,7 @@ import {
 import { getAuthorizedPresentationResult } from '../../presentation/authorized-entity';
 import { getPresentationBroker, resetPresentationBrokerForTests } from '../../presentation/runtime';
 import { getEngine, resetEngineForTests } from '../../service';
+import { composeAuthorizedEntity } from '../../entity-read/compose';
 
 /**
  * Work Thread 授权读合同(T56 P1.1 Red;D78 决定 2/3 与 D51 纪律的服务层负例)。
@@ -368,7 +369,7 @@ describe('Work Thread 授权读合同(D78 路线 A 目标语义;Red)', () => {
         principal: OWNER,
       },
     );
-    expect(viaEntityGate).toEqual(entity);
+    expect(await composeAuthorizedEntity(pool, viaEntityGate, OWNER)).toEqual(entity);
   });
 
   it('C10 「裁剪 vs 真空」同形:同一可见状态下语义声明一致,两侧均无冗余 resume(D79;US10)', async () => {

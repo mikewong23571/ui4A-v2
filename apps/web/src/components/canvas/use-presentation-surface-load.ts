@@ -39,6 +39,7 @@ import {
 } from './presentation-sidecar-failure';
 import { frozenSpecsOf, withAbort } from './presentation-surface-helpers';
 import { notifyThreadUpdated } from './desk/thread-desk-shared';
+import { useContractRefresh } from './use-contract-refresh';
 import { loadPresentationSidecar, requestPresentationSidecar } from './sidecar/load';
 
 /** 渲染中的 surface 条目(surface 模型进 state:渲染只读 state,不读 ref)。 */
@@ -127,11 +128,12 @@ export function usePresentationSurfaceLoad(parameters: PresentationSurfaceParame
         // §十:广播合同执行(书桌等轨上组件据此放弃本地快照重读);detail=实际
         // 执行的 rel,线面消费方自行过滤。
         notifyThreadUpdated(input.rel);
-        reloadRef.current();
       }
       return result;
     };
   }, [cache, scopeParam]);
+
+  useContractRefresh(reloadRef);
 
   // Sidecar 个人视图操作(pin/revert/patch/explain/promote)与元信息状态:
   // 搬到 use-sidecar-actions;revert 后的整面重载经 reloadRef 触发(同拦截门口径)。
@@ -349,7 +351,10 @@ export function usePresentationSurfaceLoad(parameters: PresentationSurfaceParame
         gate,
         cache,
         notify: setNotice,
-        reload: () => reloadRef.current(),
+        reload: (rel) => {
+          if (rel !== undefined) notifyThreadUpdated(rel);
+          else reloadRef.current();
+        },
       });
       const processor = new MessageProcessor([ui4aRenderCatalog], (action) =>
         // SDK 动作是宽形状;拦截门按合同形状裁决(action-gate 既有口径)。

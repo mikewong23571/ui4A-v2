@@ -56,7 +56,7 @@ describe('G06 业务收尾动作', () => {
     });
     expect(completed.kind).toBe('accepted');
 
-    // done 节点直达归档(agent 通道同一裁决;动作无 actor 守卫)。
+    // done 节点可直接请求归档；Agent 高风险动作仍需人类决定。
     const archived = await engine.exec({
       rel,
       action: 'archive',
@@ -64,7 +64,17 @@ describe('G06 业务收尾动作', () => {
       principal: 'local-user',
       channel: 'http',
     });
-    expect(archived.kind).toBe('accepted');
+    expect(archived.kind).toBe('suspended');
+    if (archived.kind !== 'suspended') throw new Error('expected confirmation');
+    expect(engine.getSnapshot().instances[rel]?.node).toBe('done');
+    const approved = await engine.exec({
+      rel: archived.entity.properties.rel as string,
+      action: 'approve',
+      actor: 'human',
+      principal: 'local-user',
+      channel: 'http',
+    });
+    expect(approved.kind).toBe('accepted');
     expect(engine.getSnapshot().instances[rel]?.node).toBe('archived');
 
     // 历史可追溯:complete → archive 事件链在场。
@@ -137,7 +147,9 @@ describe('G06 业务收尾动作', () => {
     });
     expect(archived.kind).toBe('accepted');
     expect(engine.getSnapshot().instances[articleRel]?.node).toBe('archived');
-    expect((engine.getSnapshot().instances[articleRel]?.fields.title as { value: unknown }).value).toBe('G06 文章(修订)');
+    expect(
+      (engine.getSnapshot().instances[articleRel]?.fields.title as { value: unknown }).value,
+    ).toBe('G06 文章(修订)');
   });
 
   it('born-version 边界:受治理 Draft 修订新增动作只对修订后出生的实例可见', async () => {
@@ -152,8 +164,7 @@ describe('G06 业务收尾动作', () => {
       channel: 'http',
     });
     expect(created.kind).toBe('accepted');
-    const oldRel = ((await engine.getEntity('todos'))!.entities!.at(-1)!.properties
-      .rel as string);
+    const oldRel = (await engine.getEntity('todos'))!.entities!.at(-1)!.properties.rel as string;
 
     // 受治理 Flow Draft:todo-item open 节点新增 note 动作(测试形状)。
     const current = engine.getSnapshot().definitions!['todo-item']!.definition as unknown as Record<
@@ -247,8 +258,7 @@ describe('G06 业务收尾动作', () => {
     });
     if (newborn.kind === 'rejected') throw new Error(`newborn add 被拒:${newborn.reason}`);
     expect(newborn.kind).toBe('accepted');
-    const newRel = ((await engine.getEntity('todos'))!.entities!.at(-1)!.properties
-      .rel as string);
+    const newRel = (await engine.getEntity('todos'))!.entities!.at(-1)!.properties.rel as string;
     const noted = await engine.exec({
       rel: newRel,
       action: 'note',

@@ -274,8 +274,9 @@ describe('工作台 · 流式轨迹(T9 Phase B / B1)', () => {
     sendGoal('发布一篇文章');
 
     await waitFor(() => {
-      expect(screen.getByText('失败 · code=loop_exception')).toBeTruthy();
+      expect(screen.getByText('本次未完成')).toBeTruthy();
     });
+    expect(screen.getByText('code=loop_exception').closest('details')?.open).toBe(false);
     // 结构化本体可达(evidence 在失败数据区),机器叙句不作主呈现直出。
     expect(screen.getByText('聊天循环异常: 爆炸')).toBeTruthy();
     expect(screen.queryByText('失败: 聊天循环异常: 爆炸')).toBeNull();

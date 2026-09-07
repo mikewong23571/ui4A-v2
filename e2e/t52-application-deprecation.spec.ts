@@ -285,7 +285,7 @@ test('golden path: 出生→写数据→三门同门→停用→全收缩→烧�
     await expect(page.getByTestId('meta-content-ready')).toBeVisible({ timeout: 60_000 });
     await expect(page.getByRole('region', { name: '人类责任点' })).toBeVisible();
     await page.getByRole('button', { name: 'Approve', exact: true }).click();
-    await expect(page.getByRole('status').filter({ hasText: '已请求' })).toBeVisible();
+    await expect(page.getByRole('status').filter({ hasText: '尚未发送请求' })).toBeVisible();
     await page.getByRole('button', { name: '确认并执行Approve' }).click();
     await expect(page.getByRole('status', { name: '执行结果' })).toBeVisible({ timeout: 30_000 });
     await expect(page.getByRole('button', { name: 'Approve', exact: true })).toHaveCount(0);

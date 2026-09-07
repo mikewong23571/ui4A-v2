@@ -194,7 +194,7 @@ describe('contract-driven Meta responsibility and disclosure', () => {
     const trigger = screen.getByRole('button', { name: '封闭未来窗口' });
     fireEvent.click(trigger);
     expect(fetchMock).not.toHaveBeenCalled();
-    expect(screen.getByText(/已请求.*尚未执行/)).toBeTruthy();
+    expect(screen.getByText(/确认后提交执行；尚未发送请求/)).toBeTruthy();
     fireEvent.click(screen.getByRole('button', { name: '确认并执行封闭未来窗口' }));
 
     await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(2));

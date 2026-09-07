@@ -215,7 +215,7 @@ test.describe('work-thread extensibility', () => {
       // (身份行取声明 title,以 data-rel 锚定成员)。
       await page.getByRole('link', { name: '返回本线' }).click();
       await expect(page.locator(`[data-word="member-row"][data-rel="${firstUnit}"]`)).toContainText(
-        'review',
+        '复核',
         { timeout: 15_000 },
       );
       await expect(page.getByTestId('canvas-errors')).toHaveCount(0);

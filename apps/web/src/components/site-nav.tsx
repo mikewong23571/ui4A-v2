@@ -8,7 +8,8 @@
  */
 import { ChevronDown } from 'lucide-react';
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
+import { usePathname, useSearchParams } from 'next/navigation';
+import { applicationDirectoryHref } from '@/presence/navigation';
 import { useEffect, useRef, useState } from 'react';
 
 const WORKSTATION_ITEMS = [
@@ -38,7 +39,24 @@ function linkClassName(current: boolean): string {
   }`;
 }
 
-export function SiteNav({ sessionControls = false }: { sessionControls?: boolean }) {
+/** Query-aware navigation lives below Suspense; the loading fallback stays renderable. */
+export function ContextSiteNav({ sessionControls }: { sessionControls?: boolean }) {
+  const searchParams = useSearchParams();
+  return (
+    <SiteNav
+      sessionControls={sessionControls}
+      directoryHref={applicationDirectoryHref(`/canvas?${searchParams?.toString() ?? ''}`)}
+    />
+  );
+}
+
+export function SiteNav({
+  sessionControls = false,
+  directoryHref = '/applications',
+}: {
+  sessionControls?: boolean;
+  directoryHref?: string;
+}) {
   const pathname = usePathname() ?? '/';
   // F-13:open 状态记录打开时的 pathname——路由变化即视为收起(派生比较,
   // 无需 close-on-route effect,react-hooks/set-state-in-effect 合规)。
@@ -72,7 +90,7 @@ export function SiteNav({ sessionControls = false }: { sessionControls?: boolean
         {WORKSTATION_ITEMS.map((item) => (
           <Link
             key={item.nav}
-            href={item.href}
+            href={item.nav === 'applications' ? directoryHref : item.href}
             data-nav={item.nav}
             aria-current={isCurrent(pathname, item.href) ? 'page' : undefined}
             className={linkClassName(isCurrent(pathname, item.href))}

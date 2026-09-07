@@ -1,4 +1,5 @@
 'use client';
+import Link from 'next/link';
 /**
  * member-table 词条:集合成员呈现为表格行(通用词汇,由组合区域声明的
  * density='table' 驱动;catalog pattern 选择,零实体类型特判)。
@@ -21,7 +22,7 @@ import type { ReactElement } from 'react';
 import type { SirenEntity } from '@ui4a/engine';
 
 import { cn } from '@/lib/utils';
-import { canvasEntityHref } from '@/presence/navigation';
+import { useCanvasEntityHref } from '@/presence/use-canvas-entity-href';
 
 import { ActionGroup } from '../../components/actions/action-group';
 
@@ -45,6 +46,7 @@ const OVERVIEW_STATUS_WIDTH = 12;
 const OVERVIEW_ACTIONS_WIDTH = 16;
 
 export function MemberTableWord(props: WordProps) {
+  const canvasEntityHref = useCanvasEntityHref();
   const label = asRequiredString(props.label, 'member-table', 'label');
   const rel = asRequiredString(props.rel, 'member-table', 'rel');
   const status = asOptionalString(props.status, 'member-table', 'status');
@@ -77,14 +79,14 @@ export function MemberTableWord(props: WordProps) {
 
   const identityCell = (
     <td className={cn('block min-w-0 align-top md:table-cell', cellClass)}>
-      <a
+      <Link
         data-nav="presentation:member"
         href={canvasEntityHref(rel)}
         title={label}
         className="block break-words text-sm font-medium text-foreground hover:text-primary hover:underline md:truncate"
       >
         {label}
-      </a>
+      </Link>
       <p className="break-all font-mono text-xs text-muted-foreground md:truncate" title={rel}>
         {rel}
       </p>

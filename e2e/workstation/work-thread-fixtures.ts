@@ -157,10 +157,12 @@ export async function openThreadOverview(page: Page, threadId: string): Promise<
 
 /**
  * chat 回合诚实失败(LLM 未配置)的可见主行(T24 失败措辞分层:机械 code 的
- * 中性结构化行「失败 · code=…」;LLM 不可用细节在可展开「失败数据」折叠层)。
+ * 中性结构化行「本次未完成」;LLM 不可用细节在可展开「失败数据」折叠层)。
  */
 export async function expectAssistantTurnFailed(page: Page): Promise<void> {
-  await expect(page.getByText(/^失败 · code=/).first()).toBeVisible({ timeout: 30_000 });
+  await expect(page.getByText('本次未完成', { exact: true }).first()).toBeVisible({
+    timeout: 30_000,
+  });
 }
 
 export async function sendChatGoal(page: Page, goal: string): Promise<void> {

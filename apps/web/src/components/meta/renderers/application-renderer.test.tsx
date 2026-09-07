@@ -178,7 +178,7 @@ describe('meta/application:<name> deprecate(T52 P4 canonical 渲染链)', () => 
     expect(reason.tagName).toBe('TEXTAREA');
     fireEvent.change(reason, { target: { value: '迁移到 publishing-v2' } });
     fireEvent.click(document.querySelector('button[type="submit"][data-action="deprecate"]')!);
-    expect(screen.getByText(/尚未执行/)).toBeTruthy();
+    expect(screen.getByText(/尚未发送请求/)).toBeTruthy();
     expect(fetchMock).not.toHaveBeenCalled();
 
     // 第二步:确认才 fresh-read 当前声明并 POST /_meta/api/exec。
@@ -207,9 +207,9 @@ describe('meta/application:<name> deprecate(T52 P4 canonical 渲染链)', () => 
 
     fireEvent.click(screen.getByRole('button', { name: '停用' }));
     fireEvent.click(document.querySelector('button[type="submit"][data-action="deprecate"]')!);
-    expect(screen.getByText(/尚未执行/)).toBeTruthy();
+    expect(screen.getByText(/尚未发送请求/)).toBeTruthy();
     fireEvent.click(screen.getByRole('button', { name: '取消请求' }));
-    expect(screen.queryByText(/尚未执行/)).toBeNull();
+    expect(screen.queryByText(/尚未发送请求/)).toBeNull();
     // 取消是零业务事件的 presentation interaction:两步确认缺一不可。
     expect(screen.getByRole('button', { name: '停用' })).toBeTruthy();
   });

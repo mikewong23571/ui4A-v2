@@ -200,7 +200,7 @@ describe('ActivationView(BIOS 激活详情)', () => {
     fireEvent.click(screen.getByRole('button', { name: '批准' }));
 
     expect(fetchMock).not.toHaveBeenCalled();
-    expect(screen.getByRole('status').textContent).toMatch(/已请求.*尚未执行/);
+    expect(screen.getByRole('status').textContent).toMatch(/确认后提交执行；尚未发送请求/);
     fireEvent.click(screen.getByRole('button', { name: '确认并执行批准' }));
 
     await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(2));
@@ -224,10 +224,10 @@ describe('ActivationView(BIOS 激活详情)', () => {
 
     const trigger = screen.getByRole('button', { name: '批准' });
     fireEvent.click(trigger);
-    const requested = screen.getByText(/已请求.*尚未执行/);
+    const requested = screen.getByText(/确认后提交执行；尚未发送请求/);
     fireEvent.keyDown(requested, { key: 'Escape' });
 
-    expect(screen.queryByText(/已请求.*尚未执行/)).toBeNull();
+    expect(screen.queryByText(/确认后提交执行；尚未发送请求/)).toBeNull();
     expect(document.activeElement).toBe(trigger);
     expect(fetchMock).not.toHaveBeenCalled();
   });

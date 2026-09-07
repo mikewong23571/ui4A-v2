@@ -6,6 +6,7 @@ import {
   getAgentRunEntity,
   isAgentRunRel,
 } from '../../../engine/agent/agent-runs';
+import { composeAuthorizedEntity } from '../../../engine/entity-read/compose';
 import { getMessageEntity, isMessageRel } from '../../../chat/message-entity';
 import {
   authenticationErrorResponse,
@@ -91,15 +92,15 @@ export async function GET(request: Request) {
     if (entity === undefined) {
       return Response.json({ error: `实体 "${rel}" 不存在` }, { status: 404 });
     }
-    return Response.json(
+    const authorized =
       identity.authorizationMode === 'credential'
         ? filterEntityForGrantedApplications(entity, {
             ...audienceContext,
             grantedApplications: identity.grantedApplications,
             principal,
           })
-        : entity,
-    );
+        : entity;
+    return Response.json(await composeAuthorizedEntity(db, authorized, principal));
   } catch (error) {
     // 集合读面查询拒绝(T38):结构化 layer/reason 透出(拒绝即教育)。
     if (error instanceof CollectionQueryError) {

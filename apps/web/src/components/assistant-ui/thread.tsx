@@ -31,7 +31,7 @@
  * - 失败终局条目(T24 Phase B Task 3:失败措辞分层):final/error 帧携带
  *   reason={code, evidence?, tried?, phrasing?}(经 metadata.custom.failure)
  *   时按 AI-first 分层——LLM 表述在场则主呈现 phrasing(附「助手表述」来源
- *   标注),缺席则中性结构化行「失败 · code=… · 已尝试:…」(零硬编码友好
+ *   标注),缺席则中性终局标签「本次未完成」(零硬编码友好
  *   文案);结构化本体始终收纳于可展开的失败数据区(审计可达)。不携带
  *   failure 数据的 assistant 消息(回答/摘要等)走常规文本呈现;
  * - 起步降级条目(T40 B1):final 帧携带 notice={code, droppedRel, startedRel,
@@ -62,6 +62,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { ChevronDown, SendHorizontal, Square } from 'lucide-react';
+import { EditFailedQuestion } from './failure/edit-question';
 
 /** 当前消息的 rel(external store 经 convertMessage 的 metadata.custom.rel 传入)。 */
 function useMessageRel(): string | undefined {
@@ -227,7 +228,7 @@ function ThinkingMessage({ step }: { step: number }) {
 /**
  * 失败终局条目(T24 Phase B Task 3:失败措辞分层):
  * - LLM 表述在场(phrasing)→ 主呈现为表述,附「助手表述」来源标注;
- * - 缺席 → 中性结构化行「失败 · code=… · 已尝试:…」(零硬编码友好文案);
+ * - 缺席 → 中性终局标签「本次未完成」(零硬编码友好文案);
  * - 结构化数据本体(code/已尝试/机械事实)始终收纳在可展开的失败数据区,
  *   审计视角可达,不随主呈现选择消失。
  */
@@ -242,7 +243,7 @@ function FailureMessage({ failure }: { failure: ChatFailureReason }) {
             <p className="text-[10px] text-muted-foreground">助手表述</p>
           </>
         ) : (
-          <p>{failureNeutralLine(failure)}</p>
+          <p>{failureNeutralLine()}</p>
         )}
         <details className="text-xs text-muted-foreground">
           <summary>失败数据</summary>
@@ -254,6 +255,7 @@ function FailureMessage({ failure }: { failure: ChatFailureReason }) {
             ))}
           </div>
         </details>
+        <EditFailedQuestion />
       </div>
     </MessagePrimitive.Root>
   );

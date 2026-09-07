@@ -126,35 +126,53 @@ function WorkspaceLinks({ entity }: { entity: SirenEntity }) {
   if (navigable.length === 0) {
     return <section data-word="detail" aria-label="链接" className="hidden" />;
   }
+  const named = navigable.filter((link) => typeof link.title === 'string' && link.title !== '');
+  const raw = navigable.filter((link) => !named.includes(link));
+  const renderLinks = (links: typeof navigable) => (
+    <ul className="flex flex-wrap items-center gap-x-3 gap-y-1">
+      {links.map((link) => {
+        const destination = workspaceContractHref(route, link.href);
+        const target = destination === null ? null : hrefToRel(link.href);
+        return (
+          <li
+            key={`${link.rel.join('/')}:${link.href}`}
+            className="flex min-w-0 items-center gap-1.5 break-all"
+          >
+            {destination !== null ? (
+              <Link
+                href={destination}
+                data-nav={link.rel[0]}
+                className="text-muted-foreground hover:text-foreground hover:underline"
+              >
+                {link.title ?? target}
+              </Link>
+            ) : (
+              <a
+                href={link.href}
+                data-nav={link.rel[0]}
+                className="text-muted-foreground hover:underline"
+              >
+                {link.title ?? link.href}
+              </a>
+            )}
+          </li>
+        );
+      })}
+    </ul>
+  );
   return (
-    <section data-word="detail" aria-label="链接" className="text-xs text-muted-foreground">
-      <ul className="flex flex-wrap items-center gap-x-3 gap-y-1">
-        {navigable.map((link) => {
-          const destination = workspaceContractHref(route, link.href);
-          const target = destination === null ? null : hrefToRel(link.href);
-          return (
-            <li key={`${link.rel.join('/')}:${link.href}`} className="flex items-center gap-1.5">
-              {destination !== null ? (
-                <Link
-                  href={destination}
-                  data-nav={link.rel[0]}
-                  className="text-muted-foreground hover:text-foreground hover:underline"
-                >
-                  {link.title ?? target}
-                </Link>
-              ) : (
-                <a
-                  href={link.href}
-                  data-nav={link.rel[0]}
-                  className="text-muted-foreground hover:underline"
-                >
-                  {link.title ?? link.href}
-                </a>
-              )}
-            </li>
-          );
-        })}
-      </ul>
+    <section
+      data-word="detail"
+      aria-label="链接"
+      className="space-y-2 text-xs text-muted-foreground"
+    >
+      {renderLinks(named)}
+      {raw.length > 0 && (
+        <details>
+          <summary>合同引用（{raw.length}）</summary>
+          <div className="pt-2">{renderLinks(raw)}</div>
+        </details>
+      )}
     </section>
   );
 }

@@ -41,6 +41,7 @@ import {
 import { createDynamicCompositionSubjectResolver } from './app-workspace-composition';
 import { genericIntentPolicyDependency } from './generic-intent-policy';
 import { hasResponsibilityCoverage } from './responsibility/coverage';
+import { entityContractFingerprint } from './dependencies/entity-contract';
 
 const runtimeKey = Symbol.for('ui4a.presentation-broker');
 
@@ -76,12 +77,7 @@ function currentDependencies(root: AuthorizedRoot): SidecarDependency[] {
     entities?: Array<{ properties?: Record<string, unknown> }>;
   };
   const rel = root.rels[0]!;
-  const contract = contentVersion({
-    class: entity.class,
-    presentation: entity.properties?.presentation,
-    actions: entity.actions,
-    links: entity.links,
-  });
+  const contract = entityContractFingerprint(entity);
   // D51 Phase B:policy 依赖指纹 = 凭证授予集合(排序 join)。授予集合变化即
   // 指纹失效 → 重规划;不再锚定会话 scope 或 'any' 占位。
   const policyRef = grantedPolicyRef(root.grantedApplications);

@@ -163,7 +163,11 @@ export async function streamAgentLoop(args: {
   const presentationRequestIds: string[] = [];
   const presentationJobs: Promise<void>[] = [];
   const result = await runAgent(
-    wrapDriverForAudit(createDriver(requested), resolved, (detail) => decisions.push(detail)),
+    wrapDriverForAudit(
+      createDriver(requested, { sessionId: JSON.stringify([principal, sessionId]) }),
+      resolved,
+      (detail) => decisions.push(detail),
+    ),
     goal,
     {
       baseUrl,

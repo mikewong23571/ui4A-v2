@@ -33,6 +33,7 @@ import { LlmConfigurationError, resolveLlmConfig, type LlmConfigOverrides } from
 import { buildLlmMessages, buildSystemPrompt, type LlmMessage } from './prompts';
 import { extractRawReasoning, readRawDelta } from './raw-reasoning';
 import { invalidOutput, mapToolCall } from './tool-call-mapping';
+import { llmRoutingHeaders } from './transport/session-headers';
 
 export {
   buildLlmMessages,
@@ -43,6 +44,8 @@ export {
 } from './prompts';
 
 export interface LlmDriverOptions extends LlmConfigOverrides {
+  /** Server-owned conversation or durable operation identity, used only for provider routing. */
+  sessionId?: string;
   /** 注入传输(单测脚本化;缺省真实 fetch)。 */
   fetchImpl?: FetchLike;
 }
@@ -54,6 +57,7 @@ interface ResolvedLlmSettings {
   baseURL: string;
   model: string;
   requestBudgetBytes: number;
+  sessionHeader?: string;
   fetchImpl?: FetchLike;
 }
 
@@ -277,14 +281,21 @@ async function llmDecide(
  */
 export function createLlmChatModel(options: LlmDriverOptions = {}): LanguageModel {
   const settings = resolveSettings(options);
+  const routingHeaders = llmRoutingHeaders(
+    settings.sessionHeader,
+    options.sessionId ?? crypto.randomUUID(),
+  );
   const provider = createOpenAI({
     baseURL: settings.baseURL,
     apiKey: settings.apiKey,
-    fetch: (input: string | URL | Request, init?: RequestInit) => {
+    fetch: async (input: string | URL | Request, init?: RequestInit) => {
       assertProviderRequestBudget(init?.body, settings.requestBudgetBytes);
+      const headers = new Headers(init?.headers);
+      for (const [name, value] of Object.entries(await routingHeaders)) headers.set(name, value);
+      const request = { ...init, headers };
       return settings.fetchImpl === undefined
-        ? globalThis.fetch(input, init)
-        : settings.fetchImpl(String(input), init);
+        ? globalThis.fetch(input, request)
+        : settings.fetchImpl(String(input), request);
     },
   });
   return provider.chat(settings.model);

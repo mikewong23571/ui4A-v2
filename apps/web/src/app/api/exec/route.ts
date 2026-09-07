@@ -1,3 +1,4 @@
+import { composeAuthorizedEntity } from '../../../engine/entity-read/compose';
 import type { SirenEntity } from '@ui4a/engine';
 
 import {
@@ -85,7 +86,7 @@ export async function POST(request: Request) {
       );
     }
     const resolvedRequest = applyTrustedIdentity(parsed.request, identity);
-    const responseEntity = (entity: SirenEntity): SirenEntity => {
+    const responseEntity = async (entity: SirenEntity): Promise<SirenEntity> => {
       const currentSnapshot = engine.getSnapshot();
       const principalScoped = filterThreadEntityForPrincipal(
         entity,
@@ -93,15 +94,17 @@ export async function POST(request: Request) {
         typeof entity.properties.rel === 'string' ? entity.properties.rel : resolvedRequest.rel,
         identity.principal,
       );
-      return identity.authorizationMode === 'credential'
-        ? filterEntityForGrantedApplications(principalScoped, {
-            snapshot: currentSnapshot,
-            sitemap,
-            plane: 'business',
-            grantedApplications: identity.grantedApplications,
-            principal: identity.principal,
-          })
-        : principalScoped;
+      const authorized =
+        identity.authorizationMode === 'credential'
+          ? filterEntityForGrantedApplications(principalScoped, {
+              snapshot: currentSnapshot,
+              sitemap,
+              plane: 'business',
+              grantedApplications: identity.grantedApplications,
+              principal: identity.principal,
+            })
+          : principalScoped;
+      return composeAuthorizedEntity(db, authorized, identity.principal, 'committed-receipt');
     };
     if (identity.authorizationMode === 'credential') {
       assertThreadOwner(snapshot, resolvedRequest.rel, resolvedRequest.principal ?? '');
@@ -111,15 +114,17 @@ export async function POST(request: Request) {
       if (outcome.kind !== 'accepted') {
         return Response.json({ layer: 'guard-failed', reason: outcome.reason }, { status: 422 });
       }
-      return Response.json({ entity: responseEntity(outcome.entity) });
+      return Response.json({ entity: await responseEntity(outcome.entity) });
     }
     const outcome = await engine.exec(resolvedRequest);
     if (outcome.kind === 'accepted') {
       // T35 F-31:裁决类 exec(approve/reject)随 accepted 携带 subject=
       // 被操作主体投影;其 collection 回链(inbox)是渲染层精确失效依据。
       return Response.json({
-        entity: responseEntity(outcome.entity),
-        ...(outcome.subject !== undefined ? { subject: responseEntity(outcome.subject) } : {}),
+        entity: await responseEntity(outcome.entity),
+        ...(outcome.subject !== undefined
+          ? { subject: await responseEntity(outcome.subject) }
+          : {}),
       });
     }
     if (outcome.kind === 'suspended') {

@@ -71,7 +71,7 @@ test.describe('work-thread decisions', () => {
       // 一次提交走原闸门:外层请求风险(零业务事件)→ 内层确认执行,全程零导航。
       const approveItem = duty.locator('[data-action-group-item="approve"]');
       await approveItem.locator('button[data-presentation-action="request-risk"]').click();
-      await expect(approveItem.getByText('已请求“批准”，尚未执行。')).toBeVisible();
+      await expect(approveItem.getByText('确认后提交执行；尚未发送请求。')).toBeVisible();
       const beforeUrl = page.url();
       await approveItem.locator('button[data-action="approve"]').click();
       expect(page.url()).toBe(beforeUrl);
@@ -122,12 +122,12 @@ test.describe('work-thread decisions', () => {
 
       await page.setViewportSize({ width: 1440, height: 900 });
       await openThreadOverview(page, thread);
-      // 起步合同状态:statusPointer 逐字携带节点名(basic-info),不翻译不猜测。
+      // 状态呈现绑定出生版本的节点声明标题，机器 status 仍为 basic-info。
       // 普通 active 对象采用摘要行;以 canonical data-rel 锚定同一成员。
       const activeCard = memberCard(page, 'article-drafting:main');
       await expect(activeCard).toBeVisible();
       await expect(activeCard).toHaveAttribute('data-word', 'member-row');
-      await expect(activeCard).toContainText('basic-info');
+      await expect(activeCard).toContainText('基本信息');
 
       // 在注视面执行 active 对象的声明动作(参数表单默认收起,先开表单;
       // 节点字段 title 必填;human 常规动作零确认)。
@@ -145,7 +145,7 @@ test.describe('work-thread decisions', () => {
 
       // 「返回本线」客户端导航回概览:成员卡与叙述重渲,零手动整页刷新。
       await page.getByRole('link', { name: '返回本线' }).click();
-      await expect(memberCard(page, 'article-drafting:main')).toContainText('classification', {
+      await expect(memberCard(page, 'article-drafting:main')).toContainText('分类', {
         timeout: 15_000,
       });
       await expect(page.locator('main')).toContainText('停在「classification」');

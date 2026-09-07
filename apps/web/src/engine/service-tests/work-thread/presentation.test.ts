@@ -464,7 +464,7 @@ describe('T56 S1 探针:Work Thread 合同与呈现链路现状', () => {
     expect(presentation.emptyMeaning).toBe('ready-to-start');
   });
 
-  it('新鲜度:值变化不重规划(同 Sidecar 命中);成员/授权变化触发 invalidate 重规划', async () => {
+  it('新鲜度:责任动作与成员变化重规划;授权变化重新裁剪', async () => {
     const { threadRel, pendingApprovalRel } = await buildFixtureA();
     const broker = getPresentationBroker();
     const request = {
@@ -481,15 +481,15 @@ describe('T56 S1 探针:Work Thread 合同与呈现链路现状', () => {
     );
     expect(first.status).toBe('ready');
 
-    // 值变化:批准 pending 确认 → properties.approval[0].status 变化,链接/成员/动作不变
-    // → 合同指纹不变 → Sidecar 命中(渲染值经 entity cache 同源重读更新)。
+    // 批准既改变状态也移除成员的批准/驳回动作；成员合同变化必须重规划。
     await execAccepted(pendingApprovalRel, 'approve');
     const afterValueChange = await broker.present(
       { ...request, requestId: `t56s1-v2-${RUN}` },
       { grantedApplications: ['local-demo'] },
     );
     expect(afterValueChange.status).toBe('ready');
-    expect(afterValueChange.sidecar).toEqual(first.sidecar);
+    expect(afterValueChange.sidecar?.id).toBe(first.sidecar?.id);
+    expect(afterValueChange.sidecar!.version).toBeGreaterThan(first.sidecar!.version);
 
     // 成员变化:attach 新 context → links + members 指纹变化 → 重规划(版本演进)。
     await execAccepted(threadRel, 'attach', { category: 'context', rel: 'comment:c3' });

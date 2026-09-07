@@ -6,6 +6,7 @@ import { Button } from '../ui/button';
 import { THREAD_ATTACH_ACTION, THREAD_REL_PREFIX } from '@ui4a/engine';
 import type { GuardResultEntry, SirenAction, SirenEntity } from '@ui4a/engine';
 
+import { ReferenceSelection, referenceOptions } from './reference-selection';
 import { ActionRunner } from '../action-runner';
 import { ThreadMaterialAdd } from './thread-material-add';
 import { useActionSubmit, type ActionSubmit } from './action-submit';
@@ -23,7 +24,7 @@ export function isThreadMaterialAttach(rel: string, action: SirenAction): boolea
 }
 
 /**
- * T35 F-06:合同图例每个 surface 只渲染一次——外层 ActionGroup 展示后向内层
+ * T35 F-06:合同规则说明每个 surface 只披露一次——外层 ActionGroup 按需展开后向内层
  * 传播已展示标记;纯呈现层协调,零业务事件。
  */
 const ActionLegendContext = createContext(false);
@@ -86,27 +87,44 @@ export function ActionGroup({
   );
   const renderItem = (action: SirenAction) => {
     const guard = guards.get(action.name);
-    const runner = isThreadMaterialAttach(rel, action) ? (
-      <ThreadMaterialAdd
-        rel={rel}
-        action={action}
-        submit={submit}
-        onExecuted={onExecuted}
-        blocked={blockedForRenderer(guard)}
-        blockReason={guard?.reason}
-      />
-    ) : (
-      <ActionRunner
-        rel={rel}
-        action={action}
-        formHost={formHost}
-        blocked={blockedForRenderer(guard)}
-        blockReason={guard?.reason}
-        onExecuted={onExecuted}
-        prefill={prefill}
-        submit={submit}
-      />
-    );
+    const runner =
+      referenceOptions(action) !== undefined ? (
+        <ReferenceSelection
+          rel={rel}
+          action={action}
+          submit={submit}
+          onExecuted={onExecuted}
+          blocked={blockedForRenderer(guard)}
+          blockReason={guard?.reason}
+        />
+      ) : isThreadMaterialAttach(rel, action) ? (
+        <ThreadMaterialAdd
+          rel={rel}
+          action={action}
+          submit={submit}
+          onExecuted={onExecuted}
+          blocked={blockedForRenderer(guard)}
+          blockReason={guard?.reason}
+        />
+      ) : (
+        <ActionRunner
+          rel={rel}
+          action={action}
+          formHost={formHost}
+          targetTitle={
+            typeof entity.properties.identity === 'string'
+              ? entity.properties.identity
+              : typeof entity.properties.title === 'string'
+                ? entity.properties.title
+                : undefined
+          }
+          blocked={blockedForRenderer(guard)}
+          blockReason={guard?.reason}
+          onExecuted={onExecuted}
+          prefill={prefill}
+          submit={submit}
+        />
+      );
     return (
       <div
         key={`${rel}:${action.name}:${JSON.stringify([action.fields, prefill])}`}
@@ -121,9 +139,10 @@ export function ActionGroup({
     <ActionDisclosure enabled={posture === 'disclosure'}>
       <div data-testid="action-contract-group" className="space-y-3">
         {legendShown || compact || posture === 'disclosure' ? null : (
-          <p data-testid="action-contract-legend" className="text-xs text-muted-foreground">
-            {ACTION_CONTRACT_LEGEND}
-          </p>
+          <details className="text-xs text-muted-foreground">
+            <summary>操作规则</summary>
+            <p data-testid="action-contract-legend">{ACTION_CONTRACT_LEGEND}</p>
+          </details>
         )}
         {/* 图例已展示标记只在真的渲染过图例时向内传播;compact 自身不披露图例,
           内层 default 组仍要补披露(披露保留在详情面)。 */}
@@ -142,7 +161,6 @@ export function ActionGroup({
                     : 'space-y-3 border-t border-dashed pt-3'
                 }
               >
-                <p className="text-xs text-muted-foreground">需要确认</p>
                 {confirmationActions.map(renderItem)}
               </div>
             )}

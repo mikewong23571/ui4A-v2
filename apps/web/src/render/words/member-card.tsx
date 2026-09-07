@@ -1,4 +1,5 @@
 'use client';
+import Link from 'next/link';
 /**
  * member-card 词条(T33 Phase D / D50 责任点一等):集合成员携带已声明动作时,
  * 成员渲染为决策卡——身份行(人话 identity)+ 合同标识 + 统一动作组
@@ -27,7 +28,7 @@ import { useEffect, useState, type ReactNode } from 'react';
 import type { SirenEntity } from '@ui4a/engine';
 
 import { cn } from '@/lib/utils';
-import { canvasEntityHref } from '@/presence/navigation';
+import { useCanvasEntityHref } from '@/presence/use-canvas-entity-href';
 
 import { Button } from '../../components/ui/button';
 
@@ -164,6 +165,7 @@ function DecisionRow({
 }
 
 export function MemberCardWord(props: WordProps) {
+  const canvasEntityHref = useCanvasEntityHref();
   const label = asRequiredString(props.label, 'member-card', 'label');
   const rel = asRequiredString(props.rel, 'member-card', 'rel');
   const status = asOptionalString(props.status, 'member-card', 'status');
@@ -213,7 +215,7 @@ export function MemberCardWord(props: WordProps) {
       )}
     >
       {/* 标题行保持成员导航(合同 href → 画布落面),动作行承载责任点 */}
-      <a
+      <Link
         data-nav="presentation:member"
         href={canvasEntityHref(rel)}
         className={cn(
@@ -222,7 +224,7 @@ export function MemberCardWord(props: WordProps) {
         )}
       >
         {label}
-      </a>
+      </Link>
       {facts === undefined && detail !== undefined && (
         <p className={cn('text-xs text-muted-foreground', compact ? 'mt-0 truncate' : 'mt-0.5')}>
           {detail}
@@ -246,13 +248,13 @@ export function MemberCardWord(props: WordProps) {
           <p className="mt-1 break-words font-mono">
             {facts.status} · {rel}
           </p>
-          <a
+          <Link
             href={canvasEntityHref(rel)}
             data-nav="presentation:confirmation-contract"
             className="underline"
           >
             查看确认合同
-          </a>
+          </Link>
         </details>
       )}
       {needsConfirmationRead && facts === undefined && (
@@ -273,13 +275,13 @@ export function MemberCardWord(props: WordProps) {
               >
                 重试读取
               </Button>
-              <a
+              <Link
                 href={canvasEntityHref(rel)}
                 data-nav="presentation:confirmation-recovery"
                 className="underline"
               >
                 查看确认合同
-              </a>
+              </Link>
             </div>
           )}
         </div>
@@ -298,13 +300,13 @@ export function MemberCardWord(props: WordProps) {
               {metaTarget ? (
                 facts.targetRel
               ) : (
-                <a
+                <Link
                   data-nav="presentation:decision-target"
                   href={canvasEntityHref(facts.targetRel)}
                   className="font-mono hover:text-primary hover:underline"
                 >
                   {facts.targetRel}
-                </a>
+                </Link>
               )}
             </DecisionRow>
           )}
@@ -365,13 +367,13 @@ export function MemberCardWord(props: WordProps) {
         // US02 Meta 边界(D78 决定 4):meta 定义批准不进本线内联审批 UI,
         // 显式跨入可信治理宿主(既有 /meta/entity 路由),零新建审批面。
         <section aria-label="动作" className={compact ? 'mt-1' : 'mt-2'}>
-          <a
+          <Link
             data-nav="cross:meta-governance"
             href={`/meta/entity?rel=${encodeURIComponent(facts?.targetRel ?? rel)}`}
             className="inline-flex items-center text-sm text-primary underline"
           >
             Meta 定义变更，进入治理宿主处理
-          </a>
+          </Link>
         </section>
       ) : (
         actions.length > 0 &&

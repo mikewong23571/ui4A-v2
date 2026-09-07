@@ -289,7 +289,9 @@ export async function runAgentStep(
     observedApplication: observedApp,
     workingContext,
   };
-  const driver = deps.driver ?? createDriver('llm');
+  const driver =
+    deps.driver ??
+    createDriver('llm', { sessionId: JSON.stringify([args.principal, args.delegationId]) });
   // 推理自述捕获(T11 Phase C):llm driver 决策产出 reasoning 时经 sink 回调
   // 一次(聚合整段,D22);scripted/mock driver 零回调,reasoning 保持 null。
   let reasoning: string | null = null;

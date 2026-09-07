@@ -2,7 +2,7 @@
   "schema": "https://ui4a.dev/application-bundle/v1",
   "bundle": {
     "name": "todo",
-    "version": 8
+    "version": 9
   },
   "applications": [
     {
@@ -35,7 +35,8 @@
               "presentation": {
                 "role": "metadata"
               },
-              "title": "待办标题"
+              "title": "待办标题",
+              "minLength": 1
             },
             {
               "name": "note",
@@ -74,7 +75,7 @@
         },
         {
           "name": "done",
-          "title": "完成",
+          "title": "捕捉入口已停用",
           "actions": [],
           "fields": []
         },
@@ -93,6 +94,31 @@
                 {
                   "type": "transition",
                   "to": "capture"
+                },
+                {
+                  "type": "set-field",
+                  "field": "title",
+                  "value": ""
+                },
+                {
+                  "type": "set-field",
+                  "field": "note",
+                  "value": ""
+                }
+              ]
+            },
+            {
+              "name": "retire",
+              "title": "停用此捕捉入口",
+              "to": "done",
+              "requires-confirmation": "high",
+              "method": "POST",
+              "guards": [],
+              "fields": [],
+              "effect": [
+                {
+                  "type": "transition",
+                  "to": "done"
                 }
               ]
             }
@@ -167,6 +193,44 @@
               ]
             },
             {
+              "name": "edit",
+              "title": "编辑待办",
+              "collect-node-fields": false,
+              "method": "POST",
+              "guards": [],
+              "fields": [
+                {
+                  "name": "title",
+                  "type": "text",
+                  "title": "待办标题",
+                  "required": true,
+                  "minLength": 1,
+                  "semantics": "intent"
+                },
+                {
+                  "name": "note",
+                  "type": "textarea",
+                  "title": "备注",
+                  "description": "留空可清除备注",
+                  "semantics": "intent"
+                }
+              ],
+              "effect": [
+                {
+                  "type": "set-field",
+                  "field": "title",
+                  "from-param": "title",
+                  "origin": "intent"
+                },
+                {
+                  "type": "set-field",
+                  "field": "note",
+                  "from-param": "note",
+                  "origin": "intent"
+                }
+              ]
+            },
+            {
               "name": "archive",
               "title": "归档",
               "to": "archived",
@@ -207,6 +271,44 @@
               ]
             },
             {
+              "name": "edit",
+              "title": "编辑待办",
+              "collect-node-fields": false,
+              "method": "POST",
+              "guards": [],
+              "fields": [
+                {
+                  "name": "title",
+                  "type": "text",
+                  "title": "待办标题",
+                  "required": true,
+                  "minLength": 1,
+                  "semantics": "intent"
+                },
+                {
+                  "name": "note",
+                  "type": "textarea",
+                  "title": "备注",
+                  "description": "留空可清除备注",
+                  "semantics": "intent"
+                }
+              ],
+              "effect": [
+                {
+                  "type": "set-field",
+                  "field": "title",
+                  "from-param": "title",
+                  "origin": "intent"
+                },
+                {
+                  "type": "set-field",
+                  "field": "note",
+                  "from-param": "note",
+                  "origin": "intent"
+                }
+              ]
+            },
+            {
               "name": "archive",
               "title": "归档",
               "to": "archived",
@@ -218,7 +320,8 @@
                   "type": "transition",
                   "to": "archived"
                 }
-              ]
+              ],
+              "requires-confirmation": "high"
             }
           ],
           "fields": []

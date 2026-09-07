@@ -14,6 +14,9 @@ export async function register(): Promise<void> {
     const apiKey = config.secrets[llm.apiKeyRef];
     if (process.env.LLM_BASE_URL === undefined) process.env.LLM_BASE_URL = llm.baseUrl;
     if (process.env.LLM_MODEL === undefined) process.env.LLM_MODEL = llm.model;
+    if (process.env.LLM_SESSION_HEADER === undefined && llm.sessionHeader !== undefined) {
+      process.env.LLM_SESSION_HEADER = llm.sessionHeader;
+    }
     if (process.env.LLM_API_KEY === undefined && apiKey !== undefined) {
       process.env.LLM_API_KEY = apiKey;
     }

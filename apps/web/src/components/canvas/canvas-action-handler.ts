@@ -11,7 +11,8 @@ export interface CanvasActionHandlerDeps {
   gate: ActionGate;
   cache: EntityCacheHandle;
   notify: (message: string) => void;
-  reload: () => void;
+  /** Successful contract identity lets the host also refresh sibling consumers. */
+  reload: (rel?: string) => void;
 }
 
 /**
@@ -29,7 +30,7 @@ export function createCanvasActionHandler(deps: CanvasActionHandlerDeps) {
         deps.cache.invalidateAfterExec(rel, outcome.entity, outcome.subject);
       }
       deps.notify(`动作已执行:${action.name}`);
-      deps.reload(); // executed → 数据即事件投影,整面 reload 重建 surface
+      deps.reload(typeof rel === 'string' ? rel : undefined);
       return;
     }
     deps.notify(

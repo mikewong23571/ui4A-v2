@@ -235,7 +235,7 @@ test('S2 主链路:非法定义拒且留痕 → 修正 → submit/pending(diff+c
       }
     });
     await page.getByRole('button', { name: '批准', exact: true }).click();
-    await expect(page.getByRole('status')).toContainText('已请求“批准”，尚未执行');
+    await expect(page.getByRole('status')).toContainText('确认后提交执行；尚未发送请求');
     expect(decisionPosts, '高风险批准首次点击只 staging,不得执行').toHaveLength(0);
 
     await page.getByRole('button', { name: '确认并执行批准', exact: true }).click();

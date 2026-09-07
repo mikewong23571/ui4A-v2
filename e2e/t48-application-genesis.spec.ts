@@ -168,7 +168,7 @@ test('golden path: 人类在 /meta 受治理出生一个全新 application', asy
 
     // requires-confirmation=high:先请求,再确认执行
     await page.getByRole('button', { name: 'Approve', exact: true }).click();
-    await expect(page.getByRole('status').filter({ hasText: '已请求' })).toBeVisible();
+    await expect(page.getByRole('status').filter({ hasText: '尚未发送请求' })).toBeVisible();
     await page.getByRole('button', { name: '确认并执行Approve' }).click();
     await expect(page.getByRole('status', { name: '执行结果' })).toBeVisible({ timeout: 30_000 });
     // 决策终态:激活实体不再声明 approve/reject

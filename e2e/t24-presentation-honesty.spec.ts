@@ -115,7 +115,7 @@ test('canvas 首屏:focus 实体语义上屏,主区域零机制词;机制信息�
   });
 });
 
-test('chat LLM 不可用/调用失败:中性分层(失败 · code=)可见,零编造表述', async ({ page }) => {
+test('chat LLM 不可用/调用失败:中性分层可见、机械原因按需可读,零编造表述', async ({ page }) => {
   await withFreshServer(
     async () => {
       await page.goto(`${SCENARIO_BASE}/`);
@@ -123,8 +123,8 @@ test('chat LLM 不可用/调用失败:中性分层(失败 · code=)可见,零编
       await page.getByPlaceholder('输入目标…').fill('发布一篇文章');
       await page.getByRole('button', { name: '发送' }).click();
 
-      // 中性结构化主行:结构标签 + 机械数据,无 phrasing 叙句。
-      await expect(page.getByText(/^失败 · code=driver_fail/)).toBeVisible({ timeout: 60_000 });
+      // 中性结构化主行；机械数据留在折叠诊断，无 phrasing 叙句。
+      await expect(page.getByText('本次未完成', { exact: true })).toBeVisible({ timeout: 60_000 });
       // LLM 缺席 → 无「助手表述」来源标注(分层不伪造表述)。
       await expect(page.getByText('助手表述')).toHaveCount(0);
 

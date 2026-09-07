@@ -11,6 +11,7 @@ export * from './contract/authenticated-fetch';
 export * from './contract/disclosure';
 export * from './context/working-context';
 export * from './llm/llm-config';
+export * from './llm/transport/session-headers';
 export * from './contract/http';
 export * from './loop/loop';
 export * from './protocol/match';

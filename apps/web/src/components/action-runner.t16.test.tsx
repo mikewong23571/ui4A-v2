@@ -304,7 +304,7 @@ describe('ActionRunner T16 schema-form interaction', () => {
     fireEvent.click(submitButton('edit-metadata'));
 
     const errors = await screen.findAllByRole('alert');
-    expect(errors.map((error) => error.textContent).join(' ')).toMatch(/required|必填/i);
+    expect(errors.map((error) => error.textContent).join(' ')).toContain('请填写“文章标题”。');
     expect(execFn).not.toHaveBeenCalled();
   });
 });
@@ -328,8 +328,8 @@ describe('ActionRunner T16 high-risk staging', () => {
     fireEvent.click(trigger);
 
     expect(execFn).not.toHaveBeenCalled();
-    expect(screen.getByRole('status').textContent).toContain('已请求');
-    expect(screen.getByRole('status').textContent).toContain('尚未执行');
+    expect(screen.getByRole('status').textContent).toContain('确认后提交执行');
+    expect(screen.getByRole('status').textContent).toContain('尚未发送请求');
 
     fireEvent.click(screen.getByRole('button', { name: '确认并执行归档' }));
 
