@@ -2,7 +2,7 @@
 
 入口：https://ui4a.styleofwong.cn/canvas?focus=thread%3Aux-review-2026&thread=ux-review-2026
 
-> 后续修复已发布为 `0230c8db`；结果见文末“修复与发布”。下列审查结论保留原时点。
+> 后续修复及批准恢复已发布为 `ba146c50`；结果见文末“修复与发布”。下列审查结论保留原时点。
 
 ## 结论
 
@@ -120,3 +120,12 @@
 视觉证据：[原工作线修复后](deployed-thread.png)、[长消息全文](deployed-full-message.png)、[移出同步](deployed-detach.png)、[必填错误](deployed-validation.png)、[390px工作线](deployed-thread-mobile.png)、[390px助手](deployed-chat-mobile.png)、[最终知情确认](final-confirmation.png)、[最终聊天材料同步](final-chat-sync.png)。540px放大等效布局无横向溢出；原生200%缩放未获有效工具证据，不计通过。
 
 [待办两份定义候选、影响和适用边界](definition-proposals.md)。最终实时核实均为pending-approval；本轮没有代行人类批准，也没有迁移旧bornVersion。专用复验线e7a2e50b-afe3-4561-ac67-90884e0ed43f已完成并保留1条消息；bc67e5e2样本保留2条消息；原ux-review-2026只读未改。
+
+
+## 用户授权批准后的最终状态
+
+用户明确允许代理在现有人类浏览器会话中完成两份批准。第一次批准触发事务校验缺陷：seq1307/1308已经提交，经典未编辑draft状态却让随后重放报错，造成用户截图中的“读取合同失败”。恢复前已备份数据库，D81以严格未编辑副本交接+事务前纯应用修复；原始341core事件离线重放成功，seq1307/1308逐字段比较未变。
+
+最终部署 **ba146c50229ecc23302a0991c3aad94f157f771f**；4458tests passed/15skipped，8服务healthy，两份Draft均accepted，用户截图中的无scope URL恢复。新todo:t59创建→编辑备注→完成成功，完成后有编辑/归档，见[批准后待办](approved-todo-edit.png)。
+
+**仍开放：既有捕捉单例未迁移，F10再记一条带旧值仍能复现。** 新定义已批准不等于所有旧bornVersion实例升级。T59保留此项，不声称全部体验缺口闭环。运维记录已同步，两端SHA256为16bcc4e8e7309aacf9854a275ed31acd09bed1914359c7add56f60697044b6f9。

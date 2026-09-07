@@ -47,3 +47,14 @@
 - Current final check607files passed/8skipped,4445tests passed/15skipped; typecheck/lint/strict included.
 - Deployment runbook synchronized to home; both SHA2566579d067974e98dc38f6c01e563de40dc8e49e625cf4f3854320db682b4c3bac.
 - Fresh final browser reads confirm both definition Drafts remain pending-approval. Never approved through automation. T59 remains open for governed definition adoption and existing-instance boundary; production code deployment is completed.
+
+## User-authorized approval and D81 recovery
+- User explicitly authorized browser operation of both approvals. Used existing human session + declared two-step UI; no request-side actor override.
+- First acceptance committed candidate1307/accepted1308 before lifecycle fold failed. All later engine reads failed; restart alone would not repair it.
+- Consistent pg_dump backup0600 validated pg_restore-list; SHAe44bdaaa6ed84eae1d95e2e592ab0b71ddf3d1f6f903d8339bd2531760c168d7, operator/private/t59-before-approval-recovery-20260907.dump.
+- D81 added exact canonical unedited draft handoff and locked pre-append pure apply. Pristine only; edited/conflicting/pending/deprecated/wrong-actor remain rejected. Full real341core events replay ->v2active,53instances; original1307/1308 identical after recovery.
+- Root rerun4files22tests; final full check609passed/8skipped files,4458passed/15skipped tests.
+- ba146c50229ecc23302a0991c3aad94f157f771f built/pushed three exactamd64 images, preflight/up/status success; volume hash unchanged. Final digests/runtime facts in runbook.
+- First Draft accepted from original committed event; second browser approved once and now accepted. User screenshot URL with no scope reads normally.
+- New todo:t59 born under approved definition, edited note and completed; done still exposesedit/archive. Existing todo-capture:main remains old-version and retained old inputs on another; record as unresolvedF10, no secret migration.
+- Runbook sync SHA25616bcc4e8e7309aacf9854a275ed31acd09bed1914359c7add56f60697044b6f9.
