@@ -414,7 +414,7 @@ test('golden path: 出生→写数据→三门同门→停用→全收缩→烧�
     await expect(form).toBeVisible();
     await form.getByRole('textbox', { name: /^reason/i }).fill(reason);
     await form.locator('button[type="submit"]').click();
-    await expect(page.getByRole('status').filter({ hasText: '尚未执行' })).toBeVisible();
+    await expect(page.getByRole('status').filter({ hasText: '尚未发送请求' })).toBeVisible();
 
     // 成功回执(D71.3):停用即离场,受影响面是集合——HTTP 200 + 回执实体 =
     // 收缩后的 meta/applications 集合投影(成员不含停用名)。两步确认的第二步
