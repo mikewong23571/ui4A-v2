@@ -28,6 +28,7 @@
  * 消息态经 useExternalStoreRuntime 外接;共享类型/持久化键见 chat-types.ts。
  */
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { createChatThreadRefresh } from './session/thread-refresh';
 
 import { useExternalStoreRuntime, type AppendMessage } from '@assistant-ui/react';
 
@@ -353,6 +354,7 @@ export function useChatSession(): ChatSession {
       } catch {
         // An unreportable route makes this turn's client view unknown; Chat remains available.
       }
+      const refreshThread = createChatThreadRefresh(clientView);
       persistSession(activeSession);
       markSessionPending(activeSession);
 
@@ -392,6 +394,7 @@ export function useChatSession(): ChatSession {
             if ('turnId' in frame && frame.turnId !== turnId) return;
             if (frame.type === 'session') {
               persistSession(frame.sessionId);
+              refreshThread('accepted');
             } else if (frame.type === 'heartbeat') {
               return;
             } else if (frame.type === 'focus') {
@@ -440,7 +443,9 @@ export function useChatSession(): ChatSession {
               if (frame.payload.turnId !== undefined && frame.payload.turnId !== turnId) return;
               flushThinkingDeltas();
               handleFinal(frame.payload, stepCount, machineTextSteps);
+              refreshThread('settled');
             } else if (frame.type === 'error') {
+              refreshThread('settled');
               markSessionPending(null);
               // 失败措辞分层(T24 Phase B Task 3):error 帧必附结构化 reason,
               // 恒为中性结构化展示(D48:error 帧 LLM 表述边界为不补齐——见
@@ -491,6 +496,7 @@ export function useChatSession(): ChatSession {
           appendAssistant(`失败: ${error instanceof Error ? error.message : String(error)}`);
         }
       } finally {
+        refreshThread('settled');
         idleTimeout.dispose();
         abortRef.current = null;
         setIsRunning(false);

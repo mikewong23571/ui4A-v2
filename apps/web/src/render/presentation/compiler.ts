@@ -146,10 +146,16 @@ function transformedValue(
     // ActionGroup 预填取 entity.properties.fields,缺则工作区编辑表单空白
     //(实体页直连全量实体故可预填);fields 是合同事实,非模型输出。
     const fields = (source.properties as { fields?: unknown } | undefined)?.fields;
+    // Confirmation names the same current projected target as the content heading.
+    // These facts enter only the ephemeral hydration model, never the saved binding tree.
+    const identity = source.properties?.identity;
+    const title = source.properties?.title;
     return {
       class: ['presentation-action-slice'],
       properties: {
         rel: subject,
+        ...(typeof identity === 'string' ? { identity } : {}),
+        ...(typeof title === 'string' ? { title } : {}),
         ...(fields !== undefined && typeof fields === 'object' && fields !== null
           ? { fields }
           : {}),
