@@ -13,4 +13,4 @@
 - [x] 真实模型发现项补正：local GET/exec 同 principal、审计与实体引用分离；6 focused
   tests 与增强真实模型用例通过，所有实体引用经 HTTP 逐一回读。
 - [x] Phase Verification & Checkpoint：聊天浏览器 7 passed；模型证据与部署边界已记录。
-- [ ] 归档 Track。
+- [x] 归档 Track；功能提交 `0cf8df10`，验收记录见 evidence.md。
