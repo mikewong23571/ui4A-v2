@@ -89,6 +89,8 @@
 
 ## 待实施 Tracks
 
+- [~] **Track: T59 体验审查 F01–F11 修复与公网部署** *Link: [tracks/t59-ux-review-repairs_20260907/index.md](./tracks/t59-ux-review-repairs_20260907/index.md)*
+
 - [ ] **Track: T56 工作线工作台重构：目标、责任与共同上下文**（规划完成，未开工；自包含 spec/design/acceptance/plan，P0 三个探针与 P5 实现后 review/fixes/re-review 为必需门禁） *Link: [tracks/t56-work-thread-workspace_20260905/index.md](./tracks/t56-work-thread-workspace_20260905/index.md)*
 
 - [x] **Track: T57 首页工作简报与组件呈现语义**（2026-09-06完成：独立worktree并行实施并集成T56；my-work v3、语义row/决定卡/表格、goal-only原始输入与幂等、责任保全与缓存/导航闭环；check4393、完整E2E100及最新home4、真实模型/原生200%/构建/review通过；未部署，T58真人试用未开始） *Link: [tracks/archive/t57-home-presentation-semantics_20260906/index.md](./tracks/archive/t57-home-presentation-semantics_20260906/index.md)*
