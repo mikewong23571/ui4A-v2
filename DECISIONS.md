@@ -1756,3 +1756,21 @@
 - 同一candidate事件原子更新definition、version registry、activation及lifecycle.node=active；不修改旧实例bornVersion。请求期在锁内先完整纯应用，失败事务零candidate/accepted事件；重放用同一纯函数。拒绝必须有结构化可恢复结果，不能让错误事件提交后使全站不可读。
 - 已保存的human批准记录不删除、不跳过、不重写；新的单一交接语义可确定性重放原本未编辑副本上的批准。上线前备份并离线重放现有日志确认只影响该交接条件；任何非未编辑副本仍失败而不得扩大恢复口径。
 - 这不是把批准权交给agent。此次用户明确指示通过已登录浏览器代操作指定两份批准，页面两步确认按凭证合同执行；不注入actor或绕过服务端规则。
+
+## D82 Assistant 单次运行的命令身份与执行记忆（2026-09-07，T60）
+
+- 依据：d334af87 会话同一用户回合产生三次相同 create 决策；宿主每步换 commandId，
+  thread-created 又未进入执行审计，导致下一轮仅收到错误的 Assistant 总结。
+- 修订 D79 的参考 Agent 宿主接线：对声明 client-owned commandId 的动作，单次 run 内
+  同 rel/action/授权消息/caller 参数视作同一逻辑提交，复用首个可信参数信封；JSON 对象键序
+  不区分提交，模型提供的 client-owned 字段不参与身份。改变 caller 参数或授权消息以及新 run
+  产生新提交。此机制不解析自然语言、不按业务名称去重，不保证跨 run/进程恢复。
+  若需要同一次运行创建多个参数完全相同的对象，需将它们表达为合同支持的不同逻辑提交；
+  当前逐步 exec 不把重复相同工具调用解释成新的数量授权。
+- 请求始终经过 HTTP 和现有引擎幂等裁决，不在宿主缓存业务成功或直接伪造回执；新决定仍
+  fresh read，首次可信 baseVersion 随同一提交保持稳定，变参后按新观察装配。
+- 执行审计消费工作线四类 core 事件的 receipt 与 action-executed 的 execution；两者都是
+  既有裁决事实，不追加重复 action-executed，不改 fold。Chat 按 principal 和本 session
+  的原始授权消息关联再限量，避免别的会话/人类操作挤占当前执行上下文。
+- 当轮成功披露保留返回实体 rel 和授权消息 ID；跨轮依靠日志审计。历史 Assistant 原话
+  不重写，LLM 应以执行回执纠正错误叙述，审计缺失只能表示未知，不能证明没有执行。

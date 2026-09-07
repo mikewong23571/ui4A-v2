@@ -4,6 +4,8 @@
 
 ## 活跃 Tracks
 
+- [~] **Track: T60 聊天执行连续性：重复创建与跨轮审计缺口** *Link: [tracks/t60-chat-execution-continuity_20260907/index.md](./tracks/t60-chat-execution-continuity_20260907/index.md)*
+
 （当前无活跃 Track）
 
 
