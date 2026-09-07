@@ -89,7 +89,7 @@
 
 ## 待实施 Tracks
 
-- [~] **Track: T59 体验审查 F01–F11 修复与公网部署** *Link: [tracks/t59-ux-review-repairs_20260907/index.md](./tracks/t59-ux-review-repairs_20260907/index.md)*
+- [~] **Track: T59 体验审查 F01–F11 修复与公网部署**（0230c8db已部署，F01–F09公网复验；check4445通过；F10/F11候选待人类批准，旧实例不自动迁移） *Link: [tracks/t59-ux-review-repairs_20260907/index.md](./tracks/t59-ux-review-repairs_20260907/index.md)*
 
 - [ ] **Track: T56 工作线工作台重构：目标、责任与共同上下文**（规划完成，未开工；自包含 spec/design/acceptance/plan，P0 三个探针与 P5 实现后 review/fixes/re-review 为必需门禁） *Link: [tracks/t56-work-thread-workspace_20260905/index.md](./tracks/t56-work-thread-workspace_20260905/index.md)*
 
