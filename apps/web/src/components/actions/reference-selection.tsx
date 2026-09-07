@@ -164,9 +164,9 @@ export function ReferenceSelection({
           if (!open) void load();
         }}
       >
-        {action.title}
-        {/* T60 UX 评审:与「添加关联」的 ＋ 图标对称,补移出方向的 − 。 */}
+        {/* T60 UX 评审:图标统一前置,与「添加关联」的 ＋ 同侧对称。 */}
         <Minus aria-hidden />
+        {action.title}
       </Button>
       {open && (
         <section id={id} aria-label={action.title} className="space-y-2 rounded-md border p-3">
